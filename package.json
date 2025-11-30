@@ -1,0 +1,62 @@
+{
+  "name": "check-my-code",
+  "version": "1.0.0",
+  "description": "CLI tool that verifies code adherence to configurable rulesets",
+  "main": "dist/cli/index.js",
+  "bin": {
+    "cmc": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/cli/index.js",
+    "dev": "ts-node src/cli/index.ts",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
+    "typecheck": "tsc --noEmit",
+    "prepare": "husky"
+  },
+  "keywords": [
+    "code-quality",
+    "linter",
+    "cli",
+    "typescript",
+    "python"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@eslint/js": "^9.15.0",
+    "@types/node": "^20.10.0",
+    "eslint": "^9.15.0",
+    "husky": "^9.1.0",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.4.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.3.0",
+    "typescript-eslint": "^8.15.0",
+    "vitest": "^1.0.0"
+  },
+  "dependencies": {
+    "@iarna/toml": "^2.2.5",
+    "chalk": "^5.3.0",
+    "commander": "^11.1.0",
+    "glob": "^10.3.0",
+    "ora": "^8.0.0",
+    "simple-git": "^3.21.0",
+    "yaml": "^2.3.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module",
+  "lint-staged": {
+    "src/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  }
+}

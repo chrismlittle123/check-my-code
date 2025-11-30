@@ -1,0 +1,11 @@
+[project]
+name = "check-my-code"
+category = "production"
+
+[rulesets]
+# Using default built-in rules for now
+# These check file-length, require-docstrings, no-console, no-print
+default = []
+
+[ai]
+enabled = false
