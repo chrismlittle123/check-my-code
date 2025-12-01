@@ -4,7 +4,7 @@ import { join, relative } from 'path';
 import type { Violation } from '../types.js';
 import { getLanguageByExtension } from '../config/compatibility.js';
 
-export interface LinterOptions {
+interface LinterOptions {
   select?: string[];
   ignore?: string[];
   lineLength?: number;
@@ -231,32 +231,4 @@ class CommandError extends Error {
     this.stdout = stdout;
     this.stderr = stderr;
   }
-}
-
-export async function detectProjectLinters(projectRoot: string): Promise<string[]> {
-  const linters: string[] = [];
-
-  const pythonConfigs = ['pyproject.toml', 'ruff.toml', '.ruff.toml'];
-  for (const config of pythonConfigs) {
-    if (existsSync(join(projectRoot, config))) {
-      linters.push('ruff');
-      break;
-    }
-  }
-
-  const jsConfigs = ['eslint.config.js', 'eslint.config.mjs', '.eslintrc.js', '.eslintrc.json'];
-  for (const config of jsConfigs) {
-    if (existsSync(join(projectRoot, config))) {
-      linters.push('eslint');
-      break;
-    }
-  }
-
-  return linters;
-}
-
-export function getRecommendedLinter(filePath: string): string | null {
-  const ext = `.${filePath.split('.').pop()}`;
-  const lang = getLanguageByExtension(ext);
-  return lang?.linter ?? null;
 }

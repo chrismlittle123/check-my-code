@@ -2,7 +2,7 @@ import { readFile } from 'fs/promises';
 import { join } from 'path';
 import type { Violation, RuleConfig } from '../types.js';
 
-export type SimpleCheckFunction = (
+type SimpleCheckFunction = (
   filePath: string,
   content: string,
   config: RuleConfig
@@ -350,8 +350,4 @@ async function checkNoPrint(
   }
 
   return violations;
-}
-
-export function getAvailableSimpleChecks(): string[] {
-  return Object.keys(simpleChecks);
 }

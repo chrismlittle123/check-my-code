@@ -33,7 +33,15 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# 3. Run tests
+# 3. Dead code detection
+echo "🔎 Checking for dead code..."
+npm run dead-code
+if [ $? -ne 0 ]; then
+  echo "❌ Dead code detected! Run 'npm run dead-code' to see details."
+  exit 1
+fi
+
+# 5. Run tests
 echo "🧪 Running tests..."
 npm run test:run
 if [ $? -ne 0 ]; then
@@ -41,7 +49,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# 4. Build
+# 6. Build
 echo "🔨 Verifying build..."
 npm run build
 if [ $? -ne 0 ]; then

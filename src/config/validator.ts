@@ -18,21 +18,6 @@ export interface ValidationResult {
   errors: ValidationError[];
 }
 
-// Categories with descriptions for documentation/help
-export const PROJECT_CATEGORIES = {
-  production: 'Production code with strict quality requirements',
-  prototype: 'Experimental code with relaxed rules',
-  internal: 'Internal tooling with moderate requirements',
-  learning: 'Learning projects with minimal rules',
-  other: 'Custom category',
-} as const;
-
-export const AI_AGENTS = ['claude', 'codex', 'gemini', 'cursor', 'copilot'] as const;
-
-export const SUPPORTED_LINTERS = ['ruff', 'eslint', 'biome'] as const;
-
-export const OUTPUT_FORMATS = ['default', 'verbose', 'quiet', 'json'] as const;
-
 // Singleton validator instance - using any to avoid ESM/CJS type issues with Ajv
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let ajvInstance: any = null;
@@ -127,25 +112,4 @@ export function formatValidationErrors(errors: ValidationError[]): string {
   });
 
   return lines.join('\n');
-}
-
-/**
- * Get the JSON schema for external tools
- */
-export function getSchema(): typeof schema {
-  return schema;
-}
-
-/**
- * Type guard to check if a value is a valid project category
- */
-export function isValidCategory(value: string): value is keyof typeof PROJECT_CATEGORIES {
-  return value in PROJECT_CATEGORIES;
-}
-
-/**
- * Type guard to check if a value is a valid AI agent
- */
-export function isValidAgent(value: string): value is (typeof AI_AGENTS)[number] {
-  return AI_AGENTS.includes(value as (typeof AI_AGENTS)[number]);
 }

@@ -6,14 +6,14 @@ import { parse as parseYaml } from 'yaml';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export interface LanguageConfig {
+interface LanguageConfig {
   name: string;
   extensions: string[];
   versions: string[];
   linter: string;
 }
 
-export interface LinterConfig {
+interface LinterConfig {
   name: string;
   languages: string[];
   install: string;
@@ -23,7 +23,7 @@ export interface LinterConfig {
   default_rules?: string[];
 }
 
-export interface CompatibilityConfig {
+interface CompatibilityConfig {
   version: string;
   languages: Record<string, LanguageConfig>;
   linters: Record<string, LinterConfig>;
@@ -31,10 +31,7 @@ export interface CompatibilityConfig {
 
 let cachedConfig: CompatibilityConfig | null = null;
 
-/**
- * Load the compatibility configuration from YAML
- */
-export function loadCompatibilityConfig(): CompatibilityConfig {
+function loadCompatibilityConfig(): CompatibilityConfig {
   if (cachedConfig) {
     return cachedConfig;
   }
@@ -58,34 +55,4 @@ export function getLanguageByExtension(extension: string): LanguageConfig | null
   }
 
   return null;
-}
-
-/**
- * Get linter config by name
- */
-export function getLinterConfig(linterName: string): LinterConfig | null {
-  const config = loadCompatibilityConfig();
-  return config.linters[linterName] ?? null;
-}
-
-/**
- * Get default linter for a language
- */
-export function getDefaultLinter(language: string): string | null {
-  const config = loadCompatibilityConfig();
-  return config.languages[language]?.linter ?? null;
-}
-
-/**
- * Get all supported file extensions
- */
-export function getAllSupportedExtensions(): string[] {
-  const config = loadCompatibilityConfig();
-  const extensions: string[] = [];
-
-  for (const langConfig of Object.values(config.languages)) {
-    extensions.push(...langConfig.extensions);
-  }
-
-  return [...new Set(extensions)];
 }
