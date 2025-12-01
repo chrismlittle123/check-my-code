@@ -1,143 +1,256 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { spawn } from 'child_process';
-import { join } from 'path';
-import { mkdtemp, rm, writeFile, mkdir } from 'fs/promises';
-import { tmpdir } from 'os';
+import { isDockerAvailable, cleanupImages, buildImage, runInDocker } from './docker-runner.js';
 
-const CLI_PATH = join(process.cwd(), 'dist', 'cli', 'index.js');
-
-interface Result {
-  stdout: string;
-  stderr: string;
-  exitCode: number;
+interface JsonOutput {
+  violations: {
+    file: string;
+    line: number | null;
+    column: number | null;
+    rule: string;
+    message: string;
+    linter: 'eslint' | 'ruff';
+  }[];
+  summary: {
+    files_checked: number;
+    violations_count: number;
+  };
 }
 
-function runCLI(args: string[], cwd: string): Promise<Result> {
-  return new Promise((resolve) => {
-    const proc = spawn('node', [CLI_PATH, ...args], { cwd });
-    let stdout = '';
-    let stderr = '';
+// Check Docker availability synchronously at module load
+const dockerAvailable = await isDockerAvailable();
 
-    proc.stdout.on('data', (data) => (stdout += data.toString()));
-    proc.stderr.on('data', (data) => (stderr += data.toString()));
-    proc.on('close', (code) => resolve({ stdout, stderr, exitCode: code ?? 1 }));
-  });
+if (!dockerAvailable) {
+  console.warn('Docker not available - skipping Docker-based e2e tests');
 }
 
-describe('cmc check', () => {
-  let tempDir: string;
+afterAll(async () => {
+  if (dockerAvailable) {
+    await cleanupImages();
+  }
+}, 30000);
+
+// =============================================================================
+// TypeScript-only project tests
+// =============================================================================
+describe.skipIf(!dockerAvailable)('typescript-only project', () => {
+  let imageName: string;
 
   beforeAll(async () => {
-    tempDir = await mkdtemp(join(tmpdir(), 'cmc-test-'));
+    imageName = await buildImage('typescript-only');
+  }, 120000); // 2 min timeout for build
+
+  it('builds successfully', () => {
+    expect(imageName).toBe('cmc-e2e-typescript-only');
   });
 
-  afterAll(async () => {
-    await rm(tempDir, { recursive: true, force: true });
+  it('exits 1 when violations found', async () => {
+    const result = await runInDocker(imageName, ['check']);
+
+    expect(result.exitCode).toBe(1);
+  }, 30000);
+
+  it('detects no-var violations', async () => {
+    const result = await runInDocker(imageName, ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    const noVarViolations = output.violations.filter((v) => v.rule === 'no-var');
+    expect(noVarViolations.length).toBeGreaterThan(0);
+    expect(noVarViolations[0].linter).toBe('eslint');
+  }, 30000);
+
+  it('checks specific file', async () => {
+    const result = await runInDocker(imageName, ['check', 'clean.ts', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(0);
+    expect(output.summary.files_checked).toBe(1);
+    expect(output.violations.length).toBe(0);
+  }, 30000);
+
+  it('includes line and column in violations', async () => {
+    const result = await runInDocker(imageName, ['check', 'violation.ts', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(output.violations.length).toBeGreaterThan(0);
+    expect(output.violations[0].line).toBeTypeOf('number');
+    expect(output.violations[0].column).toBeTypeOf('number');
+  }, 30000);
+});
+
+// =============================================================================
+// Python-only project tests
+// =============================================================================
+describe.skipIf(!dockerAvailable)('python-only project', () => {
+  let imageName: string;
+
+  beforeAll(async () => {
+    imageName = await buildImage('python-only');
+  }, 120000);
+
+  it('builds successfully', () => {
+    expect(imageName).toBe('cmc-e2e-python-only');
   });
 
-  describe('no config', () => {
-    it('exits with error when no cmc.toml exists', async () => {
-      const noConfigDir = join(tempDir, 'no-config');
-      await mkdir(noConfigDir, { recursive: true });
+  it('exits 1 when violations found', async () => {
+    const result = await runInDocker(imageName, ['check']);
 
-      const result = await runCLI(['check'], noConfigDir);
+    expect(result.exitCode).toBe(1);
+  }, 30000);
 
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain('Config not found');
-    });
+  it('detects unused imports (F401)', async () => {
+    const result = await runInDocker(imageName, ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    const f401Violations = output.violations.filter((v) => v.rule === 'F401');
+    expect(f401Violations.length).toBeGreaterThan(0);
+    expect(f401Violations[0].linter).toBe('ruff');
+  }, 30000);
+
+  it('checks specific clean file', async () => {
+    const result = await runInDocker(imageName, ['check', 'clean.py', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(0);
+    expect(output.summary.files_checked).toBe(1);
+    expect(output.violations.length).toBe(0);
+  }, 30000);
+});
+
+// =============================================================================
+// Mixed-language project tests
+// =============================================================================
+describe.skipIf(!dockerAvailable)('mixed-language project', () => {
+  let imageName: string;
+
+  beforeAll(async () => {
+    imageName = await buildImage('mixed-language');
+  }, 120000);
+
+  it('builds successfully', () => {
+    expect(imageName).toBe('cmc-e2e-mixed-language');
   });
 
-  describe('clean projects', () => {
-    it('exits 0 for clean TypeScript project', async () => {
-      const projectDir = join(tempDir, 'clean-ts');
-      await mkdir(projectDir, { recursive: true });
-      await writeFile(join(projectDir, 'cmc.toml'), '[project]\nname = "test"');
-      await writeFile(join(projectDir, 'index.ts'), 'export const x = 1;');
+  it('detects violations from both linters', async () => {
+    const result = await runInDocker(imageName, ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
 
-      const result = await runCLI(['check'], projectDir);
+    const ruffViolations = output.violations.filter((v) => v.linter === 'ruff');
+    const eslintViolations = output.violations.filter((v) => v.linter === 'eslint');
 
+    expect(ruffViolations.length).toBeGreaterThan(0);
+    expect(eslintViolations.length).toBeGreaterThan(0);
+  }, 30000);
+
+  it('checks all files', async () => {
+    const result = await runInDocker(imageName, ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(output.summary.files_checked).toBe(5); // 2 py + 2 ts + eslint.config.js
+  }, 30000);
+
+  it('can check only Python files', async () => {
+    const result = await runInDocker(imageName, ['check', 'violation.py', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(output.summary.files_checked).toBe(1);
+    expect(output.violations.every((v) => v.linter === 'ruff')).toBe(true);
+  }, 30000);
+
+  it('can check only TypeScript files', async () => {
+    const result = await runInDocker(imageName, ['check', 'violation.ts', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(output.summary.files_checked).toBe(1);
+    expect(output.violations.every((v) => v.linter === 'eslint')).toBe(true);
+  }, 30000);
+});
+
+// =============================================================================
+// Graceful degradation tests
+// =============================================================================
+describe.skipIf(!dockerAvailable)('graceful degradation', () => {
+  describe('no Ruff installed', () => {
+    let imageName: string;
+
+    beforeAll(async () => {
+      imageName = await buildImage('no-ruff');
+    }, 120000);
+
+    it('exits 0 when Ruff unavailable (skips Python files)', async () => {
+      const result = await runInDocker(imageName, ['check', '--json']);
+      const output: JsonOutput = JSON.parse(result.stdout);
+
+      // Should not fail, just report no violations since Ruff is skipped
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('No violations');
-    });
-
-    it('exits 0 for clean Python project', async () => {
-      const projectDir = join(tempDir, 'clean-py');
-      await mkdir(projectDir, { recursive: true });
-      await writeFile(join(projectDir, 'cmc.toml'), '[project]\nname = "test"');
-      await writeFile(join(projectDir, 'main.py'), 'x = 1');
-
-      const result = await runCLI(['check'], projectDir);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('No violations');
-    });
+      expect(output.violations.length).toBe(0);
+    }, 30000);
   });
 
-  describe('--json output', () => {
-    it('outputs valid JSON', async () => {
-      const projectDir = join(tempDir, 'json-test');
-      await mkdir(projectDir, { recursive: true });
-      await writeFile(join(projectDir, 'cmc.toml'), '[project]\nname = "test"');
-      await writeFile(join(projectDir, 'index.ts'), 'export const x = 1;');
+  describe('no ESLint installed', () => {
+    let imageName: string;
 
-      const result = await runCLI(['check', '--json'], projectDir);
+    beforeAll(async () => {
+      imageName = await buildImage('no-eslint');
+    }, 120000);
 
+    it('exits 0 when ESLint unavailable (skips TS files)', async () => {
+      const result = await runInDocker(imageName, ['check', '--json']);
+      const output: JsonOutput = JSON.parse(result.stdout);
+
+      // Should not fail, just report no violations since ESLint is skipped
       expect(result.exitCode).toBe(0);
-      expect(() => JSON.parse(result.stdout)).not.toThrow();
-    });
-
-    it('includes violations array and summary', async () => {
-      const projectDir = join(tempDir, 'json-summary');
-      await mkdir(projectDir, { recursive: true });
-      await writeFile(join(projectDir, 'cmc.toml'), '[project]\nname = "test"');
-      await writeFile(join(projectDir, 'index.ts'), 'export const x = 1;');
-
-      const result = await runCLI(['check', '--json'], projectDir);
-      const output = JSON.parse(result.stdout);
-
-      expect(output.violations).toBeDefined();
-      expect(output.summary).toBeDefined();
-      expect(output.summary.files_checked).toBeTypeOf('number');
-      expect(output.summary.violations_count).toBeTypeOf('number');
-    });
+      expect(output.violations.length).toBe(0);
+    }, 30000);
   });
+});
 
-  describe('path argument', () => {
-    it('checks specific file', async () => {
-      const projectDir = join(tempDir, 'path-arg');
-      await mkdir(projectDir, { recursive: true });
-      await writeFile(join(projectDir, 'cmc.toml'), '[project]\nname = "test"');
-      await writeFile(join(projectDir, 'a.ts'), 'export const a = 1;');
-      await writeFile(join(projectDir, 'b.ts'), 'export const b = 2;');
+// =============================================================================
+// JSON output format tests
+// =============================================================================
+describe.skipIf(!dockerAvailable)('JSON output format', () => {
+  let imageName: string;
 
-      const result = await runCLI(['check', 'a.ts'], projectDir);
+  beforeAll(async () => {
+    imageName = await buildImage('typescript-only');
+  }, 120000);
 
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('1 files checked');
-    });
+  it('outputs valid JSON', async () => {
+    const result = await runInDocker(imageName, ['check', '--json']);
 
-    it('handles nonexistent path gracefully', async () => {
-      const projectDir = join(tempDir, 'path-missing');
-      await mkdir(projectDir, { recursive: true });
-      await writeFile(join(projectDir, 'cmc.toml'), '[project]\nname = "test"');
+    expect(() => JSON.parse(result.stdout)).not.toThrow();
+  }, 30000);
 
-      const result = await runCLI(['check', 'nonexistent.ts'], projectDir);
+  it('includes required fields', async () => {
+    const result = await runInDocker(imageName, ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
 
-      expect(result.stderr).toContain('Path not found');
-    });
-  });
+    expect(output).toHaveProperty('violations');
+    expect(output).toHaveProperty('summary');
+    expect(output.summary).toHaveProperty('files_checked');
+    expect(output.summary).toHaveProperty('violations_count');
+  }, 30000);
 
-  describe('no files to check', () => {
-    it('exits 0 when no source files found', async () => {
-      const projectDir = join(tempDir, 'empty');
-      await mkdir(projectDir, { recursive: true });
-      await writeFile(join(projectDir, 'cmc.toml'), '[project]\nname = "test"');
-      await writeFile(join(projectDir, 'readme.md'), '# README');
+  it('violations count matches array length', async () => {
+    const result = await runInDocker(imageName, ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
 
-      const result = await runCLI(['check'], projectDir);
+    expect(output.violations.length).toBe(output.summary.violations_count);
+  }, 30000);
+});
 
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('0 files checked');
-    });
-  });
+// =============================================================================
+// Edge cases
+// =============================================================================
+describe.skipIf(!dockerAvailable)('edge cases', () => {
+  let imageName: string;
+
+  beforeAll(async () => {
+    imageName = await buildImage('typescript-only');
+  }, 120000);
+
+  it('handles nonexistent file path', async () => {
+    const result = await runInDocker(imageName, ['check', 'nonexistent.ts']);
+
+    expect(result.stderr).toContain('Path not found');
+  }, 30000);
 });

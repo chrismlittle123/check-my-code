@@ -60,6 +60,7 @@ async function runESLint(projectRoot: string, files: string[]): Promise<Violatio
   const args = [
     '--format=json',
     '--no-error-on-unmatched-pattern',
+    '--no-ignore',
     '--no-warn-ignored',
     ...absoluteFiles,
   ];

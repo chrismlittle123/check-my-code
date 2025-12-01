@@ -15,9 +15,11 @@ export default tseslint.config(
       'node_modules/**',
       'coverage/**',
       '*.js',
+      '!tests/e2e/projects/**/eslint.config.js', // Allow eslint configs in e2e projects
       '*.mjs',
       '*.cjs',
       'tests/fixtures/**', // Fixture files are intentionally non-compliant
+      'tests/e2e/projects/**', // E2E project fixtures have intentional violations
     ],
   },
 

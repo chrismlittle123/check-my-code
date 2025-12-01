@@ -1,0 +1,39 @@
+# Compatibility Matrix for check-my-code (cmc)
+#
+# Supported versions for e2e testing and documentation.
+
+languages:
+  python:
+    version: '3.12'
+    linter: ruff
+    file_extensions:
+      - .py
+      - .pyi
+
+  typescript:
+    version: '5.5'
+    linter: eslint
+    file_extensions:
+      - .ts
+      - .tsx
+      - .js
+      - .jsx
+      - .mjs
+      - .cjs
+
+runtime:
+  node:
+    version: '20'
+
+linters:
+  ruff:
+    description: 'Fast Python linter'
+    install: 'pip install ruff'
+
+  eslint:
+    description: 'JavaScript/TypeScript linter'
+    install: 'npm install eslint'
+
+docker:
+  python: 'python:3.12-slim'
+  node: 'node:20-slim'
