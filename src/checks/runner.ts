@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop -- Sequential file processing is intentional for memory efficiency */
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { createHash } from 'crypto';
@@ -8,11 +9,19 @@ import type {
   RunnerResult,
   FileCheckResult,
   RuleConfig,
+  RulesetConfig,
 } from '../types.js';
 import { runSimpleCheck } from './simple.js';
 import { LinterRunner, LinterNotFoundError } from './linter.js';
 import { RulesetResolver } from '../rulesets/resolver.js';
 import type { Spinner } from '../utils/spinner.js';
+
+interface GroupedRules {
+  linter: { rule: string; config: RuleConfig }[];
+  simple: { rule: string; config: RuleConfig }[];
+  script: { rule: string; config: RuleConfig }[];
+  ai: { rule: string; config: RuleConfig }[];
+}
 
 export class CheckRunner {
   private config: ProjectConfig;
@@ -31,146 +40,183 @@ export class CheckRunner {
 
   async run(files: string[]): Promise<RunnerResult> {
     const violations: Violation[] = [];
-    const fileResults = new Map<string, FileCheckResult>();
 
-    // Resolve rulesets
+    // Resolve and group rules
+    const rulesets = await this.resolveRulesets();
+    const rules = this.groupRulesByType(rulesets);
+
+    // Run each type of check
+    violations.push(...(await this.runLinterChecks(files, rules.linter)));
+    violations.push(...(await this.runSimpleChecks(files, rules.simple)));
+    await this.runScriptChecks(rules.script);
+    await this.runAIChecks(rules.ai);
+
+    // Build file results for state tracking
+    const fileResults = await this.buildFileResults(files, violations);
+
+    return { violations, fileResults };
+  }
+
+  private async resolveRulesets(): Promise<RulesetConfig[]> {
     this.spinner.start('Resolving rulesets...');
     const rulesets = await this.rulesetResolver.resolveRulesets(this.config);
     this.spinner.succeed(`Resolved ${rulesets.length} rulesets`);
+    return rulesets;
+  }
 
-    // Group rules by type
-    const linterRules: Array<{ rule: string; config: RuleConfig }> = [];
-    const simpleRules: Array<{ rule: string; config: RuleConfig }> = [];
-    const scriptRules: Array<{ rule: string; config: RuleConfig }> = [];
-    const aiRules: Array<{ rule: string; config: RuleConfig }> = [];
+  private groupRulesByType(rulesets: RulesetConfig[]): GroupedRules {
+    const rules: GroupedRules = { linter: [], simple: [], script: [], ai: [] };
 
     for (const ruleset of rulesets) {
       for (const [ruleName, ruleConfig] of Object.entries(ruleset.rules)) {
+        const entry = { rule: ruleName, config: ruleConfig };
         switch (ruleConfig.type) {
           case 'linter':
-            linterRules.push({ rule: ruleName, config: ruleConfig });
+            rules.linter.push(entry);
             break;
           case 'simple':
-            simpleRules.push({ rule: ruleName, config: ruleConfig });
+            rules.simple.push(entry);
             break;
           case 'script':
-            scriptRules.push({ rule: ruleName, config: ruleConfig });
+            rules.script.push(entry);
             break;
           case 'ai':
-            aiRules.push({ rule: ruleName, config: ruleConfig });
+            rules.ai.push(entry);
             break;
         }
       }
     }
 
-    // Group files by language
+    return rules;
+  }
+
+  private async runLinterChecks(
+    files: string[],
+    linterRules: { rule: string; config: RuleConfig }[]
+  ): Promise<Violation[]> {
+    if (linterRules.length === 0) return [];
+
+    this.spinner.start('Running linter checks...');
+    const violations: Violation[] = [];
+
     const pythonFiles = files.filter((f) => f.endsWith('.py') || f.endsWith('.pyi'));
-    const jsFiles = files.filter((f) => f.match(/\.(ts|tsx|js|jsx|mjs|cjs)$/));
+    const jsFiles = files.filter((f) => /\.(ts|tsx|js|jsx|mjs|cjs)$/.exec(f));
 
-    // Run linter checks (parallel by language)
-    if (linterRules.length > 0) {
-      this.spinner.start('Running linter checks...');
+    const promises = this.buildLinterPromises(linterRules, pythonFiles, jsFiles);
 
-      const linterPromises: Promise<Violation[]>[] = [];
-
-      // Group linter rules by linter
-      const ruffRules = linterRules.filter((r) => r.config.linter === 'ruff');
-      const eslintRules = linterRules.filter((r) => r.config.linter === 'eslint');
-
-      if (ruffRules.length > 0 && pythonFiles.length > 0) {
-        // Merge configs from all ruff rules
-        const mergedConfig = ruffRules.reduce((acc, r) => {
-          return { ...acc, ...r.config.config };
-        }, {});
-
-        linterPromises.push(
-          this.linterRunner.runLinter(pythonFiles, 'ruff', mergedConfig).catch((err) => {
-            if (err instanceof LinterNotFoundError) {
-              throw err;
-            }
-            return [];
-          })
-        );
+    try {
+      const results = await Promise.all(promises);
+      for (const result of results) {
+        violations.push(...result);
       }
+      this.spinner.succeed(`Linter checks complete (${violations.length} violations)`);
+    } catch (err) {
+      if (err instanceof LinterNotFoundError) throw err;
+      throw err;
+    }
 
-      if (eslintRules.length > 0 && jsFiles.length > 0) {
-        const mergedConfig = eslintRules.reduce((acc, r) => {
-          return { ...acc, ...r.config.config };
-        }, {});
+    return violations;
+  }
 
-        linterPromises.push(
-          this.linterRunner.runLinter(jsFiles, 'eslint', mergedConfig).catch((err) => {
-            if (err instanceof LinterNotFoundError) {
-              throw err;
-            }
-            return [];
-          })
-        );
-      }
+  private buildLinterPromises(
+    linterRules: { rule: string; config: RuleConfig }[],
+    pythonFiles: string[],
+    jsFiles: string[]
+  ): Promise<Violation[]>[] {
+    const promises: Promise<Violation[]>[] = [];
 
-      try {
-        const linterResults = await Promise.all(linterPromises);
-        for (const result of linterResults) {
-          violations.push(...result);
+    const ruffRules = linterRules.filter((r) => r.config.linter === 'ruff');
+    const eslintRules = linterRules.filter((r) => r.config.linter === 'eslint');
+
+    if (ruffRules.length > 0 && pythonFiles.length > 0) {
+      const mergedConfig = this.mergeConfigs(ruffRules);
+      promises.push(this.runLinterSafe(pythonFiles, 'ruff', mergedConfig));
+    }
+
+    if (eslintRules.length > 0 && jsFiles.length > 0) {
+      const mergedConfig = this.mergeConfigs(eslintRules);
+      promises.push(this.runLinterSafe(jsFiles, 'eslint', mergedConfig));
+    }
+
+    return promises;
+  }
+
+  private mergeConfigs(rules: { config: RuleConfig }[]): Record<string, unknown> {
+    return rules.reduce((acc, r) => ({ ...acc, ...r.config.config }), {});
+  }
+
+  private async runLinterSafe(
+    files: string[],
+    linter: string,
+    config: Record<string, unknown>
+  ): Promise<Violation[]> {
+    try {
+      return await this.linterRunner.runLinter(files, linter, config);
+    } catch (err) {
+      if (err instanceof LinterNotFoundError) throw err;
+      return [];
+    }
+  }
+
+  private async runSimpleChecks(
+    files: string[],
+    simpleRules: { rule: string; config: RuleConfig }[]
+  ): Promise<Violation[]> {
+    if (simpleRules.length === 0) return [];
+
+    this.spinner.start('Running simple checks...');
+    const violations: Violation[] = [];
+
+    let fileCount = 0;
+    for (const file of files) {
+      fileCount++;
+      this.spinner.text = `Running simple checks... [${fileCount}/${files.length}]`;
+
+      for (const { config } of simpleRules) {
+        if (config.check) {
+          const checkViolations = await runSimpleCheck(
+            this.config.projectRoot,
+            file,
+            config.check,
+            config
+          );
+          violations.push(...checkViolations);
         }
-        this.spinner.succeed(`Linter checks complete (${violations.length} violations)`);
-      } catch (err) {
-        if (err instanceof LinterNotFoundError) {
-          throw err;
-        }
-        throw err;
       }
     }
 
-    // Run simple checks
-    if (simpleRules.length > 0) {
-      this.spinner.start('Running simple checks...');
+    this.spinner.succeed('Simple checks complete');
+    return violations;
+  }
 
-      let fileCount = 0;
-      for (const file of files) {
-        fileCount++;
-        this.spinner.text = `Running simple checks... [${fileCount}/${files.length}]`;
+  private async runScriptChecks(
+    scriptRules: { rule: string; config: RuleConfig }[]
+  ): Promise<void> {
+    if (scriptRules.length === 0) return;
+    this.spinner.start('Running script checks...');
+    // Script checks would be implemented here
+    this.spinner.succeed('Script checks complete');
+  }
 
-        for (const { config } of simpleRules) {
-          if (config.check) {
-            const checkViolations = await runSimpleCheck(
-              this.config.projectRoot,
-              file,
-              config.check,
-              config
-            );
-            violations.push(...checkViolations);
-          }
-        }
-      }
+  private async runAIChecks(aiRules: { rule: string; config: RuleConfig }[]): Promise<void> {
+    if (aiRules.length === 0 || this.options.ai === false) return;
+    if (this.config.ai?.enabled === false) return;
 
-      this.spinner.succeed('Simple checks complete');
-    }
+    this.spinner.start('Running AI-assisted checks...');
+    // AI checks would be implemented here
+    this.spinner.succeed('AI checks complete');
+  }
 
-    // Run script checks
-    if (scriptRules.length > 0) {
-      this.spinner.start('Running script checks...');
-      // Script checks would be implemented here
-      // For v1, we'll skip this as it requires more complex execution
-      this.spinner.succeed('Script checks complete');
-    }
+  private async buildFileResults(
+    files: string[],
+    violations: Violation[]
+  ): Promise<Map<string, FileCheckResult>> {
+    const fileResults = new Map<string, FileCheckResult>();
 
-    // Run AI checks (unless --no-ai)
-    if (aiRules.length > 0 && this.options.ai !== false) {
-      if (this.config.ai?.enabled !== false) {
-        this.spinner.start('Running AI-assisted checks...');
-        // AI checks would be implemented here
-        // For v1, we'll note that this requires agent configuration
-        this.spinner.succeed('AI checks complete');
-      }
-    }
-
-    // Compute file results for state tracking
     for (const file of files) {
       const absolutePath = join(this.config.projectRoot, file);
       const content = await readFile(absolutePath);
       const hash = createHash('sha256').update(content).digest('hex');
-
       const fileViolations = violations.filter((v) => v.file === file);
 
       fileResults.set(file, {
@@ -181,6 +227,6 @@ export class CheckRunner {
       });
     }
 
-    return { violations, fileResults };
+    return fileResults;
   }
 }

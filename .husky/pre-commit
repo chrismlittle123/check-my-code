@@ -1,1 +1,28 @@
+#!/bin/sh
+
+# =============================================================================
+# Pre-commit hook
+# =============================================================================
+# This hook runs before every commit to ensure code quality.
+# It uses lint-staged to only check staged files for efficiency.
+#
+# What it does:
+# 1. ESLint - Check for code quality issues and auto-fix where possible
+# 2. Prettier - Format code consistently
+# 3. TypeScript - Type-check staged files
+#
+# To bypass (use sparingly): git commit --no-verify
+# =============================================================================
+
+echo "🔍 Running pre-commit checks..."
+
+# Run lint-staged (configured in package.json)
 npx lint-staged
+
+# Check exit code
+if [ $? -ne 0 ]; then
+  echo "❌ Pre-commit checks failed. Please fix the errors above."
+  exit 1
+fi
+
+echo "✅ Pre-commit checks passed!"

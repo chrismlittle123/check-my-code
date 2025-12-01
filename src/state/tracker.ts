@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop -- Sequential file hashing is intentional */
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join, dirname } from 'path';
@@ -56,7 +57,7 @@ export class StateTracker {
       const currentHash = await this.hashFile(absolutePath);
 
       const cachedState = this.state.files[file];
-      if (cachedState && cachedState.hash === currentHash) {
+      if (cachedState?.hash === currentHash) {
         unchanged.push(file);
       } else {
         changed.push(file);
@@ -97,7 +98,7 @@ export class StateTracker {
 
     for (const file of files) {
       const cached = this.state.files[file];
-      if (cached && cached.violations) {
+      if (cached?.violations) {
         for (const v of cached.violations) {
           violations.push({
             file,

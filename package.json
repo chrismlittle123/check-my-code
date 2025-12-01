@@ -7,16 +7,21 @@
     "cmc": "dist/cli/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run build:copy-assets",
+    "build:copy-assets": "cp src/config/schema.json dist/config/",
     "start": "node dist/cli/index.js",
     "dev": "ts-node src/cli/index.ts",
     "test": "vitest",
     "test:run": "vitest run",
-    "lint": "eslint src/",
-    "lint:fix": "eslint src/ --fix",
-    "format": "prettier --write src/",
-    "format:check": "prettier --check src/",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/ tests/",
+    "lint:fix": "eslint src/ tests/ --fix",
+    "lint:src": "eslint src/",
+    "lint:tests": "eslint tests/",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
     "typecheck": "tsc --noEmit",
+    "validate": "npm run typecheck && npm run lint && npm run test:run",
     "prepare": "husky"
   },
   "keywords": [
@@ -32,6 +37,7 @@
     "@eslint/js": "^9.15.0",
     "@types/node": "^20.10.0",
     "eslint": "^9.15.0",
+    "globals": "^16.5.0",
     "husky": "^9.1.0",
     "lint-staged": "^15.2.0",
     "prettier": "^3.4.0",
@@ -42,6 +48,8 @@
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "chalk": "^5.3.0",
     "commander": "^11.1.0",
     "glob": "^10.3.0",
@@ -55,7 +63,14 @@
   "type": "module",
   "lint-staged": {
     "src/**/*.ts": [
+      "eslint --fix --max-warnings=0",
+      "prettier --write"
+    ],
+    "tests/**/*.ts": [
       "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
       "prettier --write"
     ]
   }

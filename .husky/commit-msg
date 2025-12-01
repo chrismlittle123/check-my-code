@@ -1,0 +1,58 @@
+#!/bin/sh
+
+# =============================================================================
+# Commit message hook
+# =============================================================================
+# Validates commit message format follows conventional commits pattern.
+#
+# Format: <type>(<scope>): <description>
+#
+# Types:
+#   feat     - New feature
+#   fix      - Bug fix
+#   docs     - Documentation only
+#   style    - Formatting (no code change)
+#   refactor - Code change that neither fixes bug nor adds feature
+#   perf     - Performance improvement
+#   test     - Adding/updating tests
+#   chore    - Maintenance tasks
+#   ci       - CI/CD changes
+#   build    - Build system changes
+#
+# Examples:
+#   feat(cli): add --verbose flag to check command
+#   fix(validator): handle empty config files
+#   docs: update README with installation instructions
+# =============================================================================
+
+commit_msg_file=$1
+commit_msg=$(cat "$commit_msg_file")
+
+# Pattern for conventional commits
+pattern="^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\([a-zA-Z0-9_-]+\))?: .{1,100}$"
+
+# Also allow merge commits and revert commits
+if echo "$commit_msg" | head -1 | grep -qE "^Merge |^Revert "; then
+  exit 0
+fi
+
+# Check the first line of the commit message
+first_line=$(echo "$commit_msg" | head -1)
+
+if ! echo "$first_line" | grep -qE "$pattern"; then
+  echo "❌ Invalid commit message format!"
+  echo ""
+  echo "Expected format: <type>(<scope>): <description>"
+  echo ""
+  echo "Types: feat, fix, docs, style, refactor, perf, test, chore, ci, build"
+  echo ""
+  echo "Examples:"
+  echo "  feat(cli): add --verbose flag to check command"
+  echo "  fix(validator): handle empty config files"
+  echo "  docs: update README with installation instructions"
+  echo ""
+  echo "Your message: $first_line"
+  exit 1
+fi
+
+echo "✅ Commit message format valid!"

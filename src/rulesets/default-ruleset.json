@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "name": "default",
+    "version": "1.0.0",
+    "description": "Default built-in checks"
+  },
+  "rules": {
+    "max-file-length": {
+      "type": "simple",
+      "check": "file-length",
+      "max": 500,
+      "message": "File exceeds 500 lines"
+    },
+    "require-docstrings": {
+      "type": "simple",
+      "check": "require-docstrings",
+      "scope": "functions",
+      "message": "Functions must have docstrings"
+    },
+    "no-console": {
+      "type": "simple",
+      "check": "no-console",
+      "message": "Console statements not allowed"
+    },
+    "no-print": {
+      "type": "simple",
+      "check": "no-print",
+      "message": "Print statements not allowed"
+    }
+  }
+}

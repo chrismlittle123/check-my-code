@@ -1,0 +1,28 @@
+# TypeScript Strict - Production quality TypeScript project
+# Tests: strict type checking, JSDoc requirements, no console statements
+
+[project]
+name = "typescript-strict"
+category = "production"
+description = "A strict TypeScript project configuration"
+
+[rulesets]
+default = ["default"]
+
+[rulesets.typescript]
+paths = ["**/*.ts", "**/*.tsx"]
+rules = ["community/typescript-base@1.0.0"]
+
+[ai]
+enabled = false
+
+[paths]
+exclude = ["node_modules", "dist", "coverage"]
+
+[checks]
+[checks.file_length]
+max_lines = 300
+
+[checks.linters]
+[checks.linters.eslint]
+enabled = true

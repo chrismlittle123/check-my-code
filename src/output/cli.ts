@@ -1,3 +1,4 @@
+/* eslint-disable no-console -- This file is specifically for CLI output */
 import type { CheckOptions, CheckResult, Violation } from '../types.js';
 
 export class OutputFormatter {
@@ -58,7 +59,7 @@ export class OutputFormatter {
     // Group violations by file
     const byFile = new Map<string, Violation[]>();
     for (const v of violations) {
-      const existing = byFile.get(v.file) || [];
+      const existing = byFile.get(v.file) ?? [];
       existing.push(v);
       byFile.set(v.file, existing);
     }
@@ -104,7 +105,7 @@ export class OutputFormatter {
         column: v.column,
         rule: v.rule,
         message: v.message,
-        ruleset: v.ruleset || null,
+        ruleset: v.ruleset ?? null,
       })),
     };
 

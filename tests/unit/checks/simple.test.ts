@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { writeFile, mkdir, rm } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
-import { runSimpleCheck } from '../../src/checks/simple.js';
+import { runSimpleCheck } from '../../../src/checks/simple.js';
 
 describe('simple checks', () => {
   let testDir: string;

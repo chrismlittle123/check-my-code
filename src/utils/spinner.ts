@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Required for ora library interop */
 import type { CheckOptions } from '../types.js';
 
 export interface Spinner {
@@ -11,7 +12,7 @@ export interface Spinner {
 class RealSpinner implements Spinner {
   private ora: any;
   private spinner: any;
-  private _text: string = '';
+  private _text = '';
 
   constructor(ora: any) {
     this.ora = ora;
@@ -59,7 +60,7 @@ class RealSpinner implements Spinner {
 }
 
 class SilentSpinner implements Spinner {
-  private _text: string = '';
+  private _text = '';
 
   start(_text: string): void {
     // No output in quiet mode
@@ -87,7 +88,7 @@ class SilentSpinner implements Spinner {
 }
 
 class SimpleSpinner implements Spinner {
-  private _text: string = '';
+  private _text = '';
 
   start(text: string): void {
     this._text = text;

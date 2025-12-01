@@ -1,0 +1,28 @@
+# Python FastAPI - Production API project
+# Tests: docstrings, type hints, no print statements
+
+[project]
+name = "python-fastapi"
+category = "production"
+description = "A FastAPI backend service"
+
+[rulesets]
+default = ["default"]
+
+[rulesets.python]
+paths = ["**/*.py"]
+rules = ["community/python-fastapi-prod@1.0.0"]
+
+[ai]
+enabled = false
+
+[paths]
+exclude = ["__pycache__", ".venv", "venv", ".pytest_cache"]
+
+[checks]
+[checks.file_length]
+max_lines = 400
+
+[checks.linters]
+[checks.linters.ruff]
+enabled = true

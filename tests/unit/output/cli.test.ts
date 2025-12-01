@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { OutputFormatter } from '../../src/output/cli.js';
-import type { CheckResult, Violation } from '../../src/types.js';
+import { OutputFormatter } from '../../../src/output/cli.js';
+import type { CheckResult, Violation } from '../../../src/types.js';
 
 describe('OutputFormatter', () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -135,7 +135,13 @@ describe('OutputFormatter', () => {
   describe('verbose output', () => {
     it('should include messages with violations', () => {
       const violations: Violation[] = [
-        { file: 'src/main.ts', line: 10, column: null, rule: 'no-console', message: 'Unexpected console statement' },
+        {
+          file: 'src/main.ts',
+          line: 10,
+          column: null,
+          rule: 'no-console',
+          message: 'Unexpected console statement',
+        },
       ];
       const formatter = new OutputFormatter({ verbose: true });
       formatter.outputResults(createResult(violations));

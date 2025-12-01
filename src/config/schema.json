@@ -1,0 +1,223 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://check-my-code.dev/schemas/cmc-toml.json",
+  "title": "cmc.toml Configuration Schema",
+  "description": "Schema for check-my-code configuration files",
+  "type": "object",
+  "required": ["project", "rulesets"],
+  "additionalProperties": false,
+  "properties": {
+    "project": {
+      "type": "object",
+      "description": "Project metadata",
+      "required": ["name", "category"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*$",
+          "description": "Project name (alphanumeric, hyphens, underscores)"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["production", "prototype", "internal", "learning", "other"],
+          "description": "Project category - must be one of: production, prototype, internal, learning, other"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Optional project description"
+        }
+      }
+    },
+    "rulesets": {
+      "type": "object",
+      "description": "Ruleset configuration",
+      "required": ["default"],
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Simple list of ruleset references"
+          },
+          {
+            "$ref": "#/$defs/languageRuleset"
+          }
+        ]
+      },
+      "properties": {
+        "default": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(default|community/[a-z0-9-]+(@[0-9]+\\.[0-9]+\\.[0-9]+)?|git@[^#]+#[^@]+(@[0-9]+\\.[0-9]+\\.[0-9]+)?)$"
+          },
+          "description": "Default rulesets applied to all files"
+        }
+      }
+    },
+    "ai": {
+      "type": "object",
+      "description": "AI-assisted checking configuration",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable AI-assisted checks"
+        },
+        "agent": {
+          "type": "string",
+          "enum": ["claude", "codex", "gemini"],
+          "description": "Default AI agent to use"
+        },
+        "model": {
+          "type": "string",
+          "description": "Specific model version"
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 100000,
+          "description": "Maximum tokens per AI request"
+        }
+      }
+    },
+    "agents": {
+      "type": "object",
+      "description": "Supported AI agents configuration",
+      "additionalProperties": false,
+      "properties": {
+        "supported": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["claude", "codex", "gemini", "cursor", "copilot"]
+          },
+          "uniqueItems": true,
+          "description": "List of supported AI agents for this project"
+        }
+      }
+    },
+    "paths": {
+      "type": "object",
+      "description": "Path configuration",
+      "additionalProperties": false,
+      "properties": {
+        "include": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glob patterns for files to include"
+        },
+        "exclude": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["node_modules", ".git", "dist", "build", "__pycache__", ".venv", "venv"],
+          "description": "Glob patterns for files to exclude"
+        }
+      }
+    },
+    "checks": {
+      "type": "object",
+      "description": "Check-specific configuration overrides",
+      "additionalProperties": false,
+      "properties": {
+        "file_length": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "max_lines": {
+              "type": "integer",
+              "minimum": 50,
+              "maximum": 10000,
+              "default": 500
+            },
+            "exclude": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "linters": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ruff": {
+              "$ref": "#/$defs/linterConfig"
+            },
+            "eslint": {
+              "$ref": "#/$defs/linterConfig"
+            },
+            "biome": {
+              "$ref": "#/$defs/linterConfig"
+            }
+          }
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "description": "Output configuration",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["default", "verbose", "quiet", "json"],
+          "default": "default"
+        },
+        "color": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  },
+  "$defs": {
+    "languageRuleset": {
+      "type": "object",
+      "description": "Language-specific ruleset configuration",
+      "additionalProperties": false,
+      "properties": {
+        "paths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Glob patterns for files this ruleset applies to"
+        },
+        "rules": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Ruleset references for this language"
+        },
+        "extends": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Base rulesets to extend"
+        }
+      }
+    },
+    "linterConfig": {
+      "type": "object",
+      "description": "Linter-specific configuration",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "config_file": {
+          "type": "string",
+          "description": "Path to linter config file"
+        },
+        "args": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Additional CLI arguments"
+        }
+      }
+    }
+  }
+}

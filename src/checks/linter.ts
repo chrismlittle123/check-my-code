@@ -79,7 +79,7 @@ export class LinterRunner {
       );
     }
 
-    const jsFiles = files.filter((f) => f.match(/\.(ts|tsx|js|jsx|mjs|cjs)$/));
+    const jsFiles = files.filter((f) => /\.(ts|tsx|js|jsx|mjs|cjs)$/.exec(f));
     if (jsFiles.length === 0) {
       return [];
     }
@@ -107,12 +107,12 @@ export class LinterRunner {
     }
 
     try {
-      const results = JSON.parse(output) as Array<{
+      const results = JSON.parse(output) as {
         filename: string;
         location?: { row?: number; column?: number };
         code: string;
         message: string;
-      }>;
+      }[];
       return results.map((r) => ({
         file: r.filename,
         line: r.location?.row ?? null,
@@ -135,12 +135,12 @@ export class LinterRunner {
       const violations: Violation[] = [];
 
       for (const file of results) {
-        for (const msg of file.messages || []) {
+        for (const msg of file.messages ?? []) {
           violations.push({
             file: file.filePath,
             line: msg.line ?? null,
             column: msg.column ?? null,
-            rule: msg.ruleId || 'eslint',
+            rule: msg.ruleId ?? 'eslint',
             message: msg.message,
           });
         }

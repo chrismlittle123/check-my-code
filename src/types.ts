@@ -96,11 +96,11 @@ export interface StateData {
     {
       hash: string;
       checked_at: string;
-      violations: Array<{
+      violations: {
         rule: string;
         line: number | null;
         message: string;
-      }>;
+      }[];
     }
   >;
   ruleset_versions: Record<string, string>;

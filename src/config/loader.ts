@@ -2,9 +2,10 @@ import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import type { ProjectConfig } from '../types.js';
+import { validateConfig, formatValidationErrors } from './validator.js';
 
 // Dynamic import for TOML parser
-async function parseTOML(content: string): Promise<any> {
+async function parseTOML(content: string): Promise<unknown> {
   const TOML = await import('@iarna/toml');
   return TOML.parse(content);
 }
@@ -13,14 +14,26 @@ export async function loadConfig(configPath?: string): Promise<ProjectConfig> {
   const { path: foundPath, projectRoot } = await discoverConfig(configPath);
 
   const content = await readFile(foundPath, 'utf-8');
-  const parsed = await parseTOML(content);
 
-  validateConfig(parsed);
+  let parsed: unknown;
+  try {
+    parsed = await parseTOML(content);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown parse error';
+    throw new ConfigValidationError(`Invalid TOML syntax in cmc.toml:\n${message}`);
+  }
+
+  // Validate against JSON schema
+  const validationResult = await validateConfig(parsed);
+  if (!validationResult.valid) {
+    const errorMessages = formatValidationErrors(validationResult.errors);
+    throw new ConfigValidationError(`Invalid cmc.toml configuration:\n${errorMessages}`);
+  }
 
   return {
     projectRoot,
-    ...parsed,
-  } as ProjectConfig;
+    ...(parsed as Omit<ProjectConfig, 'projectRoot'>),
+  };
 }
 
 async function discoverConfig(
@@ -68,24 +81,6 @@ async function discoverConfig(
       'No cmc.toml found in current directory or parent directories.\n\n' +
       "Run 'cmc init' to create a configuration file."
   );
-}
-
-function validateConfig(config: any): void {
-  if (!config.project) {
-    throw new ConfigValidationError('Missing required [project] section in cmc.toml');
-  }
-
-  if (!config.project.name) {
-    throw new ConfigValidationError('Missing required project.name in cmc.toml');
-  }
-
-  if (!config.project.category) {
-    throw new ConfigValidationError('Missing required project.category in cmc.toml');
-  }
-
-  if (!config.rulesets) {
-    throw new ConfigValidationError('Missing required [rulesets] section in cmc.toml');
-  }
 }
 
 export class ConfigNotFoundError extends Error {

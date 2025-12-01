@@ -1,7 +1,9 @@
+/* eslint-disable no-await-in-loop -- Sequential ruleset resolution is intentional */
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import type { ProjectConfig, RulesetConfig } from '../types.js';
+import defaultRulesetJson from './default-ruleset.json' with { type: 'json' };
 
 export class RulesetResolver {
   private projectRoot: string;
@@ -84,7 +86,7 @@ export class RulesetResolver {
     }
 
     // Git reference
-    const gitMatch = ref.match(/^(git@|https:\/\/)(.+?)(?:#(.+?))?(?:@(.+))?$/);
+    const gitMatch = /^(git@|https:\/\/)(.+?)(?:#(.+?))?(?:@(.+))?$/.exec(ref);
     if (gitMatch) {
       return {
         source: 'git',
@@ -125,36 +127,6 @@ export class RulesetResolver {
   }
 
   private getDefaultRuleset(): RulesetConfig {
-    return {
-      meta: {
-        name: 'default',
-        version: '1.0.0',
-        description: 'Default built-in checks',
-      },
-      rules: {
-        'max-file-length': {
-          type: 'simple',
-          check: 'file-length',
-          max: 500,
-          message: 'File exceeds 500 lines',
-        },
-        'require-docstrings': {
-          type: 'simple',
-          check: 'require-docstrings',
-          scope: 'functions',
-          message: 'Functions must have docstrings',
-        },
-        'no-console': {
-          type: 'simple',
-          check: 'no-console',
-          message: 'Console statements not allowed',
-        },
-        'no-print': {
-          type: 'simple',
-          check: 'no-print',
-          message: 'Print statements not allowed',
-        },
-      },
-    };
+    return defaultRulesetJson as RulesetConfig;
   }
 }

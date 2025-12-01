@@ -1,11 +1,12 @@
+/* eslint-disable no-await-in-loop -- Sequential file processing is intentional */
 import { Command } from 'commander';
 import { loadConfig, ConfigNotFoundError, ConfigValidationError } from '../../config/loader.js';
 import { CheckRunner } from '../../checks/runner.js';
 import { StateTracker } from '../../state/tracker.js';
 import { OutputFormatter } from '../../output/cli.js';
-import { createSpinner } from '../../utils/spinner.js';
+import { createSpinner, type Spinner } from '../../utils/spinner.js';
 import { LinterNotFoundError } from '../../checks/linter.js';
-import type { CheckOptions, CheckResult } from '../../types.js';
+import type { CheckOptions, CheckResult, ProjectConfig } from '../../types.js';
 
 export const checkCommand = new Command('check')
   .description('Run verification checks against configured rulesets')
@@ -19,132 +20,196 @@ export const checkCommand = new Command('check')
   .option('--json', 'Output results as JSON', false)
   .option('-c, --config <path>', 'Path to cmc.toml config file')
   .action(async (path: string | undefined, options: CheckOptions) => {
-    // Check for conflicting options
-    if (options.verbose && options.quiet) {
-      console.error('Error: --verbose and --quiet cannot be used together');
-      process.exit(2);
-    }
-
-    const spinner = await createSpinner(options);
-    const formatter = new OutputFormatter(options);
-
-    try {
-      // 1. Discover and load configuration
-      spinner.start('Loading configuration...');
-      const config = await loadConfig(options.config);
-      spinner.succeed('Configuration loaded');
-
-      // Check for empty rulesets
-      if (isEmptyRulesets(config)) {
-        console.error('Warning: No rulesets configured in cmc.toml. Nothing to check.');
-        process.exit(0);
-      }
-
-      // 2. Determine paths to check
-      const pathsToCheck = determinePaths(path, options.paths, config.projectRoot);
-
-      // 3. Initialize state tracker
-      const stateTracker = new StateTracker(config.projectRoot);
-      await stateTracker.load();
-
-      // 4. Determine files in scope
-      spinner.start('Discovering files...');
-      const allFiles = await discoverFiles(pathsToCheck, config.projectRoot);
-
-      if (allFiles.length === 0) {
-        spinner.warn('No files to check');
-        process.exit(0);
-      }
-
-      // 5. Apply smart checking (unless --all)
-      let filesToCheck = allFiles;
-      let cachedFiles: string[] = [];
-
-      if (!options.all) {
-        const { changed, unchanged } = await stateTracker.filterChangedFiles(allFiles);
-        filesToCheck = changed;
-        cachedFiles = unchanged;
-      }
-
-      if (filesToCheck.length === 0) {
-        spinner.succeed('All files up to date');
-        const cachedViolations = stateTracker.getCachedViolations(cachedFiles);
-        formatter.outputResults({
-          violations: cachedViolations,
-          filesChecked: 0,
-          filesCached: cachedFiles.length,
-          durationMs: 0,
-        });
-        process.exit(cachedViolations.length > 0 ? 1 : 0);
-      }
-
-      spinner.succeed(`Found ${filesToCheck.length} files to check (${cachedFiles.length} cached)`);
-
-      // 6. Run checks
-      const runner = new CheckRunner(config, options, spinner);
-      const startTime = Date.now();
-
-      const result = await runner.run(filesToCheck);
-
-      const durationMs = Date.now() - startTime;
-
-      // 7. Update state cache (unless --no-cache)
-      if (options.cache !== false) {
-        await stateTracker.updateState(filesToCheck, result.fileResults);
-        await stateTracker.save();
-      }
-
-      // 8. Combine with cached violations for full picture
-      const cachedViolations = stateTracker.getCachedViolations(cachedFiles);
-      const allViolations = [...result.violations, ...cachedViolations];
-
-      // 9. Output results
-      const finalResult: CheckResult = {
-        violations: allViolations,
-        filesChecked: filesToCheck.length,
-        filesCached: cachedFiles.length,
-        durationMs,
-      };
-
-      formatter.outputResults(finalResult);
-
-      // 10. Exit with appropriate code
-      process.exit(allViolations.length > 0 ? 1 : 0);
-    } catch (error) {
-      spinner.fail('Check failed');
-
-      // Configuration errors (exit code 2)
-      if (
-        error instanceof ConfigNotFoundError ||
-        error instanceof ConfigValidationError ||
-        error instanceof ConfigurationError
-      ) {
-        console.error(`Error: ${error.message}`);
-        process.exit(2);
-      }
-
-      // Runtime errors (exit code 3)
-      if (error instanceof LinterNotFoundError || error instanceof RuntimeError) {
-        console.error(`Error: ${error.message}`);
-        process.exit(3);
-      }
-
-      console.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      process.exit(3);
-    }
+    await runCheckCommand(path, options);
   });
+
+async function runCheckCommand(path: string | undefined, options: CheckOptions): Promise<void> {
+  validateOptions(options);
+
+  const spinner = await createSpinner(options);
+  const formatter = new OutputFormatter(options);
+
+  try {
+    const config = await loadAndValidateConfig(options, spinner);
+    const { filesToCheck, cachedFiles, stateTracker } = await prepareFiles(
+      path,
+      options,
+      config,
+      spinner
+    );
+
+    if (filesToCheck.length === 0) {
+      handleAllFilesCached(cachedFiles, stateTracker, formatter);
+      return;
+    }
+
+    const result = await executeChecks(filesToCheck, cachedFiles, config, options, spinner);
+    await saveStateIfEnabled(options, stateTracker, filesToCheck, result);
+    outputAndExit(result, cachedFiles, stateTracker, formatter);
+  } catch (error) {
+    handleError(error, spinner);
+  }
+}
+
+function validateOptions(options: CheckOptions): void {
+  if (options.verbose && options.quiet) {
+    console.error('Error: --verbose and --quiet cannot be used together');
+    process.exit(2);
+  }
+}
+
+async function loadAndValidateConfig(
+  options: CheckOptions,
+  spinner: Spinner
+): Promise<ProjectConfig> {
+  spinner.start('Loading configuration...');
+  const config = await loadConfig(options.config);
+  spinner.succeed('Configuration loaded');
+
+  if (isEmptyRulesets(config)) {
+    console.error('Warning: No rulesets configured in cmc.toml. Nothing to check.');
+    process.exit(0);
+  }
+
+  return config;
+}
+
+interface PreparedFiles {
+  filesToCheck: string[];
+  cachedFiles: string[];
+  stateTracker: StateTracker;
+}
+
+async function prepareFiles(
+  path: string | undefined,
+  options: CheckOptions,
+  config: ProjectConfig,
+  spinner: Spinner
+): Promise<PreparedFiles> {
+  const pathsToCheck = determinePaths(path, options.paths, config.projectRoot);
+  const stateTracker = new StateTracker(config.projectRoot);
+  await stateTracker.load();
+
+  spinner.start('Discovering files...');
+  const allFiles = await discoverFiles(pathsToCheck, config.projectRoot);
+
+  if (allFiles.length === 0) {
+    spinner.warn('No files to check');
+    process.exit(0);
+  }
+
+  let filesToCheck = allFiles;
+  let cachedFiles: string[] = [];
+
+  if (!options.all) {
+    const { changed, unchanged } = await stateTracker.filterChangedFiles(allFiles);
+    filesToCheck = changed;
+    cachedFiles = unchanged;
+  }
+
+  spinner.succeed(`Found ${filesToCheck.length} files to check (${cachedFiles.length} cached)`);
+  return { filesToCheck, cachedFiles, stateTracker };
+}
+
+function handleAllFilesCached(
+  cachedFiles: string[],
+  stateTracker: StateTracker,
+  formatter: OutputFormatter
+): void {
+  const cachedViolations = stateTracker.getCachedViolations(cachedFiles);
+  formatter.outputResults({
+    violations: cachedViolations,
+    filesChecked: 0,
+    filesCached: cachedFiles.length,
+    durationMs: 0,
+  });
+  process.exit(cachedViolations.length > 0 ? 1 : 0);
+}
+
+interface ExecutionResult {
+  violations: CheckResult['violations'];
+  fileResults: Map<
+    string,
+    { file: string; hash: string; violations: CheckResult['violations']; checkedAt: string }
+  >;
+  durationMs: number;
+}
+
+async function executeChecks(
+  filesToCheck: string[],
+  _cachedFiles: string[],
+  config: ProjectConfig,
+  options: CheckOptions,
+  spinner: Spinner
+): Promise<ExecutionResult> {
+  const runner = new CheckRunner(config, options, spinner);
+  const startTime = Date.now();
+  const result = await runner.run(filesToCheck);
+  const durationMs = Date.now() - startTime;
+
+  return { ...result, durationMs };
+}
+
+async function saveStateIfEnabled(
+  options: CheckOptions,
+  stateTracker: StateTracker,
+  filesToCheck: string[],
+  result: ExecutionResult
+): Promise<void> {
+  if (options.cache !== false) {
+    await stateTracker.updateState(filesToCheck, result.fileResults);
+    await stateTracker.save();
+  }
+}
+
+function outputAndExit(
+  result: ExecutionResult,
+  cachedFiles: string[],
+  stateTracker: StateTracker,
+  formatter: OutputFormatter
+): void {
+  const cachedViolations = stateTracker.getCachedViolations(cachedFiles);
+  const allViolations = [...result.violations, ...cachedViolations];
+
+  const finalResult: CheckResult = {
+    violations: allViolations,
+    filesChecked: result.fileResults.size,
+    filesCached: cachedFiles.length,
+    durationMs: result.durationMs,
+  };
+
+  formatter.outputResults(finalResult);
+  process.exit(allViolations.length > 0 ? 1 : 0);
+}
+
+function handleError(error: unknown, spinner: Spinner): never {
+  spinner.fail('Check failed');
+
+  if (
+    error instanceof ConfigNotFoundError ||
+    error instanceof ConfigValidationError ||
+    error instanceof ConfigurationError
+  ) {
+    console.error(`Error: ${error.message}`);
+    process.exit(2);
+  }
+
+  if (error instanceof LinterNotFoundError || error instanceof RuntimeError) {
+    console.error(`Error: ${error.message}`);
+    process.exit(3);
+  }
+
+  console.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  process.exit(3);
+}
 
 function determinePaths(
   singlePath: string | undefined,
   multiplePaths: string[] | undefined,
   projectRoot: string
 ): string[] {
-  if (multiplePaths && multiplePaths.length > 0) {
-    return multiplePaths;
-  }
-  if (singlePath) {
-    return [singlePath];
-  }
+  if (multiplePaths && multiplePaths.length > 0) return multiplePaths;
+  if (singlePath) return [singlePath];
   return [projectRoot];
 }
 
@@ -153,7 +218,7 @@ async function discoverFiles(paths: string[], projectRoot: string): Promise<stri
   const { resolve, relative } = await import('path');
   const { stat } = await import('fs/promises');
 
-  const files: Set<string> = new Set();
+  const files = new Set<string>();
 
   for (const p of paths) {
     const absolutePath = resolve(projectRoot, p);
@@ -164,12 +229,11 @@ async function discoverFiles(paths: string[], projectRoot: string): Promise<stri
       if (stats.isFile()) {
         files.add(relative(projectRoot, absolutePath));
       } else if (stats.isDirectory()) {
-        // Find all source files, excluding hidden files/directories by default
         const pattern = `${absolutePath}/**/*`;
         const foundFiles = await glob(pattern, {
           nodir: true,
           ignore: ['**/node_modules/**', '**/.git/**', '**/dist/**', '**/build/**'],
-          dot: false, // Exclude hidden files by default
+          dot: false,
         });
 
         for (const file of foundFiles) {
@@ -179,7 +243,6 @@ async function discoverFiles(paths: string[], projectRoot: string): Promise<stri
         }
       }
     } catch {
-      // Path doesn't exist, skip it
       console.error(`Warning: Path not found: ${p}`);
     }
   }
@@ -205,13 +268,22 @@ function isSourceFile(filePath: string): boolean {
   return sourceExtensions.some((ext) => filePath.endsWith(ext));
 }
 
-function isEmptyRulesets(config: any): boolean {
+function isEmptyRulesets(config: ProjectConfig): boolean {
   if (!config.rulesets) return true;
 
   const hasDefault = config.rulesets.default && config.rulesets.default.length > 0;
   const hasLanguageRulesets = Object.keys(config.rulesets)
     .filter((k) => k !== 'default')
-    .some((k) => config.rulesets[k].rules && config.rulesets[k].rules.length > 0);
+    .some((k) => {
+      const ruleset = config.rulesets[k];
+      return (
+        ruleset &&
+        typeof ruleset === 'object' &&
+        'rules' in ruleset &&
+        Array.isArray(ruleset.rules) &&
+        ruleset.rules.length > 0
+      );
+    });
 
   return !hasDefault && !hasLanguageRulesets;
 }

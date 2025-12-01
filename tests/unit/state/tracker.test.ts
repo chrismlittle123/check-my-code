@@ -3,7 +3,7 @@ import { writeFile, mkdir, rm } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
-import { StateTracker } from '../../src/state/tracker.js';
+import { StateTracker } from '../../../src/state/tracker.js';
 
 describe('StateTracker', () => {
   let testDir: string;

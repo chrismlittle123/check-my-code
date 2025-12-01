@@ -82,7 +82,7 @@ async function checkRequireDocstrings(
 
     // Check functions
     if (scope === 'functions' || scope === 'all') {
-      const funcMatch = line.match(functionPattern);
+      const funcMatch = functionPattern.exec(line);
       if (funcMatch) {
         const funcName = funcMatch[2];
         // Skip dunder methods
@@ -102,7 +102,7 @@ async function checkRequireDocstrings(
 
     // Check classes
     if (scope === 'classes' || scope === 'all') {
-      const classMatch = line.match(classPattern);
+      const classMatch = classPattern.exec(line);
       if (classMatch) {
         const className = classMatch[2];
         if (!hasDocstring(lines, i)) {
@@ -155,7 +155,7 @@ async function checkRequireTypeHints(
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const match = line.match(functionPattern);
+    const match = functionPattern.exec(line);
 
     if (match) {
       const funcName = match[2];
@@ -218,7 +218,7 @@ async function checkRequireJSDoc(
   const scope = config.scope ?? 'exported';
 
   // Only apply to TypeScript/JavaScript files
-  if (!filePath.match(/\.(ts|tsx|js|jsx|mjs|cjs)$/)) {
+  if (!/\.(ts|tsx|js|jsx|mjs|cjs)$/.exec(filePath)) {
     return [];
   }
 
@@ -233,12 +233,12 @@ async function checkRequireJSDoc(
 
     let funcName: string | null = null;
 
-    const funcMatch = line.match(exportFunctionPattern);
+    const funcMatch = exportFunctionPattern.exec(line);
     if (funcMatch) {
       funcName = funcMatch[2];
     }
 
-    const arrowMatch = line.match(exportConstArrowPattern);
+    const arrowMatch = exportConstArrowPattern.exec(line);
     if (arrowMatch) {
       funcName = arrowMatch[1];
     }
@@ -288,7 +288,7 @@ async function checkNoConsole(
   const violations: Violation[] = [];
 
   // Only apply to TypeScript/JavaScript files
-  if (!filePath.match(/\.(ts|tsx|js|jsx|mjs|cjs)$/)) {
+  if (!/\.(ts|tsx|js|jsx|mjs|cjs)$/.exec(filePath)) {
     return [];
   }
 

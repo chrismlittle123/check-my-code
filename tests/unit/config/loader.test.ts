@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { writeFile, mkdir, rm } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
-import { loadConfig, ConfigNotFoundError, ConfigValidationError } from '../../src/config/loader.js';
+import {
+  loadConfig,
+  ConfigNotFoundError,
+  ConfigValidationError,
+} from '../../../src/config/loader.js';
 
 describe('loadConfig', () => {
   let testDir: string;

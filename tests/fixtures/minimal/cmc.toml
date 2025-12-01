@@ -1,0 +1,12 @@
+# Minimal - Bare minimum valid configuration
+# Tests: minimal config validation, empty rulesets warning
+
+[project]
+name = "minimal-project"
+category = "prototype"
+
+[rulesets]
+default = []
+
+[ai]
+enabled = false
