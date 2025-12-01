@@ -1,0 +1,5 @@
+[project]
+name = "context-multiple-test"
+
+[ai-context]
+templates = ["typescript-strict", "python-prod"]

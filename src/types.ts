@@ -2,6 +2,7 @@ export interface Config {
   project: {
     name: string;
   };
+  'ai-context'?: AiContextConfig;
   rulesets?: {
     eslint?: {
       rules?: Record<string, ESLintRuleValue>;
@@ -9,6 +10,21 @@ export interface Config {
     ruff?: RuffConfig;
   };
 }
+
+// AI context configuration for `cmc context` command
+export interface AiContextConfig {
+  templates: string[];
+}
+
+// Supported AI tool targets for context output
+export type AiTarget = 'claude' | 'cursor' | 'copilot';
+
+// Map of AI targets to their config file paths
+export const AI_TARGET_FILES: Record<AiTarget, string> = {
+  claude: 'CLAUDE.md',
+  cursor: '.cursorrules',
+  copilot: '.github/copilot-instructions.md',
+};
 
 // ESLint rule values can be: "off", "warn", "error", or array like ["error", "always"]
 export type ESLintRuleValue = 'off' | 'warn' | 'error' | [string, ...unknown[]];

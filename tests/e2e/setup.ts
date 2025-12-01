@@ -38,7 +38,16 @@ if (!dockerAvailable) {
 export const images: Record<string, string> = {};
 
 // All available projects
-const ALL_PROJECTS = ['typescript', 'python', 'full', 'degraded-ruff', 'degraded-eslint'];
+const ALL_PROJECTS = [
+  'typescript',
+  'python',
+  'full',
+  'degraded-ruff',
+  'degraded-eslint',
+  'context',
+  'context-multiple',
+  'context-missing',
+];
 
 /**
  * Setup function to build Docker images for specified projects
