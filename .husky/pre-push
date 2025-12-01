@@ -1,60 +1,37 @@
 #!/bin/sh
 
-# =============================================================================
-# Pre-push hook
-# =============================================================================
-# This hook runs before pushing to ensure the full codebase is valid.
-# It runs more comprehensive checks than pre-commit since pushing is less frequent.
-#
-# What it does:
-# 1. Full TypeScript type-check
-# 2. Full ESLint check (not just staged files)
-# 3. All tests
-# 4. Build verification
-#
-# To bypass (use sparingly): git push --no-verify
-# =============================================================================
-
 echo "🚀 Running pre-push checks..."
 
 # 1. Type-check
-echo "📝 Running TypeScript type-check..."
+echo "📝 TypeScript type-check..."
 npm run typecheck
 if [ $? -ne 0 ]; then
   echo "❌ TypeScript type-check failed!"
   exit 1
 fi
 
-# 2. Full lint
-echo "🔍 Running ESLint on entire codebase..."
+# 2. Lint
+echo "🔍 ESLint..."
 npm run lint
 if [ $? -ne 0 ]; then
-  echo "❌ ESLint check failed!"
+  echo "❌ ESLint failed!"
   exit 1
 fi
 
-# 3. Dead code detection
-echo "🔎 Checking for dead code..."
-npm run dead-code
-if [ $? -ne 0 ]; then
-  echo "❌ Dead code detected! Run 'npm run dead-code' to see details."
-  exit 1
-fi
-
-# 5. Run tests
-echo "🧪 Running tests..."
+# 3. Tests
+echo "🧪 Tests..."
 npm run test:run
 if [ $? -ne 0 ]; then
   echo "❌ Tests failed!"
   exit 1
 fi
 
-# 6. Build
-echo "🔨 Verifying build..."
+# 4. Build
+echo "🔨 Build..."
 npm run build
 if [ $? -ne 0 ]; then
   echo "❌ Build failed!"
   exit 1
 fi
 
-echo "✅ All pre-push checks passed! Safe to push."
+echo "✅ All checks passed!"

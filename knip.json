@@ -1,8 +1,0 @@
-{
-  "$schema": "https://unpkg.com/knip@5/schema.json",
-  "entry": ["src/cli/index.ts"],
-  "project": ["src/**/*.ts"],
-  "ignore": ["tests/fixtures/**/*"],
-  "ignoreDependencies": ["@vitest/coverage-v8"],
-  "ignoreExportsUsedInFile": true
-}

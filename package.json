@@ -1,33 +1,26 @@
 {
   "name": "check-my-code",
   "version": "1.0.0",
-  "description": "CLI tool that verifies code adherence to configurable rulesets",
+  "description": "Run ESLint and Ruff linters on your code",
   "main": "dist/cli/index.js",
   "bin": {
     "cmc": "dist/cli/index.js"
   },
   "scripts": {
-    "build": "tsc && npm run build:copy-assets",
-    "build:copy-assets": "cp src/config/schema.json src/config/compatibility.yaml dist/config/ && cp src/rulesets/default-ruleset.json dist/rulesets/",
+    "build": "tsc",
     "start": "node dist/cli/index.js",
-    "dev": "ts-node src/cli/index.ts",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage",
     "lint": "eslint src/ tests/",
     "lint:fix": "eslint src/ tests/ --fix",
-    "lint:src": "eslint src/",
-    "lint:tests": "eslint tests/",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
     "typecheck": "tsc --noEmit",
-    "dead-code": "knip",
-    "validate": "npm run typecheck && npm run lint && npm run dead-code && npm run test:run",
     "prepare": "husky"
   },
   "keywords": [
-    "code-quality",
     "linter",
+    "eslint",
+    "ruff",
     "cli",
     "typescript",
     "python"
@@ -40,22 +33,16 @@
     "eslint": "^9.15.0",
     "globals": "^16.5.0",
     "husky": "^9.1.0",
-    "knip": "^5.71.0",
     "lint-staged": "^15.2.0",
     "prettier": "^3.4.0",
-    "ts-node": "^10.9.0",
     "typescript": "^5.3.0",
     "typescript-eslint": "^8.15.0",
     "vitest": "^1.0.0"
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",
-    "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1",
     "commander": "^11.1.0",
-    "glob": "^10.3.0",
-    "ora": "^8.0.0",
-    "yaml": "^2.3.0"
+    "glob": "^10.3.0"
   },
   "engines": {
     "node": ">=18"

@@ -146,6 +146,14 @@ export default tseslint.config(
     },
   },
 
+  // CLI command files - allow console.log for user output
+  {
+    files: ['src/cli/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+
   // Test files configuration - more relaxed
   {
     files: ['tests/**/*.ts'],
