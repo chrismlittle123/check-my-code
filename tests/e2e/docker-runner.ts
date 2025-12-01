@@ -92,9 +92,19 @@ export async function isDockerAvailable(): Promise<boolean> {
 }
 
 /**
- * Clean up test images
+ * Clean up specific test images by name
  */
-export async function cleanupImages(): Promise<void> {
+export async function cleanupImages(imageNames?: string[]): Promise<void> {
+  if (imageNames && imageNames.length > 0) {
+    // Clean up specific images
+    return new Promise((resolve) => {
+      const rmProc = spawn('docker', ['rmi', '-f', ...imageNames]);
+      rmProc.on('close', () => resolve());
+      rmProc.on('error', () => resolve());
+    });
+  }
+
+  // Clean up all cmc-e2e images (legacy behavior)
   return new Promise((resolve) => {
     const proc = spawn('docker', ['images', '-q', '--filter', 'reference=cmc-e2e-*']);
 

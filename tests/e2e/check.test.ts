@@ -51,7 +51,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (dockerAvailable) {
-    await cleanupImages();
+    await cleanupImages(Object.values(images));
   }
 }, 30000);
 
