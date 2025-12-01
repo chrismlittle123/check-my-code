@@ -1,5 +1,0 @@
-[project]
-name = "generate-existing"
-
-[rulesets.eslint.rules]
-"no-var" = "error"

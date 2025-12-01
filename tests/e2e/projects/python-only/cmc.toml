@@ -1,9 +1,0 @@
-[project]
-name = "python-only"
-
-[rulesets.ruff]
-line-length = 120
-
-[rulesets.ruff.lint]
-select = ["E", "F", "I", "UP"]
-ignore = ["E501"]

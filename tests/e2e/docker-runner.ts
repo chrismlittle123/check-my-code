@@ -9,7 +9,6 @@ import { spawn } from 'child_process';
 import { join } from 'path';
 
 const ROOT_DIR = join(process.cwd());
-const PROJECTS_DIR = join(ROOT_DIR, 'tests', 'e2e', 'projects');
 
 export interface DockerRunResult {
   stdout: string;
@@ -19,10 +18,12 @@ export interface DockerRunResult {
 
 /**
  * Build a Docker image for a test project
+ * @param projectName - Name of the project directory
+ * @param projectsDir - Subdirectory under tests/e2e/ containing projects (default: 'projects')
  */
-export async function buildImage(projectName: string): Promise<string> {
+export async function buildImage(projectName: string, projectsDir = 'projects'): Promise<string> {
   const imageName = `cmc-e2e-${projectName}`;
-  const dockerfilePath = join(PROJECTS_DIR, projectName, 'Dockerfile');
+  const dockerfilePath = join(ROOT_DIR, 'tests', 'e2e', projectsDir, projectName, 'Dockerfile');
 
   return new Promise((resolve, reject) => {
     const proc = spawn('docker', ['build', '-t', imageName, '-f', dockerfilePath, ROOT_DIR], {

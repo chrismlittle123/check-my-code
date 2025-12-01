@@ -1,3 +1,0 @@
-# Invalid config - missing required project.name field
-[project]
-description = "This config is missing the name field"
