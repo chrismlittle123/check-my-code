@@ -42,7 +42,8 @@
   "dependencies": {
     "@iarna/toml": "^2.2.5",
     "commander": "^11.1.0",
-    "glob": "^10.3.0"
+    "glob": "^10.3.0",
+    "zod": "^4.1.13"
   },
   "engines": {
     "node": ">=18"

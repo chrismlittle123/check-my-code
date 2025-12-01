@@ -1,2 +1,12 @@
 [project]
 name = "mixed-language"
+
+[rulesets.eslint.rules]
+"no-var" = "error"
+"prefer-const" = "error"
+
+[rulesets.ruff]
+line-length = 120
+
+[rulesets.ruff.lint]
+select = ["E", "F", "I", "UP"]

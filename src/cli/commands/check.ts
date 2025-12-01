@@ -2,9 +2,9 @@ import { Command } from 'commander';
 import { glob } from 'glob';
 import { stat } from 'fs/promises';
 import { resolve, relative } from 'path';
-import { loadConfig, findProjectRoot } from '../../config/loader.js';
-import { runLinters } from '../../linter.js';
-import type { CheckResult } from '../../types.js';
+import { loadConfig, findProjectRoot, ConfigError } from '../../config/loader.js';
+import { runLinters, LinterError } from '../../linter.js';
+import { ExitCode, type CheckResult } from '../../types.js';
 
 export const checkCommand = new Command('check')
   .description('Run ESLint and Ruff checks')
@@ -14,10 +14,16 @@ export const checkCommand = new Command('check')
     try {
       const result = await runCheck(path);
       outputResults(result, options.json ?? false);
-      process.exit(result.violations.length > 0 ? 1 : 0);
+      process.exit(result.violations.length > 0 ? ExitCode.VIOLATIONS : ExitCode.SUCCESS);
     } catch (error) {
       console.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      process.exit(1);
+      if (error instanceof ConfigError) {
+        process.exit(ExitCode.CONFIG_ERROR);
+      } else if (error instanceof LinterError) {
+        process.exit(ExitCode.RUNTIME_ERROR);
+      } else {
+        process.exit(ExitCode.RUNTIME_ERROR);
+      }
     }
   });
 

@@ -3,6 +3,14 @@ import { existsSync } from 'fs';
 import { join, relative } from 'path';
 import type { Violation } from './types.js';
 
+// Custom error class for linter runtime errors (exit code 3)
+export class LinterError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'LinterError';
+  }
+}
+
 export async function runLinters(projectRoot: string, files: string[]): Promise<Violation[]> {
   const violations: Violation[] = [];
 
