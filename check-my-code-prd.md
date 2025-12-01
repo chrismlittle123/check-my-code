@@ -11,18 +11,16 @@
 1. [Executive Summary](#1-executive-summary)
 2. [Problem Statement](#2-problem-statement)
 3. [Product Overview](#3-product-overview)
-4. [Target Users](#4-target-users)
-5. [Core Principles](#5-core-principles)
-6. [Version Scope](#6-version-scope)
-7. [Feature Specifications (v1 MVP)](#7-feature-specifications-v1-mvp)
-   - 7.1 [CLI Commands](#71-cli-commands)
-   - 7.2 [Configuration System](#72-configuration-system)
-   - 7.3 [Linter Integration](#73-linter-integration)
-   - 7.4 [Output & Exit Codes](#74-output--exit-codes)
-8. [Feature Specifications (v2 Future)](#8-feature-specifications-v2-future)
-9. [Technical Specifications](#9-technical-specifications)
-10. [User Workflows](#10-user-workflows)
-11. [Glossary](#11-glossary)
+4. [Core Principles](#4-core-principles)
+5. [Version Scope](#5-version-scope)
+6. [Feature Specifications (v1 MVP)](#6-feature-specifications-v1-mvp)
+   - 6.1 [CLI Commands](#61-cli-commands)
+   - 6.2 [Configuration System](#62-configuration-system)
+   - 6.3 [Linter Integration](#63-linter-integration)
+   - 6.4 [Output & Exit Codes](#64-output--exit-codes)
+7. [Feature Specifications (v2 Future)](#7-feature-specifications-v2-future)
+8. [Technical Specifications](#8-technical-specifications)
+9. [Glossary](#9-glossary)
 
 ---
 
@@ -77,29 +75,27 @@ A single tool that:
 
 ---
 
----
+## 4. Core Principles
 
-## 5. Core Principles
-
-### 5.1 Read-Only Verification
+### 4.1 Read-Only Verification
 
 `cmc` tells you what's wrong but never modifies files. Auto-fixing remains the responsibility of existing pre-commit hooks and formatters.
 
-### 5.2 Linter-First
+### 4.2 Linter-First
 
 `cmc` uses existing project linters (ESLint, Ruff) as the verification mechanism. It delegates actual linting to native tools.
 
-### 5.3 Graceful Degradation
+### 4.3 Graceful Degradation
 
 If a linter is not installed, `cmc` silently skips it rather than failing. This allows gradual adoption.
 
-### 5.4 Agent-Agnostic
+### 4.4 Agent-Agnostic
 
 `cmc` works with any AI coding tool by providing standardised context output.
 
 ---
 
-## 6. Version Scope
+## 5. Version Scope
 
 ### v1 MVP
 
@@ -133,11 +129,11 @@ Features deferred to future versions:
 
 ---
 
-## 7. Feature Specifications (v1 MVP)
+## 6. Feature Specifications (v1 MVP)
 
-### 7.1 CLI Commands
+### 6.1 CLI Commands
 
-#### 7.1.1 `cmc check`
+#### 6.1.1 `cmc check`
 
 **Purpose:** Run linters on project files and report violations.
 
@@ -168,7 +164,7 @@ cmc check --json              # Output as JSON
 
 ---
 
-#### 7.1.2 `cmc generate`
+#### 6.1.2 `cmc generate`
 
 **Purpose:** Generate linter config files from `cmc.toml` ruleset.
 
@@ -201,7 +197,7 @@ cmc generate ruff             # Generate ruff.toml
 
 ---
 
-#### 7.1.3 `cmc context`
+#### 6.1.3 `cmc context`
 
 **Purpose:** Output active rules formatted for AI agent consumption.
 
@@ -220,9 +216,49 @@ cmc context >> CLAUDE.md      # Append to AI context file
 
 ---
 
-### 7.2 Configuration System
+#### 6.1.4 `cmc verify`
 
-#### 7.2.1 Project Configuration File
+**Purpose:** Check that linter config files match the ruleset defined in `cmc.toml` without running the linters.
+
+**Usage:**
+
+```bash
+cmc verify                    # Verify all linter configs match cmc.toml
+cmc verify eslint             # Verify only ESLint config
+cmc verify ruff               # Verify only Ruff config
+```
+
+**Behaviour:**
+
+1. Reads `cmc.toml` ruleset configuration
+2. Reads the corresponding linter config file(s)
+3. Compares rules defined in `cmc.toml` against linter config
+4. Reports any mismatches (missing rules, different values, extra rules)
+5. Exits with appropriate code
+
+**Output:**
+
+```
+✓ eslint.config.js matches cmc.toml ruleset
+✗ ruff.toml has mismatches:
+  - missing rule: line-length = 120
+  - different value: select (expected ["E", "F", "I", "UP"], got ["E", "F"])
+```
+
+**Exit Codes:**
+
+| Code | Meaning                                |
+| ---- | -------------------------------------- |
+| 0    | All configs match                      |
+| 1    | Mismatches found                       |
+| 2    | Configuration error (missing cmc.toml) |
+| 3    | Linter config file not found           |
+
+---
+
+### 6.2 Configuration System
+
+#### 6.2.1 Project Configuration File
 
 **File:** `cmc.toml` (located in project root)
 
@@ -259,7 +295,7 @@ select = ["E", "F", "I", "UP"]
 ignore = ["E501"]
 ```
 
-#### 7.2.2 Configuration Discovery
+#### 6.2.2 Configuration Discovery
 
 When `cmc` runs, it discovers configuration by:
 
@@ -277,16 +313,16 @@ When `cmc` runs, it discovers configuration by:
 
 ---
 
-### 7.3 Linter Integration
+### 6.3 Linter Integration
 
-#### 7.3.1 Supported Linters (v1)
+#### 6.3.1 Supported Linters (v1)
 
 | Language              | Linter | Config File        |
 | --------------------- | ------ | ------------------ |
 | TypeScript/JavaScript | ESLint | `eslint.config.js` |
 | Python                | Ruff   | `ruff.toml`        |
 
-#### 7.3.2 Execution Flow
+#### 6.3.2 Execution Flow
 
 1. Discover files in scope
 2. Route files to appropriate linters by extension
@@ -294,14 +330,14 @@ When `cmc` runs, it discovers configuration by:
 4. Collect violations from linter JSON output
 5. Report violations to stdout in unified format
 
-#### 7.3.3 File Extension Routing
+#### 6.3.3 File Extension Routing
 
 | Extensions                                   | Linter |
 | -------------------------------------------- | ------ |
 | `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs` | ESLint |
 | `.py`, `.pyi`                                | Ruff   |
 
-#### 7.3.4 Missing Linter Handling
+#### 6.3.4 Missing Linter Handling
 
 If a linter is not installed, `cmc` silently skips files for that linter. This enables graceful degradation:
 
@@ -311,9 +347,9 @@ If a linter is not installed, `cmc` silently skips files for that linter. This e
 
 ---
 
-### 7.4 Output & Exit Codes
+### 6.4 Output & Exit Codes
 
-#### 7.4.1 CLI Output Format
+#### 6.4.1 CLI Output Format
 
 **Default output:**
 
@@ -351,7 +387,7 @@ src/utils.ts:42 [eslint/no-var] Unexpected var, use let or const instead
 }
 ```
 
-#### 7.4.2 Exit Codes
+#### 6.4.2 Exit Codes
 
 | Code | Meaning                                                |
 | ---- | ------------------------------------------------------ |
@@ -362,20 +398,9 @@ src/utils.ts:42 [eslint/no-var] Unexpected var, use let or const instead
 
 ---
 
-## 8. Feature Specifications (v2 Future)
+## 7. Feature Specifications (v2 Future)
 
-The following features are planned for v2:
-
-### 8.1 Additional Commands
-
-- **`cmc init`**: Generate minimal configuration file
-- **`cmc verify`**: Check linter configs match ruleset (without running linters)
-- **`cmc update`**: Fetch/update community rulesets
-- **`cmc diff`**: Show files changed since last check
-- **`cmc dry-run`**: Preview what would be checked without running
-- **`cmc report`**: Generate detailed reports (stdout and HTML)
-
-### 8.2 Community Rulesets
+### 7.1 Community Rulesets
 
 Share and extend rulesets across projects:
 
@@ -387,7 +412,7 @@ rulesets = [
 ]
 ```
 
-### 8.3 Smart Checking
+### 7.2 Smart Checking
 
 Track file hashes to skip unchanged files:
 
@@ -395,15 +420,22 @@ Track file hashes to skip unchanged files:
 - `--all` flag to force full check
 - Cache invalidation on ruleset changes
 
-### 8.5 JSON Schema Validation
+### 7.3 Additional Commands
 
-Validate `cmc.toml` against a JSON Schema for configuration correctness.
+- `cmc diff` - Show changes since last check
+- `cmc dry-run` - Preview what would be checked
+- `cmc report` - Generate detailed reports (including HTML)
+
+### 7.4 Enhanced Output
+
+- Colored output
+- Progress indicators
 
 ---
 
-## 9. Technical Specifications
+## 8. Technical Specifications
 
-### 9.1 Technology Stack
+### 8.1 Technology Stack
 
 | Component       | Technology           |
 | --------------- | -------------------- |
@@ -413,7 +445,7 @@ Validate `cmc.toml` against a JSON Schema for configuration correctness.
 | Config Parsing  | @iarna/toml          |
 | File Discovery  | glob                 |
 
-### 9.2 Directory Structure
+### 8.2 Directory Structure
 
 ```
 check-my-code/
@@ -433,7 +465,7 @@ check-my-code/
 └── README.md
 ```
 
-### 9.3 External Dependencies
+### 8.3 External Dependencies
 
 **Runtime:**
 
@@ -446,9 +478,7 @@ check-my-code/
 
 ---
 
----
-
-## 11. Glossary
+## 9. Glossary
 
 | Term        | Definition                                                |
 | ----------- | --------------------------------------------------------- |
