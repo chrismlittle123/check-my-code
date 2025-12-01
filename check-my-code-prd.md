@@ -77,21 +77,6 @@ A single tool that:
 
 ---
 
-## 4. Target Users
-
-### Primary Users
-
-- **Software engineers** using AI coding tools who want consistent, standards-compliant code
-- **Tech leads** who need to ensure team-wide code quality
-- **DevOps engineers** integrating quality checks into CI/CD pipelines
-
-### Team Context
-
-- Teams of 2-20 engineers
-- Using multiple AI coding tools simultaneously
-- Managing multiple repositories
-- Working with TypeScript/JavaScript and Python codebases
-
 ---
 
 ## 5. Core Principles
@@ -125,6 +110,7 @@ The minimum viable product focuses on core functionality:
 - `cmc check` - Run linters and report violations
 - `cmc generate` - Create linter configs from `cmc.toml` ruleset
 - `cmc context` - Output rules for AI agents
+- `cmc verify` - Check linter configs match ruleset (without running linters)
 
 **Features:**
 
@@ -132,22 +118,18 @@ The minimum viable product focuses on core functionality:
 - Unified output format (text and JSON)
 - Standard exit codes
 - Graceful handling of missing linters
+- JSON Schema validation of `cmc.toml`
 
 ### v2 Future
 
 Features deferred to future versions:
 
-- `cmc init` - Generate minimal configuration
-- `cmc verify` - Check linter configs match ruleset (without running linters)
-- `cmc update` - Fetch/update community rulesets
 - `cmc diff` - Show changes since last check
 - `cmc dry-run` - Preview what would be checked
 - `cmc report` - Generate detailed reports (including HTML)
 - Community ruleset extension/merging
-- JSON Schema validation of `cmc.toml`
 - Smart checking (file hash caching)
 - Colored output, progress indicators
-- Shell completion
 
 ---
 
@@ -233,27 +215,8 @@ cmc context >> CLAUDE.md      # Append to AI context file
 **Behaviour:**
 
 1. Reads `cmc.toml` ruleset configuration
-2. Formats rules as markdown
+2. Formats rules as markdown in natural English
 3. Outputs to stdout with strict language ("you MUST follow these rules")
-
-**Output Example:**
-
-```markdown
-# Code Standards for this Project
-
-You MUST follow these rules when writing code:
-
-## ESLint Rules
-
-- no-var: error
-- eqeqeq: ["error", "always"]
-- @typescript-eslint/no-explicit-any: error
-
-## Ruff Rules
-
-- Select: E, F, I, UP
-- Line length: 120
-```
 
 ---
 
@@ -432,14 +395,6 @@ Track file hashes to skip unchanged files:
 - `--all` flag to force full check
 - Cache invalidation on ruleset changes
 
-### 8.4 Enhanced CLI Experience
-
-- Interactive init wizard (`cmc init --interactive`)
-- Progress indicators and spinners
-- Colored output
-- Verbose (`-v`) and quiet (`-q`) modes
-- Shell completion (bash, zsh, fish)
-
 ### 8.5 JSON Schema Validation
 
 Validate `cmc.toml` against a JSON Schema for configuration correctness.
@@ -490,85 +445,6 @@ check-my-code/
 - Ruff (Python)
 
 ---
-
-## 10. User Workflows
-
-### 10.1 Initial Setup
-
-```bash
-# Install globally
-npm install -g check-my-code
-
-# In project directory, create minimal config
-echo '[project]
-name = "my-project"' > cmc.toml
-
-# Run first check
-cmc check
-```
-
-### 10.2 Daily Development with AI Agent
-
-```bash
-# Get context for AI agent
-cmc context | pbcopy  # Copy to clipboard
-
-# Or append to CLAUDE.md
-cmc context >> CLAUDE.md
-
-# After writing code
-cmc check
-```
-
-### 10.3 CI/CD Pipeline
-
-```yaml
-name: Code Standards
-
-on: [pull_request]
-
-jobs:
-  check-standards:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install cmc
-        run: npm install -g check-my-code
-
-      - name: Install linters
-        run: |
-          pip install ruff
-          npm install eslint
-
-      - name: Check code standards
-        run: cmc check
-```
-
-### 10.4 Generating Linter Configs
-
-```bash
-# Define rules in cmc.toml
-cat >> cmc.toml << 'EOF'
-[rulesets.eslint.rules]
-no-var = "error"
-prefer-const = "error"
-
-[rulesets.ruff.lint]
-select = ["E", "F"]
-EOF
-
-# Generate configs
-cmc generate eslint
-cmc generate ruff
-
-# Check code
-cmc check
-```
 
 ---
 
