@@ -1,4 +1,4 @@
-# CLI Commands Feature PRD (Section 6.1)
+# CLI Commands Feature PRD (Section 7.1)
 
 **Parent Document:** check-my-code-prd.md
 **Version:** 1.0
@@ -9,20 +9,17 @@
 ## Table of Contents
 
 1. [Overview](#1-overview)
-2. [Command Reference](#2-command-reference)
-   - 2.1 [cmc check](#21-cmc-check)
-   - 2.2 [cmc init](#22-cmc-init)
-   - 2.3 [cmc diff](#23-cmc-diff)
-   - 2.4 [cmc context](#24-cmc-context)
-   - 2.5 [cmc report](#25-cmc-report)
-   - 2.6 [cmc update](#26-cmc-update)
-   - 2.7 [cmc dry-run](#27-cmc-dry-run)
-3. [Global Options](#3-global-options)
-4. [Error Handling](#4-error-handling)
-5. [Help System](#5-help-system)
-6. [Shell Completion](#6-shell-completion)
-7. [Technical Implementation](#7-technical-implementation)
-8. [Open Questions](#8-open-questions)
+2. [v1 MVP Commands](#2-v1-mvp-commands)
+   - 2.1 [cmc init](#21-cmc-init)
+   - 2.2 [cmc check](#22-cmc-check)
+   - 2.3 [cmc generate](#23-cmc-generate)
+   - 2.4 [cmc verify](#24-cmc-verify)
+   - 2.5 [cmc update](#25-cmc-update)
+   - 2.6 [cmc context](#26-cmc-context)
+3. [v2 Future Commands](#3-v2-future-commands)
+4. [Global Options](#4-global-options)
+5. [Error Handling](#5-error-handling)
+6. [Technical Implementation](#6-technical-implementation)
 
 ---
 
@@ -30,14 +27,14 @@
 
 ### 1.1 Purpose
 
-This document provides detailed specifications for all CLI commands in `check-my-code` (`cmc`). It expands on section 6.1 of the main PRD with implementation details, edge cases, and behavioral specifications.
+This document provides detailed specifications for all CLI commands in `check-my-code` (`cmc`). It expands on section 7.1 of the main PRD with implementation details, edge cases, and behavioral specifications.
 
 ### 1.2 Design Principles
 
 - **Predictable behavior:** Commands behave consistently across invocations
 - **Fail-fast:** Invalid input or missing prerequisites cause immediate, clear errors
-- **Progressive disclosure:** Simple usage by default, power-user options available
 - **Unix philosophy:** Commands work well with pipes, redirects, and scripting
+- **Minimal v1:** Focus on core functionality, defer enhancements to v2
 
 ### 1.3 Command Naming Convention
 
@@ -45,694 +42,592 @@ All commands use lowercase, single-word names. Subcommands are not used in v1 to
 
 ---
 
-## 2. Command Reference
+## 2. v1 MVP Commands
 
-### 2.1 `cmc check`
+### 2.1 `cmc init`
 
-**Purpose:** Run verification checks against configured rulesets.
+**Purpose:** Generate a minimal configuration file for the current project.
 
 #### 2.1.1 Usage
-
-```bash
-cmc check [options] [<path>]
-cmc check [options] --paths <path1> <path2> ...
-```
-
-#### 2.1.2 Arguments
-
-| Argument | Description |
-|----------|-------------|
-| `<path>` | Optional single path to check. Can be a file or directory. If omitted, checks entire project from `cmc.toml` location. |
-| `--paths <path>...` | Required when checking multiple paths. Accepts two or more paths. |
-
-**Note:** To check multiple specific paths, you must use the `--paths` flag. A single positional path argument is allowed for convenience.
-
-#### 2.1.3 Options
-
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `--paths` | `-p` | Check multiple specific paths (required for >1 path) | — |
-| `--all` | `-a` | Force check all files, ignoring smart checking cache | `false` |
-| `--no-ai` | | Skip AI-assisted checks | `false` |
-| `--no-cache` | | Do not update the state cache after check | `false` |
-| `--verbose` | `-v` | Show detailed progress and violation messages | `false` |
-| `--quiet` | `-q` | Only output violation count, no details | `false` |
-| `--json` | | Output results as JSON | `false` |
-| `--config` | `-c` | Path to `cmc.toml` config file | Auto-discovered |
-
-**Option Conflicts:** The `--verbose` and `--quiet` flags are mutually exclusive. If both are provided, `cmc` will exit with error code 2 and display: `Error: --verbose and --quiet cannot be used together`
-
-#### 2.1.4 Behavior
-
-**Normal execution flow:**
-
-1. Discover configuration file (`cmc.toml`)
-2. Parse and validate configuration
-3. Resolve all referenced rulesets (fetch if needed)
-4. Determine files in scope:
-   - If `<path>` or `--paths` provided: files matching path(s)
-   - If no path specified: all source files under config directory (excludes hidden files/directories by default)
-5. Apply smart checking (unless `--all`):
-   - Load `.cmc/state.json`
-   - Filter to files with changed hashes or new files
-6. Display progress indicator (spinner) during check execution
-7. For each file in scope:
-   a. Run linter checks (parallel by language)
-   b. Run simple checks
-   c. Run script checks
-   d. Run AI checks (unless `--no-ai`)
-8. Collect all violations
-9. Output results (format based on flags)
-10. Update `.cmc/state.json` (unless `--no-cache`)
-11. Exit with appropriate code
-
-**Progress Indicators:**
-
-During check execution, `cmc` displays a spinner with current status:
-```
-⠋ Checking files... [ruff] 12/24 files
-```
-
-Progress is shown for:
-- Ruleset fetching
-- Linter execution (per linter)
-- AI-assisted checks
-- File processing count
-
-Progress output goes to stderr so stdout remains clean for piping.
-
-**Parallel execution:**
-
-- Linter checks for different languages run in parallel
-- File-level checks within a language are parallelized
-- AI checks are sequential (rate limiting consideration)
-
-**Interrupt Handling (Ctrl+C):**
-
-When interrupted mid-check, `cmc` immediately terminates and discards all partial state. The `.cmc/state.json` file is not updated, preserving the previous check state. No cleanup prompt is shown.
-
-**Hidden Files:**
-
-By default, `cmc` excludes hidden files and directories (those starting with `.`) from checks. To include specific hidden paths, specify them explicitly:
-```bash
-cmc check --paths .github/workflows src/
-```
-
-#### 2.1.5 Output Formats
-
-**Default output:**
-```
-src/main.py:15 max-file-length
-src/main.py:42 require-docstrings
-src/utils.py:8 meaningful-names
-
-3 violations found
-```
-
-**Verbose output (`-v`):**
-```
-Checking 24 files against 3 rulesets...
-
-[ruff] Running Python linter...
-[eslint] Running TypeScript linter...
-[ai:claude] Running AI-assisted checks...
-
-src/main.py:15 max-file-length
-  File exceeds 500 lines (current: 523)
-
-src/main.py:42 require-docstrings
-  Function 'process_data' missing docstring
-
-src/utils.py:8 meaningful-names
-  Function name 'x' is not descriptive
-
-3 violations in 2 files
-Checked 24 files in 2.3s (18 cached, 6 checked)
-```
-
-**Quiet output (`-q`):**
-```
-3
-```
-
-**JSON output (`--json`):**
-```json
-{
-  "summary": {
-    "files_checked": 6,
-    "files_cached": 18,
-    "violations_total": 3,
-    "duration_ms": 2300
-  },
-  "violations": [
-    {
-      "file": "src/main.py",
-      "line": 15,
-      "column": null,
-      "rule": "max-file-length",
-      "message": "File exceeds 500 lines (current: 523)",
-      "ruleset": "community/python-fastapi-prod@1.0.0"
-    }
-  ]
-}
-```
-
-#### 2.1.6 Exit Codes
-
-| Code | Condition |
-|------|-----------|
-| 0 | No violations found |
-| 1 | Violations found |
-| 2 | Configuration error (missing config, invalid syntax, conflicting options) |
-| 3 | Runtime error (linter failed, agent unavailable, network error) |
-
-**Mixed Result Handling:** If code checks pass but an AI check fails due to agent unavailability (not a code violation), the exit code is **3** (runtime error). Runtime errors take precedence over violation reporting.
-
-#### 2.1.7 Edge Cases
-
-- **No files match path:** Warning to stderr, exit 0
-- **Empty project:** Warning "No files to check", exit 0
-- **All files cached:** Message "All files up to date", exit with cached violation count
-- **Linter not installed:** Exit 3 with installation instructions
-- **AI agent unavailable:** Exit 3 with configuration guidance
-
----
-
-### 2.2 `cmc init`
-
-**Purpose:** Generate a configuration file for the current project.
-
-#### 2.2.1 Usage
 
 ```bash
 cmc init [options]
 ```
 
-#### 2.2.2 Options
+#### 2.1.2 Options
 
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `--interactive` | `-i` | Launch interactive setup wizard | `false` |
-| `--force` | `-f` | Overwrite existing `cmc.toml` | `false` |
-| `--path` | `-p` | Directory to create config in | Current directory |
+| Option    | Short | Description                   | Default |
+| --------- | ----- | ----------------------------- | ------- |
+| `--force` | `-f`  | Overwrite existing `cmc.toml` | `false` |
 
-#### 2.2.3 Behavior
-
-**Minimal mode (default):**
+#### 2.1.3 Behavior
 
 1. Check if `cmc.toml` already exists
-   - If exists and no `--force`: exit with error
+   - If exists and no `--force`: exit with error code 1
 2. Detect project characteristics:
-   - Languages present (by file extensions)
-   - Existing linter configs
+   - Languages present (by file extensions: `.ts`, `.js`, `.py`, etc.)
+   - Existing linter configs (eslint.config.js, ruff.toml)
 3. Generate minimal `cmc.toml` with placeholders
 4. Print next steps to stdout
 
-**Interactive mode (`-i`):**
-
-1. Same initial checks as minimal
-2. Prompt sequence:
-   a. "What is this project's name?" (default: directory name)
-   b. "What category best describes this project?" (production/prototype/internal/other)
-   c. "Which languages does this project use?" (auto-detected, confirm)
-   d. "Would you like to use community rulesets?" (Y/n)
-   e. If yes: present language-appropriate community rulesets
-   f. "Which AI agent do you primarily use?" (claude/codex/gemini/none)
-3. Generate `cmc.toml` based on responses
-4. Create `.cmc/` directory
-5. Print summary and next steps
-
-**Interrupt Handling:** If the user presses Ctrl+C during interactive mode, any partial configuration is discarded. No files are written.
-
-#### 2.2.4 Generated Files
+#### 2.1.4 Generated File
 
 **Minimal `cmc.toml`:**
+
 ```toml
 [project]
 name = "my-project"
-category = "production"  # Change to: prototype, internal, etc.
+category = "production"  # Options: production, prototype, internal
 
-[rulesets]
-default = [
-  # Add rulesets here. Examples:
-  # "community/general-best-practices@1.0.0"
-  # "git@github.com:yourcompany/standards.git#base@1.0.0"
-]
+# Extend community rulesets (optional)
+# [extends]
+# rulesets = [
+#   "github:check-my-code/rulesets/typescript-strict",
+# ]
 
-# Uncomment and configure for language-specific rules:
-# [rulesets.python]
-# paths = ["**/*.py"]
-# rules = ["community/python-base@1.0.0"]
+# ESLint rules - uses exact ESLint config syntax
+# [rulesets.eslint.rules]
+# no-var = "error"
+# prefer-const = "error"
 
-# [rulesets.typescript]
-# paths = ["**/*.ts", "**/*.tsx"]
-# rules = ["community/typescript-base@1.0.0"]
-
-[ai]
-enabled = false  # Set to true to enable AI-assisted checks
+# Ruff configuration - uses exact Ruff config syntax
+# [rulesets.ruff]
+# line-length = 120
+#
+# [rulesets.ruff.lint]
+# select = ["E", "F", "I"]
 ```
 
-#### 2.2.5 Output
+#### 2.1.5 Output
 
-**After minimal init:**
+**Success:**
+
 ```
 Created cmc.toml
 
 Next steps:
-1. Edit cmc.toml to configure rulesets for your project
-2. Run 'cmc check' to verify your code
-3. Run 'cmc context' to generate rules for your AI agent
+1. Edit cmc.toml to configure your rules
+2. Run 'cmc generate eslint' or 'cmc generate ruff' to create linter configs
+3. Run 'cmc check' to verify your code
 
 Documentation: https://github.com/check-my-code/docs
 ```
 
-#### 2.2.6 Exit Codes
+**File exists error:**
 
-| Code | Condition |
-|------|-----------|
-| 0 | Configuration created successfully |
-| 1 | Configuration already exists (no `--force`) |
-| 2 | Invalid path or permission error |
+```
+Error: cmc.toml already exists
+
+Use --force to overwrite.
+```
+
+#### 2.1.6 Exit Codes
+
+| Code | Condition                                   |
+| ---- | ------------------------------------------- |
+| 0    | Configuration created successfully          |
+| 1    | Configuration already exists (no `--force`) |
+| 2    | Invalid path or permission error            |
 
 ---
 
-### 2.3 `cmc diff`
+### 2.2 `cmc check`
 
-**Purpose:** Show what has changed since the last check.
+**Purpose:** Verify linter configs match ruleset requirements, then run linters.
+
+#### 2.2.1 Usage
+
+```bash
+cmc check [options] [<path>]
+```
+
+#### 2.2.2 Arguments
+
+| Argument | Description                                                                                                     |
+| -------- | --------------------------------------------------------------------------------------------------------------- |
+| `<path>` | Optional path to check. Can be a file or directory. If omitted, checks entire project from `cmc.toml` location. |
+
+#### 2.2.3 Options
+
+| Option        | Short | Description                                      | Default |
+| ------------- | ----- | ------------------------------------------------ | ------- |
+| `--no-verify` |       | Skip linter config verification against cmc.toml | `false` |
+| `--json`      |       | Output results as JSON                           | `false` |
+
+#### 2.2.4 Behavior
+
+**Execution flow:**
+
+1. Discover configuration file (`cmc.toml`)
+2. Validate `cmc.toml` against JSON Schema
+3. Resolve community rulesets (if `[extends]` present)
+4. Merge rules (local overrides community)
+5. **Verify linter configs** (unless `--no-verify`):
+   - Parse project's eslint.config.js and/or ruff.toml
+   - Check all required rules from `cmc.toml` are present and at least as strict
+   - If verification fails, exit with error showing missing/weak rules
+6. Determine files in scope:
+   - If `<path>` provided: files matching path
+   - If no path: all source files under config directory
+7. Run linter checks using project's native config files
+8. Collect all violations
+9. Output results (format based on flags)
+10. Exit with appropriate code
+
+#### 2.2.5 Output Formats
+
+**Default output:**
+
+```
+src/main.py:15:1 F401 'os' imported but unused
+src/main.py:42:10 E501 Line too long (120 > 100)
+src/utils.ts:8:5 no-var Unexpected var, use let or const instead
+
+3 violations found
+```
+
+**JSON output (`--json`):**
+
+```json
+{
+  "violations": [
+    {
+      "file": "src/main.py",
+      "line": 15,
+      "column": 1,
+      "rule": "F401",
+      "message": "'os' imported but unused"
+    },
+    {
+      "file": "src/utils.ts",
+      "line": 8,
+      "column": 5,
+      "rule": "no-var",
+      "message": "Unexpected var, use let or const instead"
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "files": 2
+  }
+}
+```
+
+#### 2.2.6 Verification Failure Output
+
+```
+Error: Linter config verification failed
+
+ESLint config missing required rules:
+  - eqeqeq (required by cmc.toml)
+  - max-lines-per-function (required by cmc.toml)
+
+ESLint config has weaker rules:
+  - no-var: "warn" (required: "error")
+
+Run 'cmc generate eslint' to create a compliant config.
+Or run 'cmc check --no-verify' to skip verification.
+```
+
+#### 2.2.7 Exit Codes
+
+| Code | Condition                                                                 |
+| ---- | ------------------------------------------------------------------------- |
+| 0    | No violations found                                                       |
+| 1    | Violations found                                                          |
+| 2    | Configuration error (missing config, invalid syntax, verification failed) |
+| 3    | Runtime error (linter failed, linter not installed)                       |
+
+#### 2.2.8 Edge Cases
+
+| Scenario                         | Behavior                                     |
+| -------------------------------- | -------------------------------------------- |
+| No files match path              | Warning to stderr, exit 0                    |
+| Empty project                    | Warning "No files to check", exit 0          |
+| Linter not installed             | Exit 3 with installation instructions        |
+| Linter config missing            | Exit 2 with suggestion to run `cmc generate` |
+| Linter config verification fails | Exit 2 with list of missing/weak rules       |
+
+---
+
+### 2.3 `cmc generate`
+
+**Purpose:** Generate linter config files from `cmc.toml` ruleset.
 
 #### 2.3.1 Usage
 
 ```bash
-cmc diff [options]
+cmc generate <linter>
+cmc generate eslint           # Generate eslint.config.js
+cmc generate ruff             # Generate ruff.toml
 ```
 
-#### 2.3.2 Options
+#### 2.3.2 Arguments
 
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `--stat` | `-s` | Show change statistics | `false` |
-| `--json` | | Output as JSON | `false` |
+| Argument   | Description                                         |
+| ---------- | --------------------------------------------------- |
+| `<linter>` | Which linter config to generate: `eslint` or `ruff` |
 
-#### 2.3.3 Behavior
+#### 2.3.3 Options
 
-1. Load `.cmc/state.json`
-   - If not exists: treat all files as new
-2. Scan all files in scope
-3. Compare current file hashes to cached hashes
-4. Categorize files:
-   - **New:** Not in cache
-   - **Modified:** Hash changed
-   - **Deleted:** In cache but not on disk
-   - **Unchanged:** Hash matches
-5. Output changed files
+| Option     | Short | Description                      | Default |
+| ---------- | ----- | -------------------------------- | ------- |
+| `--force`  | `-f`  | Overwrite existing config file   | `false` |
+| `--stdout` |       | Output to stdout instead of file | `false` |
 
-#### 2.3.4 Output Formats
+#### 2.3.4 Behavior
 
-**Default:**
-```
-M src/main.py
-M src/utils.py
-A src/new_feature.py
-D src/deprecated.py
+1. Load and validate `cmc.toml`
+2. Resolve community rulesets (if `[extends]` present)
+3. Merge rules (local overrides community)
+4. Check if target config file already exists
+   - If exists and no `--force`: exit with error
+5. Generate linter config with all merged rules
+6. Write to standard location (or stdout if `--stdout`)
+7. Print success message
 
-3 modified, 1 added, 1 deleted
-```
+**Generated File Locations:**
 
-**With stats (`--stat`):**
-```
-M src/main.py         +15 -3
-M src/utils.py        +42 -10
-A src/new_feature.py  +120
-D src/deprecated.py   -85
+- ESLint: `eslint.config.js` (flat config format)
+- Ruff: `ruff.toml`
 
-3 modified, 1 added, 1 deleted
-Lines: +177 -98
-```
+#### 2.3.5 Generated File Examples
 
-**JSON:**
-```json
-{
-  "modified": ["src/main.py", "src/utils.py"],
-  "added": ["src/new_feature.py"],
-  "deleted": ["src/deprecated.py"],
-  "unchanged_count": 45
-}
+**eslint.config.js:**
+
+```javascript
+// Generated by cmc - do not edit directly
+// Source: cmc.toml
+// To regenerate: cmc generate eslint --force
+
+export default [
+  {
+    rules: {
+      'no-var': 'error',
+      'prefer-const': 'error',
+      eqeqeq: ['error', 'always'],
+      'max-lines-per-function': ['error', { max: 100 }],
+      '@typescript-eslint/no-explicit-any': 'error',
+    },
+  },
+];
 ```
 
-#### 2.3.5 Exit Codes
+**ruff.toml:**
 
-| Code | Condition |
-|------|-----------|
-| 0 | Success (changes or no changes) |
-| 2 | Configuration error |
+```toml
+# Generated by cmc - do not edit directly
+# Source: cmc.toml
+# To regenerate: cmc generate ruff --force
+
+line-length = 120
+
+[lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]
+```
+
+#### 2.3.6 Output
+
+**Success:**
+
+```
+Generated eslint.config.js from cmc.toml
+
+Rules included:
+  - no-var
+  - prefer-const
+  - eqeqeq
+  - max-lines-per-function
+  - @typescript-eslint/no-explicit-any
+
+Run 'cmc check' to lint your code.
+```
+
+**File exists error:**
+
+```
+Error: eslint.config.js already exists
+
+Use --force to overwrite, or manually merge the rules.
+```
+
+#### 2.3.7 Exit Codes
+
+| Code | Condition                                                             |
+| ---- | --------------------------------------------------------------------- |
+| 0    | Config generated successfully                                         |
+| 1    | Config file already exists (no `--force`)                             |
+| 2    | Configuration error (invalid cmc.toml, no ruleset defined for linter) |
 
 ---
 
-### 2.4 `cmc context`
+### 2.4 `cmc verify`
 
-**Purpose:** Output active rules formatted for AI agent consumption.
+**Purpose:** Verify project linter configs match ruleset requirements (without running linters).
 
 #### 2.4.1 Usage
 
 ```bash
-cmc context [options]
+cmc verify                    # Verify all linter configs
+cmc verify eslint             # Verify only ESLint config
+cmc verify ruff               # Verify only Ruff config
 ```
 
-#### 2.4.2 Options
+#### 2.4.2 Arguments
 
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `--agent` | `-a` | Target agent (claude/codex/gemini) | From config |
-| `--format` | `-f` | Output format (markdown/json/text) | `markdown` |
-| `--include-meta` | | Include ruleset metadata and versions | `false` |
+| Argument   | Description                                                                             |
+| ---------- | --------------------------------------------------------------------------------------- |
+| `<linter>` | Optional: which linter config to verify (`eslint` or `ruff`). If omitted, verifies all. |
 
-#### 2.4.3 Behavior
+#### 2.4.3 Options
 
-1. Load configuration
-2. Determine target agent:
-   - From `--agent` flag if provided
-   - From `CMC_AGENT` environment variable
-   - From `.cmc/profile.local.yml`
-   - From `~/.cmcconfig`
-   - **Error if none configured** (exit code 2)
-3. Resolve all active rulesets
-4. Merge rules (later rulesets override earlier)
-5. Deduplicate identical rules
-6. Group by category (general, language-specific)
-7. Format output for target agent
-8. Output to stdout
+| Option   | Short | Description    | Default |
+| -------- | ----- | -------------- | ------- |
+| `--json` |       | Output as JSON | `false` |
 
-**No Default Agent:** If no agent is configured anywhere and `--agent` is not provided, `cmc context` exits with error code 2:
+#### 2.4.4 Behavior
+
+1. Load and validate `cmc.toml`
+2. Resolve community rulesets (if `[extends]` present)
+3. Merge rules (local overrides community)
+4. For each linter (or specified linter):
+   a. Parse project's linter config file
+   b. Extract enabled rules and their severity
+   c. Compare against required rules from merged ruleset
+   d. Identify: missing rules, weaker rules
+5. Output verification results
+6. Exit with appropriate code
+
+**Verification Logic:**
+
+| Scenario                            | Result                                    |
+| ----------------------------------- | ----------------------------------------- |
+| Rule present and at least as strict | Pass                                      |
+| Rule present but less strict        | Fail (e.g., "warn" when "error" required) |
+| Rule missing                        | Fail                                      |
+| Extra rules in linter config        | Pass (allowed)                            |
+
+**Strictness ordering:** `error` > `warn` > `off`
+
+#### 2.4.5 Output Formats
+
+**Default (issues found):**
+
 ```
-Error: No AI agent configured
+Verifying ESLint config against cmc.toml...
 
-Configure an agent using one of:
-  - CMC_AGENT environment variable
-  - ~/.cmcconfig file
-  - .cmc/profile.local.yml file
-  - --agent flag
+✗ Missing rules:
+  - eqeqeq (required by cmc.toml)
+  - max-lines-per-function (required by cmc.toml)
 
-Example: cmc context --agent=claude
+✗ Weaker rules:
+  - no-var: "warn" (required: "error")
+
+3 issues found.
 ```
 
-#### 2.4.4 Output Formats
+**All pass:**
 
-**Markdown (default):**
+```
+Verifying ESLint config against cmc.toml...
+
+✓ All 5 required rules are present and sufficiently strict.
+
+Verifying Ruff config against cmc.toml...
+
+✓ All required settings are present.
+
+All linter configs are valid.
+```
+
+**JSON:**
+
+```json
+{
+  "eslint": {
+    "valid": false,
+    "missing": ["eqeqeq", "max-lines-per-function"],
+    "weaker": [{ "rule": "no-var", "current": "warn", "required": "error" }]
+  },
+  "ruff": {
+    "valid": true,
+    "missing": [],
+    "weaker": []
+  }
+}
+```
+
+#### 2.4.6 Exit Codes
+
+| Code | Condition                                           |
+| ---- | --------------------------------------------------- |
+| 0    | All required rules present and sufficiently strict  |
+| 1    | Verification failed (missing or weaker rules)       |
+| 2    | Configuration error (no cmc.toml, no linter config) |
+
+---
+
+### 2.5 `cmc update`
+
+**Purpose:** Fetch latest versions of configured community rulesets.
+
+#### 2.5.1 Usage
+
+```bash
+cmc update
+```
+
+#### 2.5.2 Behavior
+
+1. Load `cmc.toml`
+2. Find `[extends].rulesets` entries
+3. For each community ruleset reference:
+   a. Parse the reference (e.g., `github:check-my-code/rulesets/typescript-strict`)
+   b. Fetch from Git repository
+   c. Store in local cache (`~/.cmc/rulesets/`)
+4. Report what was updated
+
+#### 2.5.3 Output
+
+**Success:**
+
+```
+Updating community rulesets...
+
+✓ github:check-my-code/rulesets/typescript-strict (updated)
+✓ github:check-my-code/rulesets/python-prod (already up to date)
+
+2 rulesets checked, 1 updated.
+```
+
+**No rulesets configured:**
+
+```
+No community rulesets configured in cmc.toml.
+
+Add rulesets to extend:
+  [extends]
+  rulesets = ["github:check-my-code/rulesets/typescript-strict"]
+```
+
+#### 2.5.4 Exit Codes
+
+| Code | Condition                                    |
+| ---- | -------------------------------------------- |
+| 0    | Update successful (or no rulesets to update) |
+| 2    | Configuration error (invalid cmc.toml)       |
+| 3    | Network error or Git fetch failed            |
+
+---
+
+### 2.6 `cmc context`
+
+**Purpose:** Output active rules formatted for AI agent consumption.
+
+#### 2.6.1 Usage
+
+```bash
+cmc context
+```
+
+#### 2.6.2 Behavior
+
+1. Load and validate `cmc.toml`
+2. Resolve community rulesets (if `[extends]` present)
+3. Merge rules (local overrides community)
+4. Format rules as markdown
+5. Output to stdout
+
+#### 2.6.3 Output Format
+
 ```markdown
 # Code Standards for this Project
 
 You MUST follow these rules when writing code:
 
-## General Rules
-- Maximum file length: 500 lines
-- All functions must have docstrings
-- No print/console.log statements in production code
+## ESLint Rules (TypeScript/JavaScript)
 
-## Python Rules
-- Use type hints for all function parameters and return values
-- Follow NumPy docstring format
-- Use snake_case for function and variable names
+| Rule                               | Setting                   |
+| ---------------------------------- | ------------------------- |
+| no-var                             | error                     |
+| prefer-const                       | error                     |
+| eqeqeq                             | ["error", "always"]       |
+| max-lines-per-function             | ["error", { "max": 100 }] |
+| @typescript-eslint/no-explicit-any | error                     |
 
-## TypeScript Rules
-- All exported functions must have JSDoc comments
-- Use explicit return types
-- No `any` types
+## Ruff Rules (Python)
+
+| Setting     | Value                 |
+| ----------- | --------------------- |
+| line-length | 120                   |
+| select      | ["E", "F", "I", "UP"] |
+| ignore      | ["E501"]              |
 ```
 
-**JSON:**
-```json
-{
-  "project": "my-project",
-  "category": "production",
-  "rules": {
-    "general": [
-      {"id": "max-file-length", "description": "Maximum file length: 500 lines"}
-    ],
-    "python": [
-      {"id": "require-type-hints", "description": "Use type hints for all parameters"}
-    ]
-  }
-}
-```
+#### 2.6.4 Exit Codes
 
-**Text (minimal):**
-```
-RULES:
-- Max file length: 500 lines
-- Functions must have docstrings
-- Python: Use type hints
-- TypeScript: Use explicit return types
-```
-
-#### 2.4.5 Agent-Specific Formatting
-
-Different agents may benefit from different phrasings:
-
-- **Claude:** Uses assertive language ("You MUST...")
-- **Codex:** May prefer bullet points
-- **Gemini:** May prefer structured sections
-
-(Note: v1 may use identical formatting; agent-specific tuning is a potential enhancement)
-
-#### 2.4.6 Exit Codes
-
-| Code | Condition |
-|------|-----------|
-| 0 | Success |
-| 2 | Configuration error |
+| Code | Condition                              |
+| ---- | -------------------------------------- |
+| 0    | Success                                |
+| 2    | Configuration error (invalid cmc.toml) |
 
 ---
 
-### 2.5 `cmc report`
+## 3. v2 Future Commands
 
-**Purpose:** Generate a detailed report of violations.
+The following commands are planned for v2:
 
-#### 2.5.1 Usage
+### 3.1 `cmc diff`
+
+Show files changed since last check.
 
 ```bash
-cmc report [options]
+cmc diff                      # List changed files
+cmc diff --stat               # Show change statistics
 ```
 
-#### 2.5.2 Options
+### 3.2 `cmc dry-run`
 
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `--html` | | Generate HTML report | `false` (stdout) |
-| `--output` | `-o` | Output file path | `stdout` or `cmc-report.html` |
-| `--all` | `-a` | Force check all files | `false` |
-| `--no-ai` | | Skip AI-assisted checks | `false` |
-
-#### 2.5.3 Behavior
-
-1. Run full check (equivalent to `cmc check`)
-2. Format results as report
-3. Output to destination (overwrites existing file without prompting)
-
-#### 2.5.4 Output Formats
-
-**Stdout (default):**
-```
-=== check-my-code Report ===
-Generated: 2025-11-30T14:30:00Z
-Project: my-project
-
-SUMMARY
--------
-Files checked: 24
-Violations: 3
-Rulesets: 3
-
-VIOLATIONS BY FILE
-------------------
-src/main.py (2 violations)
-  Line 15: max-file-length - File exceeds 500 lines (current: 523)
-  Line 42: require-docstrings - Function 'process_data' missing docstring
-
-src/utils.py (1 violation)
-  Line 8: meaningful-names - Function name 'x' is not descriptive
-
-VIOLATIONS BY RULE
-------------------
-max-file-length (1)
-  - src/main.py:15
-
-require-docstrings (1)
-  - src/main.py:42
-
-meaningful-names (1)
-  - src/utils.py:8
-```
-
-**HTML report:** Self-contained HTML file with:
-- Summary dashboard
-- Expandable file sections
-- Rule groupings
-- Timestamp and version info
-- Sortable/filterable tables
-
-#### 2.5.5 Exit Codes
-
-| Code | Condition |
-|------|-----------|
-| 0 | Report generated (regardless of violations) |
-| 2 | Configuration error |
-| 3 | Runtime error |
-
----
-
-### 2.6 `cmc update`
-
-**Purpose:** Fetch latest versions of configured rulesets.
-
-#### 2.6.1 Usage
+Preview what would be checked without running checks.
 
 ```bash
-cmc update [options]
+cmc dry-run                   # Show files and rules that would be checked
 ```
 
-#### 2.6.2 Options
+### 3.3 `cmc report`
 
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `--dry-run` | `-n` | Show what would be updated without fetching | `false` |
-| `--force` | `-f` | Re-fetch even if cached | `false` |
-
-#### 2.6.3 Behavior
-
-1. Parse configuration for all ruleset references
-2. For each ruleset:
-   - If pinned version and cached: skip (unless `--force`)
-   - If pinned version and not cached: fetch
-   - If unpinned: fetch latest
-3. Display update summary
-
-#### 2.6.4 Output
-
-**Normal update:**
-```
-Updating rulesets...
-
-community/python-fastapi-prod@1.0.0: cached (up to date)
-community/typescript-react-prod: 1.0.0 -> 1.1.0 (updated)
-git@github.com:mycompany/standards.git#base@2.1.0: fetched
-
-Changes in typescript-react-prod 1.1.0:
-  - Added rule: no-implicit-any
-  - Updated rule: max-file-length (400 -> 350)
-
-Updated 1 ruleset, fetched 1, 1 cached
-```
-
-**Dry run (`--dry-run`):**
-```
-Would update:
-  community/typescript-react-prod: 1.0.0 -> 1.1.0
-
-Would fetch:
-  git@github.com:mycompany/standards.git#base@2.1.0
-
-Already cached:
-  community/python-fastapi-prod@1.0.0
-```
-
-#### 2.6.5 Exit Codes
-
-| Code | Condition |
-|------|-----------|
-| 0 | Success |
-| 2 | Configuration error |
-| 3 | Network/fetch error |
-
----
-
-### 2.7 `cmc dry-run`
-
-**Purpose:** Show what would be checked without running checks.
-
-#### 2.7.1 Usage
+Generate detailed violation reports.
 
 ```bash
-cmc dry-run [options] [<path>...]
+cmc report                    # Detailed stdout report
+cmc report --html             # Generate HTML report
+cmc report --html -o report.html
 ```
-
-#### 2.7.2 Options
-
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `--json` | | Output as JSON | `false` |
-
-#### 2.7.3 Behavior
-
-1. Load configuration
-2. Resolve all rulesets
-3. Determine files in scope
-4. Categorize by check type (linter/simple/script/AI)
-5. Output summary without executing any checks
-
-#### 2.7.4 Output
-
-**Default:**
-```
-=== Dry Run ===
-
-FILES (24 total, 6 would be checked)
-  Cached (unchanged): 18
-  To check: 6
-    - src/main.py
-    - src/utils.py
-    - src/new_feature.py
-    - frontend/App.tsx
-    - frontend/utils.ts
-    - frontend/api.ts
-
-CHECKS
-  Linter checks:
-    - ruff (Python): 3 files
-    - eslint (TypeScript): 3 files
-
-  Simple checks: 5 rules
-    - max-file-length
-    - require-docstrings
-    - require-type-hints
-    - require-jsdoc
-    - no-console
-
-  AI-assisted checks: 1 rule
-    - meaningful-names (requires: claude)
-
-RULESETS
-  - community/python-fastapi-prod@1.0.0
-  - community/typescript-react-prod@1.0.0
-  - git@github.com:mycompany/standards.git#base@2.1.0
-```
-
-#### 2.7.5 Exit Codes
-
-| Code | Condition |
-|------|-----------|
-| 0 | Success |
-| 2 | Configuration error |
 
 ---
 
-## 3. Global Options
+## 4. Global Options
 
 These options are available on all commands:
 
-| Option | Short | Description |
-|--------|-------|-------------|
-| `--help` | `-h` | Show help for command |
-| `--version` | `-V` | Show cmc version (format: `X.Y.Z` only) |
-| `--no-color` | | Disable colored output |
-| `--debug` | | Show debug information |
+| Option      | Short | Description                             |
+| ----------- | ----- | --------------------------------------- |
+| `--help`    | `-h`  | Show help for command                   |
+| `--version` | `-V`  | Show cmc version (format: `X.Y.Z` only) |
 
-**Version Output:** The `--version` flag outputs only the semantic version number (e.g., `1.0.0`), with no additional metadata.
+**v2 additions:**
+
+- `--no-color` - Disable colored output
+- `--verbose` / `-v` - Show detailed progress
+- `--quiet` / `-q` - Minimal output
+- `--debug` - Show debug information
 
 ---
 
-## 4. Error Handling
+## 5. Error Handling
 
-### 4.1 Error Message Format
+### 5.1 Error Message Format
 
 ```
 Error: <brief description>
@@ -743,6 +638,7 @@ Error: <brief description>
 ```
 
 **Example:**
+
 ```
 Error: Configuration file not found
 
@@ -751,146 +647,58 @@ No cmc.toml found in current directory or parent directories.
 Run 'cmc init' to create a configuration file.
 ```
 
-### 4.2 Common Errors
+### 5.2 Common Errors
 
-| Error | Exit Code | Suggestion |
-|-------|-----------|------------|
-| No cmc.toml found | 2 | Run `cmc init` |
-| Invalid cmc.toml syntax | 2 | Check TOML syntax |
-| Conflicting options | 2 | Remove conflicting flags |
-| No agent configured | 2 | Configure agent or use `--agent` flag |
-| Empty ruleset list | 0 | Warning only; no error |
-| Ruleset not found | 3 | Check ruleset reference, run `cmc update` |
-| Linter not installed | 3 | Install the required linter |
-| AI agent not found | 3 | Install agent or configure different one |
-| Git authentication failed | 3 | Check SSH keys or tokens |
-
-**Empty Rulesets:** If `cmc.toml` exists but has no rulesets defined, `cmc check` prints a warning to stderr and exits with code 0:
-```
-Warning: No rulesets configured in cmc.toml. Nothing to check.
-```
+| Error                             | Exit Code | Suggestion                        |
+| --------------------------------- | --------- | --------------------------------- |
+| No cmc.toml found                 | 2         | Run `cmc init`                    |
+| Invalid cmc.toml syntax           | 2         | Check TOML syntax                 |
+| JSON Schema validation failed     | 2         | Fix cmc.toml structure            |
+| Linter config missing             | 2         | Run `cmc generate`                |
+| Linter config verification failed | 2         | Run `cmc generate --force`        |
+| Linter not installed              | 3         | Install the required linter       |
+| Community ruleset fetch failed    | 3         | Check network, verify ruleset URL |
 
 ---
 
-## 5. Help System
+## 6. Technical Implementation
 
-### 5.1 Main Help (`cmc --help`)
-
-```
-check-my-code - Verify code against configurable rulesets
-
-Usage: cmc <command> [options]
-
-Commands:
-  check      Run verification checks
-  init       Generate configuration file
-  diff       Show changes since last check
-  context    Output rules for AI agents
-  report     Generate detailed violation report
-  update     Fetch latest rulesets
-  dry-run    Preview what would be checked
-
-Options:
-  -h, --help     Show help
-  -V, --version  Show version
-  --no-color     Disable colors
-  --debug        Debug output
-
-Run 'cmc <command> --help' for command-specific help.
-```
-
-### 5.2 Command Help (`cmc check --help`)
-
-```
-Run verification checks against configured rulesets
-
-Usage: cmc check [options] [<path>...]
-
-Arguments:
-  <path>...    Files or directories to check (default: entire project)
-
-Options:
-  -a, --all       Check all files, ignore cache
-  --no-ai         Skip AI-assisted checks
-  --no-cache      Don't update state cache
-  -v, --verbose   Detailed output
-  -q, --quiet     Minimal output (violation count only)
-  --json          JSON output
-  -c, --config    Path to cmc.toml
-
-Examples:
-  cmc check                    Check entire project
-  cmc check -p backend/        Check backend directory
-  cmc check --all              Force check all files
-  cmc check --no-ai            Skip AI checks
-```
-
----
-
-## 6. Shell Completion
-
-### 6.1 Supported Shells
-
-- Bash
-- Zsh
-- Fish
-
-### 6.2 Installation
-
-```bash
-# Bash
-cmc completion bash >> ~/.bashrc
-
-# Zsh
-cmc completion zsh >> ~/.zshrc
-
-# Fish
-cmc completion fish > ~/.config/fish/completions/cmc.fish
-```
-
-### 6.3 Completion Behavior
-
-- Commands: Complete on first argument
-- Options: Complete after `-` or `--`
-- Paths: Complete file/directory paths for relevant commands
-- Agent names: Complete for `--agent` option
-
----
-
-## 7. Technical Implementation
-
-### 7.1 CLI Framework
+### 6.1 CLI Framework
 
 Use Commander.js for:
+
 - Command parsing
 - Option handling
 - Help generation
 - Subcommand routing
 
-### 7.2 Entry Point Structure
+### 6.2 Entry Point Structure
 
 ```typescript
 // src/cli/index.ts
 import { Command } from 'commander';
 import { checkCommand } from './commands/check';
 import { initCommand } from './commands/init';
-// ... other commands
+import { generateCommand } from './commands/generate';
+import { verifyCommand } from './commands/verify';
+import { updateCommand } from './commands/update';
+import { contextCommand } from './commands/context';
 
 const program = new Command();
 
-program
-  .name('cmc')
-  .description('Verify code against configurable rulesets')
-  .version(VERSION);
+program.name('cmc').description('Verify code against configurable rulesets').version(VERSION);
 
-program.addCommand(checkCommand);
 program.addCommand(initCommand);
-// ... other commands
+program.addCommand(checkCommand);
+program.addCommand(generateCommand);
+program.addCommand(verifyCommand);
+program.addCommand(updateCommand);
+program.addCommand(contextCommand);
 
 program.parse();
 ```
 
-### 7.3 Command Structure
+### 6.3 Command Structure
 
 Each command is a separate module:
 
@@ -900,108 +708,14 @@ import { Command } from 'commander';
 
 export const checkCommand = new Command('check')
   .description('Run verification checks')
-  .argument('[path...]', 'paths to check')
-  .option('-a, --all', 'check all files')
-  .option('--no-ai', 'skip AI checks')
-  .option('-v, --verbose', 'detailed output')
-  .option('-q, --quiet', 'minimal output')
+  .argument('[path]', 'path to check')
+  .option('--no-verify', 'skip config verification')
   .option('--json', 'JSON output')
-  .option('-c, --config <path>', 'config file path')
-  .action(async (paths, options) => {
+  .action(async (path, options) => {
     // Implementation
   });
 ```
 
 ---
 
-## 8. Resolved Questions
-
-The following questions have been clarified:
-
-| # | Question | Resolution |
-|---|----------|------------|
-| 1 | Path argument handling | Single path allowed as positional arg; multiple paths require `--paths` flag |
-| 2 | Conflicting options (`--verbose --quiet`) | Error out with exit code 2 |
-| 3 | Progress indicators | Display spinner with status during long-running checks |
-| 4 | Interrupt handling (Ctrl+C) | Discard everything; do not update state |
-| 6 | Watch mode | Deferred; not needed for v1 |
-| 7 | Verbosity levels | Single `-v` flag is sufficient |
-| 8 | Exit code for mixed results | Runtime error (exit 3) takes precedence |
-| 9 | Output file conflicts | Overwrite without prompting |
-| 10 | Default agent selection | Error if no agent configured |
-| 12 | Empty ruleset handling | Warn but exit 0 |
-| 13 | Interactive init cancellation | Discard partial config |
-| 14 | Version format | Semantic version only (`X.Y.Z`) |
-| 15 | Hidden/dotfile handling | Excluded by default; require explicit `--paths` inclusion |
-
----
-
-## 9. Open Questions
-
-The following items still require clarification:
-
-### 9.1 Stdin Input Support
-
-Should any commands accept file lists from stdin?
-
-**Example use case:**
-```bash
-git diff --name-only | cmc check -
-```
-
-**Options:**
-- A) Support `-` as special argument to read paths from stdin
-- B) No stdin support in v1; users can use `xargs` instead
-- C) Support stdin but only for specific commands (which ones?)
-
-**Considerations:**
-- Useful for integration with other tools
-- Adds complexity to argument parsing
-- `xargs` workaround: `git diff --name-only | xargs cmc check --paths`
-
----
-
-### 9.2 Parallelism Configuration
-
-Should the number of parallel file checks be configurable?
-
-**Options:**
-- A) Hardcoded sensible default (e.g., CPU cores)
-- B) Configurable via flag (`--parallel=N` or `--jobs=N`)
-- C) Configurable via config file only
-- D) Both flag and config file
-
-**Considerations:**
-- CI environments may benefit from limiting parallelism
-- Most users won't need to adjust
-- Linters may have their own parallelism settings
-
----
-
-### 9.3 Additional Questions
-
-1. **Color scheme:** What specific colors should be used?
-   - Errors: red?
-   - Warnings: yellow?
-   - Success: green?
-   - File paths: cyan/blue?
-   - Rule names: bold?
-
-2. **Config precedence with `--config`:** If `--config /other/path/cmc.toml` is provided, what is the "project root" for relative paths in the config?
-   - A) Directory containing the specified `cmc.toml`
-   - B) Current working directory
-   - C) Error if paths don't resolve
-
-3. **Shell completion command:** Should this be:
-   - A) `cmc completion <shell>` subcommand
-   - B) `cmc --completion-<shell>` flag
-   - C) Separate script bundled with package
-
-4. **Deprecation warnings:** When options/commands are deprecated in future versions, how should users be notified?
-   - A) Warning to stderr, continue execution
-   - B) Warning only in verbose mode
-   - C) Include in `cmc --help` output
-
----
-
-*End of Document*
+_End of Document_
