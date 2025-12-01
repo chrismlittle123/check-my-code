@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc && npm run build:copy-assets",
-    "build:copy-assets": "cp src/config/schema.json dist/config/",
+    "build:copy-assets": "cp src/config/schema.json src/config/compatibility.yaml dist/config/ && cp src/rulesets/default-ruleset.json dist/rulesets/",
     "start": "node dist/cli/index.js",
     "dev": "ts-node src/cli/index.ts",
     "test": "vitest",

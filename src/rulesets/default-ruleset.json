@@ -2,20 +2,14 @@
   "meta": {
     "name": "default",
     "version": "1.0.0",
-    "description": "Default built-in checks"
+    "description": "Default built-in checks with simple pattern matching"
   },
   "rules": {
-    "max-file-length": {
+    "file-length": {
       "type": "simple",
       "check": "file-length",
       "max": 500,
-      "message": "File exceeds 500 lines"
-    },
-    "require-docstrings": {
-      "type": "simple",
-      "check": "require-docstrings",
-      "scope": "functions",
-      "message": "Functions must have docstrings"
+      "message": "File exceeds maximum line count"
     },
     "no-console": {
       "type": "simple",
@@ -26,6 +20,12 @@
       "type": "simple",
       "check": "no-print",
       "message": "Print statements not allowed"
+    },
+    "require-docstrings": {
+      "type": "simple",
+      "check": "require-docstrings",
+      "scope": "functions",
+      "message": "Functions must have docstrings"
     }
   }
 }

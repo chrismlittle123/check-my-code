@@ -1,11 +1,15 @@
 import { spawn } from 'child_process';
 import { existsSync } from 'fs';
-import { join } from 'path';
+import { join, relative } from 'path';
 import type { Violation } from '../types.js';
+import { getLanguageByExtension } from '../config/compatibility.js';
 
-export interface LinterConfig {
-  linter: string;
-  config?: Record<string, unknown>;
+export interface LinterOptions {
+  select?: string[];
+  ignore?: string[];
+  lineLength?: number;
+  configFile?: string;
+  extraArgs?: string[];
 }
 
 export class LinterRunner {
@@ -15,85 +19,73 @@ export class LinterRunner {
     this.projectRoot = projectRoot;
   }
 
-  async runLinter(
-    files: string[],
-    linter: string,
-    config?: Record<string, unknown>
-  ): Promise<Violation[]> {
+  async runLinter(files: string[], linter: string, options?: LinterOptions): Promise<Violation[]> {
     switch (linter.toLowerCase()) {
       case 'ruff':
-        return this.runRuff(files, config);
+        return this.runRuff(files, options);
       case 'eslint':
-        return this.runESLint(files, config);
+        return this.runESLint(files, options);
       default:
-        throw new LinterNotFoundError(`Unknown linter: ${linter}`);
+        throw new LinterNotFoundError(`Unsupported linter: ${linter}. Supported: ruff, eslint`);
     }
   }
 
-  private async runRuff(files: string[], config?: Record<string, unknown>): Promise<Violation[]> {
-    // Check if ruff is available
-    const ruffAvailable = await this.checkCommand('ruff');
-    if (!ruffAvailable) {
-      throw new LinterNotFoundError(
-        "Ruleset requires 'ruff' but it is not installed.\n" + 'Install with: pip install ruff'
-      );
+  private async runRuff(files: string[], options?: LinterOptions): Promise<Violation[]> {
+    const isAvailable = await this.checkCommand('ruff');
+    if (!isAvailable) {
+      throw new LinterNotFoundError('Ruff is not installed. Install with: pip install ruff');
     }
 
-    const pythonFiles = files.filter((f) => f.endsWith('.py') || f.endsWith('.pyi'));
-    if (pythonFiles.length === 0) {
-      return [];
-    }
+    const pythonFiles = files.filter((f) => {
+      const ext = `.${f.split('.').pop()}`;
+      const lang = getLanguageByExtension(ext);
+      return lang?.name === 'Python';
+    });
+
+    if (pythonFiles.length === 0) return [];
 
     const args = ['check', '--output-format=json'];
+    if (options?.select?.length) args.push(`--select=${options.select.join(',')}`);
+    if (options?.ignore?.length) args.push(`--ignore=${options.ignore.join(',')}`);
+    if (options?.lineLength) args.push(`--line-length=${options.lineLength}`);
+    if (options?.configFile) args.push(`--config=${options.configFile}`);
+    if (options?.extraArgs?.length) args.push(...options.extraArgs);
+    args.push(...pythonFiles);
 
-    // Add config options if provided
-    if (config) {
-      if (config.select) {
-        args.push(`--select=${(config.select as string[]).join(',')}`);
+    try {
+      const result = await this.runCommand('ruff', args);
+      return this.parseRuffOutput(result.stdout);
+    } catch (error) {
+      if (error instanceof CommandError && error.stdout) {
+        return this.parseRuffOutput(error.stdout);
       }
-      if (config.ignore) {
-        args.push(`--ignore=${(config.ignore as string[]).join(',')}`);
-      }
-      if (config['line-length']) {
-        args.push(`--line-length=${config['line-length']}`);
-      }
+      throw error;
     }
-
-    // Add files
-    args.push(...pythonFiles.map((f) => join(this.projectRoot, f)));
-
-    const result = await this.runCommand('ruff', args);
-    return this.parseRuffOutput(result.stdout);
   }
 
-  private async runESLint(
-    files: string[],
-    _config?: Record<string, unknown>
-  ): Promise<Violation[]> {
-    // Check if eslint is available
-    const eslintAvailable = await this.checkCommand('eslint');
-    if (!eslintAvailable) {
-      throw new LinterNotFoundError(
-        "Ruleset requires 'eslint' but it is not installed.\n" +
-          'Install with: npm install -g eslint'
-      );
+  private async runESLint(files: string[], options?: LinterOptions): Promise<Violation[]> {
+    const eslintCmd = await this.findEslintCommand();
+    if (!eslintCmd) {
+      throw new LinterNotFoundError('ESLint is not installed. Install with: npm install eslint');
     }
 
-    const jsFiles = files.filter((f) => /\.(ts|tsx|js|jsx|mjs|cjs)$/.exec(f));
-    if (jsFiles.length === 0) {
-      return [];
-    }
+    const jsFiles = files.filter((f) => {
+      const ext = `.${f.split('.').pop()}`;
+      const lang = getLanguageByExtension(ext);
+      return lang?.name === 'TypeScript' || lang?.name === 'JavaScript';
+    });
+
+    if (jsFiles.length === 0) return [];
 
     const args = ['--format=json'];
-
-    // Add files
+    if (options?.configFile) args.push(`--config=${options.configFile}`);
+    if (options?.extraArgs?.length) args.push(...options.extraArgs);
     args.push(...jsFiles.map((f) => join(this.projectRoot, f)));
 
     try {
-      const result = await this.runCommand('eslint', args);
+      const result = await this.runCommand(eslintCmd.command, [...eslintCmd.prefix, ...args]);
       return this.parseESLintOutput(result.stdout);
     } catch (error) {
-      // ESLint exits with code 1 when there are violations
       if (error instanceof CommandError && error.stdout) {
         return this.parseESLintOutput(error.stdout);
       }
@@ -102,23 +94,17 @@ export class LinterRunner {
   }
 
   private parseRuffOutput(output: string): Violation[] {
-    if (!output.trim()) {
-      return [];
-    }
+    if (!output.trim()) return [];
 
     try {
-      const results = JSON.parse(output) as {
-        filename: string;
-        location?: { row?: number; column?: number };
-        code: string;
-        message: string;
-      }[];
+      const results = JSON.parse(output) as RuffDiagnostic[];
       return results.map((r) => ({
-        file: r.filename,
+        file: relative(this.projectRoot, r.filename),
         line: r.location?.row ?? null,
         column: r.location?.column ?? null,
         rule: r.code,
         message: r.message,
+        ruleset: 'ruff',
       }));
     } catch {
       return [];
@@ -126,22 +112,21 @@ export class LinterRunner {
   }
 
   private parseESLintOutput(output: string): Violation[] {
-    if (!output.trim()) {
-      return [];
-    }
+    if (!output.trim()) return [];
 
     try {
-      const results = JSON.parse(output);
+      const results = JSON.parse(output) as ESLintResult[];
       const violations: Violation[] = [];
 
       for (const file of results) {
         for (const msg of file.messages ?? []) {
           violations.push({
-            file: file.filePath,
+            file: relative(this.projectRoot, file.filePath),
             line: msg.line ?? null,
             column: msg.column ?? null,
             rule: msg.ruleId ?? 'eslint',
             message: msg.message,
+            ruleset: 'eslint',
           });
         }
       }
@@ -152,11 +137,26 @@ export class LinterRunner {
     }
   }
 
+  private async findEslintCommand(): Promise<{ command: string; prefix: string[] } | null> {
+    const hasLocalEslint = existsSync(join(this.projectRoot, 'node_modules', '.bin', 'eslint'));
+    if (hasLocalEslint) {
+      return { command: 'npx', prefix: ['eslint'] };
+    }
+
+    const hasGlobalEslint = await this.checkCommand('eslint');
+    if (hasGlobalEslint) {
+      return { command: 'eslint', prefix: [] };
+    }
+
+    return null;
+  }
+
   private async checkCommand(command: string): Promise<boolean> {
     return new Promise((resolve) => {
       const proc = spawn(command, ['--version'], {
         shell: true,
         stdio: 'ignore',
+        cwd: this.projectRoot,
       });
 
       proc.on('error', () => resolve(false));
@@ -164,10 +164,7 @@ export class LinterRunner {
     });
   }
 
-  private async runCommand(
-    command: string,
-    args: string[]
-  ): Promise<{ stdout: string; stderr: string }> {
+  private runCommand(command: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
       let stdout = '';
       let stderr = '';
@@ -177,11 +174,11 @@ export class LinterRunner {
         shell: true,
       });
 
-      proc.stdout?.on('data', (data) => {
+      proc.stdout?.on('data', (data: Buffer) => {
         stdout += data.toString();
       });
 
-      proc.stderr?.on('data', (data) => {
+      proc.stderr?.on('data', (data: Buffer) => {
         stderr += data.toString();
       });
 
@@ -193,12 +190,28 @@ export class LinterRunner {
         if (code === 0) {
           resolve({ stdout, stderr });
         } else {
-          // Some linters exit with non-zero when there are violations
           reject(new CommandError(`${command} exited with code ${code}`, stdout, stderr));
         }
       });
     });
   }
+}
+
+interface RuffDiagnostic {
+  filename: string;
+  location?: { row?: number; column?: number };
+  code: string;
+  message: string;
+}
+
+interface ESLintResult {
+  filePath: string;
+  messages?: {
+    line?: number;
+    column?: number;
+    ruleId?: string;
+    message: string;
+  }[];
 }
 
 export class LinterNotFoundError extends Error {
@@ -223,53 +236,27 @@ class CommandError extends Error {
 export async function detectProjectLinters(projectRoot: string): Promise<string[]> {
   const linters: string[] = [];
 
-  // Detect Python linters
   const pythonConfigs = ['pyproject.toml', 'ruff.toml', '.ruff.toml'];
-
   for (const config of pythonConfigs) {
     if (existsSync(join(projectRoot, config))) {
-      if (!linters.includes('ruff')) {
-        linters.push('ruff');
-      }
+      linters.push('ruff');
       break;
     }
   }
 
-  // Detect JavaScript/TypeScript linters
-  const jsConfigs = [
-    'eslint.config.js',
-    'eslint.config.mjs',
-    '.eslintrc.js',
-    '.eslintrc.json',
-    '.eslintrc.yml',
-    '.eslintrc.yaml',
-    '.eslintrc',
-  ];
-
+  const jsConfigs = ['eslint.config.js', 'eslint.config.mjs', '.eslintrc.js', '.eslintrc.json'];
   for (const config of jsConfigs) {
     if (existsSync(join(projectRoot, config))) {
-      if (!linters.includes('eslint')) {
-        linters.push('eslint');
-      }
+      linters.push('eslint');
       break;
-    }
-  }
-
-  // Check package.json for eslint config
-  const packageJsonPath = join(projectRoot, 'package.json');
-  if (existsSync(packageJsonPath)) {
-    try {
-      const { readFileSync } = await import('fs');
-      const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf-8')) as {
-        eslintConfig?: unknown;
-      };
-      if (pkg.eslintConfig && !linters.includes('eslint')) {
-        linters.push('eslint');
-      }
-    } catch {
-      // Ignore
     }
   }
 
   return linters;
+}
+
+export function getRecommendedLinter(filePath: string): string | null {
+  const ext = `.${filePath.split('.').pop()}`;
+  const lang = getLanguageByExtension(ext);
+  return lang?.linter ?? null;
 }

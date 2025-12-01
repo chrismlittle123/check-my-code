@@ -153,7 +153,11 @@ export class CheckRunner {
     try {
       return await this.linterRunner.runLinter(files, linter, config);
     } catch (err) {
-      if (err instanceof LinterNotFoundError) throw err;
+      if (err instanceof LinterNotFoundError) {
+        // Warn but don't fail - linter is optional
+        console.warn(`Warning: ${linter} is not installed, skipping those checks`);
+        return [];
+      }
       return [];
     }
   }

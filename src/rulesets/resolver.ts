@@ -4,6 +4,7 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import type { ProjectConfig, RulesetConfig } from '../types.js';
 import defaultRulesetJson from './default-ruleset.json' with { type: 'json' };
+import lintersRulesetJson from './linters-ruleset.json' with { type: 'json' };
 
 export class RulesetResolver {
   private projectRoot: string;
@@ -50,6 +51,14 @@ export class RulesetResolver {
   }
 
   private async resolveRuleset(ref: string): Promise<RulesetConfig | null> {
+    // Check for built-in rulesets first
+    if (ref === 'default') {
+      return this.getDefaultRuleset();
+    }
+    if (ref === 'linters') {
+      return this.getLintersRuleset();
+    }
+
     // Parse the ruleset reference
     const parsed = this.parseRulesetRef(ref);
 
@@ -62,8 +71,8 @@ export class RulesetResolver {
     // For community rulesets, we'd fetch from the community repo
     // For git refs, we'd clone/fetch the repo
     // For now, return null and use default ruleset
-    console.error(`Warning: Ruleset not found in cache: ${ref}`);
-    console.error("Run 'cmc update' to fetch rulesets");
+    console.warn(`Warning: Ruleset not found in cache: ${ref}`);
+    console.warn("Run 'cmc update' to fetch rulesets");
 
     return null;
   }
@@ -128,5 +137,9 @@ export class RulesetResolver {
 
   private getDefaultRuleset(): RulesetConfig {
     return defaultRulesetJson as RulesetConfig;
+  }
+
+  private getLintersRuleset(): RulesetConfig {
+    return lintersRulesetJson as RulesetConfig;
   }
 }
