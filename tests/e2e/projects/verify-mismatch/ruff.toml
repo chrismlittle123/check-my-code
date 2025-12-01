@@ -1,0 +1,6 @@
+# Ruff config with intentional mismatches
+line-length = 100  # Different from cmc.toml (120)
+
+[lint]
+select = ["E", "F"]  # Different from cmc.toml (missing I, UP)
+# Missing: ignore

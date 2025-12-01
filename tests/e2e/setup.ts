@@ -47,6 +47,9 @@ const ALL_PROJECTS = [
   'context',
   'context-multiple',
   'context-missing',
+  'verify-match',
+  'verify-mismatch',
+  'verify-missing',
 ];
 
 /**

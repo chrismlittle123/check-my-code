@@ -1,0 +1,8 @@
+[project]
+name = "verify-missing-test"
+
+[rulesets.eslint.rules]
+"no-var" = "error"
+
+[rulesets.ruff]
+line-length = 100
