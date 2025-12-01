@@ -1,0 +1,5 @@
+[lint]
+select = [
+    "F",   # Pyflakes (includes F401 unused imports)
+    "E",   # pycodestyle errors (includes E231 whitespace)
+]

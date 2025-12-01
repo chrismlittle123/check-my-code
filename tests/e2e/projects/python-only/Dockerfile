@@ -27,6 +27,7 @@ WORKDIR /project
 
 # Copy test project files
 COPY tests/e2e/projects/python-only/cmc.toml ./
+COPY tests/e2e/projects/python-only/ruff.toml ./
 COPY tests/e2e/projects/python-only/*.py ./
 
 ENTRYPOINT ["node", "/cmc/dist/cli/index.js"]

@@ -1,7 +1,7 @@
 # CLI Commands Feature PRD (Section 7.1)
 
 **Parent Document:** check-my-code-prd.md
-**Version:** 1.0
+**Version:** 1.1
 **Status:** Draft
 
 ---
@@ -10,12 +10,9 @@
 
 1. [Overview](#1-overview)
 2. [v1 MVP Commands](#2-v1-mvp-commands)
-   - 2.1 [cmc init](#21-cmc-init)
-   - 2.2 [cmc check](#22-cmc-check)
-   - 2.3 [cmc generate](#23-cmc-generate)
-   - 2.4 [cmc verify](#24-cmc-verify)
-   - 2.5 [cmc update](#25-cmc-update)
-   - 2.6 [cmc context](#26-cmc-context)
+   - 2.1 [cmc check](#21-cmc-check)
+   - 2.2 [cmc generate](#22-cmc-generate)
+   - 2.3 [cmc context](#23-cmc-context)
 3. [v2 Future Commands](#3-v2-future-commands)
 4. [Global Options](#4-global-options)
 5. [Error Handling](#5-error-handling)
@@ -44,146 +41,71 @@ All commands use lowercase, single-word names. Subcommands are not used in v1 to
 
 ## 2. v1 MVP Commands
 
-### 2.1 `cmc init`
+### 2.1 `cmc check`
 
-**Purpose:** Generate a minimal configuration file for the current project.
+**Purpose:** Run linters on project files and report violations.
 
 #### 2.1.1 Usage
-
-```bash
-cmc init [options]
-```
-
-#### 2.1.2 Options
-
-| Option    | Short | Description                   | Default |
-| --------- | ----- | ----------------------------- | ------- |
-| `--force` | `-f`  | Overwrite existing `cmc.toml` | `false` |
-
-#### 2.1.3 Behavior
-
-1. Check if `cmc.toml` already exists
-   - If exists and no `--force`: exit with error code 1
-2. Detect project characteristics:
-   - Languages present (by file extensions: `.ts`, `.js`, `.py`, etc.)
-   - Existing linter configs (eslint.config.js, ruff.toml)
-3. Generate minimal `cmc.toml` with placeholders
-4. Print next steps to stdout
-
-#### 2.1.4 Generated File
-
-**Minimal `cmc.toml`:**
-
-```toml
-[project]
-name = "my-project"
-category = "production"  # Options: production, prototype, internal
-
-# Extend community rulesets (optional)
-# [extends]
-# rulesets = [
-#   "github:check-my-code/rulesets/typescript-strict",
-# ]
-
-# ESLint rules - uses exact ESLint config syntax
-# [rulesets.eslint.rules]
-# no-var = "error"
-# prefer-const = "error"
-
-# Ruff configuration - uses exact Ruff config syntax
-# [rulesets.ruff]
-# line-length = 120
-#
-# [rulesets.ruff.lint]
-# select = ["E", "F", "I"]
-```
-
-#### 2.1.5 Output
-
-**Success:**
-
-```
-Created cmc.toml
-
-Next steps:
-1. Edit cmc.toml to configure your rules
-2. Run 'cmc generate eslint' or 'cmc generate ruff' to create linter configs
-3. Run 'cmc check' to verify your code
-
-Documentation: https://github.com/check-my-code/docs
-```
-
-**File exists error:**
-
-```
-Error: cmc.toml already exists
-
-Use --force to overwrite.
-```
-
-#### 2.1.6 Exit Codes
-
-| Code | Condition                                   |
-| ---- | ------------------------------------------- |
-| 0    | Configuration created successfully          |
-| 1    | Configuration already exists (no `--force`) |
-| 2    | Invalid path or permission error            |
-
----
-
-### 2.2 `cmc check`
-
-**Purpose:** Verify linter configs match ruleset requirements, then run linters.
-
-#### 2.2.1 Usage
 
 ```bash
 cmc check [options] [<path>]
 ```
 
-#### 2.2.2 Arguments
+#### 2.1.2 Arguments
 
 | Argument | Description                                                                                                     |
 | -------- | --------------------------------------------------------------------------------------------------------------- |
 | `<path>` | Optional path to check. Can be a file or directory. If omitted, checks entire project from `cmc.toml` location. |
 
-#### 2.2.3 Options
+#### 2.1.3 Options
 
-| Option        | Short | Description                                      | Default |
-| ------------- | ----- | ------------------------------------------------ | ------- |
-| `--no-verify` |       | Skip linter config verification against cmc.toml | `false` |
-| `--json`      |       | Output results as JSON                           | `false` |
+| Option   | Short | Description            | Default |
+| -------- | ----- | ---------------------- | ------- |
+| `--json` |       | Output results as JSON | `false` |
 
-#### 2.2.4 Behavior
+#### 2.1.4 Behavior
 
 **Execution flow:**
 
-1. Discover configuration file (`cmc.toml`)
-2. Validate `cmc.toml` against JSON Schema
-3. Resolve community rulesets (if `[extends]` present)
-4. Merge rules (local overrides community)
-5. **Verify linter configs** (unless `--no-verify`):
-   - Parse project's eslint.config.js and/or ruff.toml
-   - Check all required rules from `cmc.toml` are present and at least as strict
-   - If verification fails, exit with error showing missing/weak rules
-6. Determine files in scope:
+1. Discover configuration file (`cmc.toml`) by walking up from current directory
+2. Validate `cmc.toml` has required `[project] name` field
+3. Determine files in scope:
    - If `<path>` provided: files matching path
-   - If no path: all source files under config directory
-7. Run linter checks using project's native config files
-8. Collect all violations
-9. Output results (format based on flags)
-10. Exit with appropriate code
+   - If no path: all source files under project root
+4. Filter files by extension:
+   - TypeScript/JavaScript: `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`
+   - Python: `.py`, `.pyi`
+5. Run appropriate linters:
+   - ESLint for JS/TS files (uses project's `eslint.config.js`)
+   - Ruff for Python files (uses project's `ruff.toml`)
+6. Collect all violations
+7. Output results (format based on flags)
+8. Exit with appropriate code
 
-#### 2.2.5 Output Formats
+**Ignored directories:**
+
+- `node_modules/`
+- `.git/`
+- `dist/`
+- `build/`
+- `__pycache__/`
+- `.venv/`
+
+#### 2.1.5 Output Formats
 
 **Default output:**
 
 ```
-src/main.py:15:1 F401 'os' imported but unused
-src/main.py:42:10 E501 Line too long (120 > 100)
-src/utils.ts:8:5 no-var Unexpected var, use let or const instead
+src/main.py:15 [ruff/F401] 'os' imported but unused
+src/utils.ts:8 [eslint/no-var] Unexpected var, use let or const instead
 
-3 violations found
+✗ 2 violations found
+```
+
+**No violations:**
+
+```
+✓ No violations found (10 files checked)
 ```
 
 **JSON output (`--json`):**
@@ -196,65 +118,51 @@ src/utils.ts:8:5 no-var Unexpected var, use let or const instead
       "line": 15,
       "column": 1,
       "rule": "F401",
-      "message": "'os' imported but unused"
+      "message": "'os' imported but unused",
+      "linter": "ruff"
     },
     {
       "file": "src/utils.ts",
       "line": 8,
       "column": 5,
       "rule": "no-var",
-      "message": "Unexpected var, use let or const instead"
+      "message": "Unexpected var, use let or const instead",
+      "linter": "eslint"
     }
   ],
   "summary": {
-    "total": 3,
-    "files": 2
+    "files_checked": 10,
+    "violations_count": 2
   }
 }
 ```
 
-#### 2.2.6 Verification Failure Output
+#### 2.1.6 Exit Codes
 
-```
-Error: Linter config verification failed
+| Code | Condition                                              |
+| ---- | ------------------------------------------------------ |
+| 0    | No violations found                                    |
+| 1    | Violations found                                       |
+| 2    | Configuration error (missing cmc.toml, invalid syntax) |
+| 3    | Runtime error (linter not installed)                   |
 
-ESLint config missing required rules:
-  - eqeqeq (required by cmc.toml)
-  - max-lines-per-function (required by cmc.toml)
+#### 2.1.7 Edge Cases
 
-ESLint config has weaker rules:
-  - no-var: "warn" (required: "error")
-
-Run 'cmc generate eslint' to create a compliant config.
-Or run 'cmc check --no-verify' to skip verification.
-```
-
-#### 2.2.7 Exit Codes
-
-| Code | Condition                                                                 |
-| ---- | ------------------------------------------------------------------------- |
-| 0    | No violations found                                                       |
-| 1    | Violations found                                                          |
-| 2    | Configuration error (missing config, invalid syntax, verification failed) |
-| 3    | Runtime error (linter failed, linter not installed)                       |
-
-#### 2.2.8 Edge Cases
-
-| Scenario                         | Behavior                                     |
-| -------------------------------- | -------------------------------------------- |
-| No files match path              | Warning to stderr, exit 0                    |
-| Empty project                    | Warning "No files to check", exit 0          |
-| Linter not installed             | Exit 3 with installation instructions        |
-| Linter config missing            | Exit 2 with suggestion to run `cmc generate` |
-| Linter config verification fails | Exit 2 with list of missing/weak rules       |
+| Scenario              | Behavior                                         |
+| --------------------- | ------------------------------------------------ |
+| No files match path   | Warning to stderr, exit 0                        |
+| Empty project         | Warning "No files to check", exit 0              |
+| Linter not installed  | Silently skip that linter (graceful degradation) |
+| Linter config missing | Linter runs with defaults or skips               |
+| Path not found        | Warning to stderr, exit 0                        |
 
 ---
 
-### 2.3 `cmc generate`
+### 2.2 `cmc generate`
 
 **Purpose:** Generate linter config files from `cmc.toml` ruleset.
 
-#### 2.3.1 Usage
+#### 2.2.1 Usage
 
 ```bash
 cmc generate <linter>
@@ -262,36 +170,35 @@ cmc generate eslint           # Generate eslint.config.js
 cmc generate ruff             # Generate ruff.toml
 ```
 
-#### 2.3.2 Arguments
+#### 2.2.2 Arguments
 
 | Argument   | Description                                         |
 | ---------- | --------------------------------------------------- |
 | `<linter>` | Which linter config to generate: `eslint` or `ruff` |
 
-#### 2.3.3 Options
+#### 2.2.3 Options
 
 | Option     | Short | Description                      | Default |
 | ---------- | ----- | -------------------------------- | ------- |
 | `--force`  | `-f`  | Overwrite existing config file   | `false` |
 | `--stdout` |       | Output to stdout instead of file | `false` |
 
-#### 2.3.4 Behavior
+#### 2.2.4 Behavior
 
 1. Load and validate `cmc.toml`
-2. Resolve community rulesets (if `[extends]` present)
-3. Merge rules (local overrides community)
-4. Check if target config file already exists
+2. Read ruleset configuration from `[rulesets.eslint]` or `[rulesets.ruff]`
+3. Check if target config file already exists
    - If exists and no `--force`: exit with error
-5. Generate linter config with all merged rules
-6. Write to standard location (or stdout if `--stdout`)
-7. Print success message
+4. Generate linter config with all defined rules
+5. Write to standard location (or stdout if `--stdout`)
+6. Print success message
 
 **Generated File Locations:**
 
 - ESLint: `eslint.config.js` (flat config format)
 - Ruff: `ruff.toml`
 
-#### 2.3.5 Generated File Examples
+#### 2.2.5 Generated File Examples
 
 **eslint.config.js:**
 
@@ -327,7 +234,7 @@ select = ["E", "F", "I", "UP"]
 ignore = ["E501"]
 ```
 
-#### 2.3.6 Output
+#### 2.2.6 Output
 
 **Success:**
 
@@ -352,7 +259,7 @@ Error: eslint.config.js already exists
 Use --force to overwrite, or manually merge the rules.
 ```
 
-#### 2.3.7 Exit Codes
+#### 2.2.7 Exit Codes
 
 | Code | Condition                                                             |
 | ---- | --------------------------------------------------------------------- |
@@ -362,184 +269,24 @@ Use --force to overwrite, or manually merge the rules.
 
 ---
 
-### 2.4 `cmc verify`
-
-**Purpose:** Verify project linter configs match ruleset requirements (without running linters).
-
-#### 2.4.1 Usage
-
-```bash
-cmc verify                    # Verify all linter configs
-cmc verify eslint             # Verify only ESLint config
-cmc verify ruff               # Verify only Ruff config
-```
-
-#### 2.4.2 Arguments
-
-| Argument   | Description                                                                             |
-| ---------- | --------------------------------------------------------------------------------------- |
-| `<linter>` | Optional: which linter config to verify (`eslint` or `ruff`). If omitted, verifies all. |
-
-#### 2.4.3 Options
-
-| Option   | Short | Description    | Default |
-| -------- | ----- | -------------- | ------- |
-| `--json` |       | Output as JSON | `false` |
-
-#### 2.4.4 Behavior
-
-1. Load and validate `cmc.toml`
-2. Resolve community rulesets (if `[extends]` present)
-3. Merge rules (local overrides community)
-4. For each linter (or specified linter):
-   a. Parse project's linter config file
-   b. Extract enabled rules and their severity
-   c. Compare against required rules from merged ruleset
-   d. Identify: missing rules, weaker rules
-5. Output verification results
-6. Exit with appropriate code
-
-**Verification Logic:**
-
-| Scenario                            | Result                                    |
-| ----------------------------------- | ----------------------------------------- |
-| Rule present and at least as strict | Pass                                      |
-| Rule present but less strict        | Fail (e.g., "warn" when "error" required) |
-| Rule missing                        | Fail                                      |
-| Extra rules in linter config        | Pass (allowed)                            |
-
-**Strictness ordering:** `error` > `warn` > `off`
-
-#### 2.4.5 Output Formats
-
-**Default (issues found):**
-
-```
-Verifying ESLint config against cmc.toml...
-
-✗ Missing rules:
-  - eqeqeq (required by cmc.toml)
-  - max-lines-per-function (required by cmc.toml)
-
-✗ Weaker rules:
-  - no-var: "warn" (required: "error")
-
-3 issues found.
-```
-
-**All pass:**
-
-```
-Verifying ESLint config against cmc.toml...
-
-✓ All 5 required rules are present and sufficiently strict.
-
-Verifying Ruff config against cmc.toml...
-
-✓ All required settings are present.
-
-All linter configs are valid.
-```
-
-**JSON:**
-
-```json
-{
-  "eslint": {
-    "valid": false,
-    "missing": ["eqeqeq", "max-lines-per-function"],
-    "weaker": [{ "rule": "no-var", "current": "warn", "required": "error" }]
-  },
-  "ruff": {
-    "valid": true,
-    "missing": [],
-    "weaker": []
-  }
-}
-```
-
-#### 2.4.6 Exit Codes
-
-| Code | Condition                                           |
-| ---- | --------------------------------------------------- |
-| 0    | All required rules present and sufficiently strict  |
-| 1    | Verification failed (missing or weaker rules)       |
-| 2    | Configuration error (no cmc.toml, no linter config) |
-
----
-
-### 2.5 `cmc update`
-
-**Purpose:** Fetch latest versions of configured community rulesets.
-
-#### 2.5.1 Usage
-
-```bash
-cmc update
-```
-
-#### 2.5.2 Behavior
-
-1. Load `cmc.toml`
-2. Find `[extends].rulesets` entries
-3. For each community ruleset reference:
-   a. Parse the reference (e.g., `github:check-my-code/rulesets/typescript-strict`)
-   b. Fetch from Git repository
-   c. Store in local cache (`~/.cmc/rulesets/`)
-4. Report what was updated
-
-#### 2.5.3 Output
-
-**Success:**
-
-```
-Updating community rulesets...
-
-✓ github:check-my-code/rulesets/typescript-strict (updated)
-✓ github:check-my-code/rulesets/python-prod (already up to date)
-
-2 rulesets checked, 1 updated.
-```
-
-**No rulesets configured:**
-
-```
-No community rulesets configured in cmc.toml.
-
-Add rulesets to extend:
-  [extends]
-  rulesets = ["github:check-my-code/rulesets/typescript-strict"]
-```
-
-#### 2.5.4 Exit Codes
-
-| Code | Condition                                    |
-| ---- | -------------------------------------------- |
-| 0    | Update successful (or no rulesets to update) |
-| 2    | Configuration error (invalid cmc.toml)       |
-| 3    | Network error or Git fetch failed            |
-
----
-
-### 2.6 `cmc context`
+### 2.3 `cmc context`
 
 **Purpose:** Output active rules formatted for AI agent consumption.
 
-#### 2.6.1 Usage
+#### 2.3.1 Usage
 
 ```bash
 cmc context
 ```
 
-#### 2.6.2 Behavior
+#### 2.3.2 Behavior
 
 1. Load and validate `cmc.toml`
-2. Resolve community rulesets (if `[extends]` present)
-3. Merge rules (local overrides community)
-4. Format rules as markdown
-5. Output to stdout
+2. Read ruleset configuration
+3. Format rules as markdown
+4. Output to stdout
 
-#### 2.6.3 Output Format
+#### 2.3.3 Output Format
 
 ```markdown
 # Code Standards for this Project
@@ -565,7 +312,7 @@ You MUST follow these rules when writing code:
 | ignore      | ["E501"]              |
 ```
 
-#### 2.6.4 Exit Codes
+#### 2.3.4 Exit Codes
 
 | Code | Condition                              |
 | ---- | -------------------------------------- |
@@ -578,7 +325,33 @@ You MUST follow these rules when writing code:
 
 The following commands are planned for v2:
 
-### 3.1 `cmc diff`
+### 3.1 `cmc init`
+
+Generate a minimal configuration file for new projects.
+
+```bash
+cmc init                      # Generate minimal cmc.toml
+cmc init --force              # Overwrite existing config
+```
+
+### 3.2 `cmc verify`
+
+Verify project linter configs match ruleset requirements (without running linters).
+
+```bash
+cmc verify                    # Verify all linter configs
+cmc verify eslint             # Verify only ESLint config
+```
+
+### 3.3 `cmc update`
+
+Fetch latest versions of configured community rulesets.
+
+```bash
+cmc update                    # Update all community rulesets
+```
+
+### 3.4 `cmc diff`
 
 Show files changed since last check.
 
@@ -587,7 +360,7 @@ cmc diff                      # List changed files
 cmc diff --stat               # Show change statistics
 ```
 
-### 3.2 `cmc dry-run`
+### 3.5 `cmc dry-run`
 
 Preview what would be checked without running checks.
 
@@ -595,7 +368,7 @@ Preview what would be checked without running checks.
 cmc dry-run                   # Show files and rules that would be checked
 ```
 
-### 3.3 `cmc report`
+### 3.6 `cmc report`
 
 Generate detailed violation reports.
 
@@ -644,20 +417,21 @@ Error: Configuration file not found
 
 No cmc.toml found in current directory or parent directories.
 
-Run 'cmc init' to create a configuration file.
+Create a cmc.toml file with:
+  [project]
+  name = "your-project"
 ```
 
 ### 5.2 Common Errors
 
-| Error                             | Exit Code | Suggestion                        |
-| --------------------------------- | --------- | --------------------------------- |
-| No cmc.toml found                 | 2         | Run `cmc init`                    |
-| Invalid cmc.toml syntax           | 2         | Check TOML syntax                 |
-| JSON Schema validation failed     | 2         | Fix cmc.toml structure            |
-| Linter config missing             | 2         | Run `cmc generate`                |
-| Linter config verification failed | 2         | Run `cmc generate --force`        |
-| Linter not installed              | 3         | Install the required linter       |
-| Community ruleset fetch failed    | 3         | Check network, verify ruleset URL |
+| Error                         | Exit Code | Suggestion                              |
+| ----------------------------- | --------- | --------------------------------------- |
+| No cmc.toml found             | 2         | Create cmc.toml manually                |
+| Invalid cmc.toml syntax       | 2         | Check TOML syntax                       |
+| Missing [project] name        | 2         | Add `name` to `[project]` section       |
+| Linter config missing         | -         | Linter runs with defaults or skips      |
+| Linter not installed          | -         | Silently skipped (graceful degradation) |
+| Config file exists (generate) | 1         | Use `--force` to overwrite              |
 
 ---
 
@@ -678,21 +452,15 @@ Use Commander.js for:
 // src/cli/index.ts
 import { Command } from 'commander';
 import { checkCommand } from './commands/check';
-import { initCommand } from './commands/init';
 import { generateCommand } from './commands/generate';
-import { verifyCommand } from './commands/verify';
-import { updateCommand } from './commands/update';
 import { contextCommand } from './commands/context';
 
 const program = new Command();
 
-program.name('cmc').description('Verify code against configurable rulesets').version(VERSION);
+program.name('cmc').description('Run ESLint and Ruff linters on your code').version(VERSION);
 
-program.addCommand(initCommand);
 program.addCommand(checkCommand);
 program.addCommand(generateCommand);
-program.addCommand(verifyCommand);
-program.addCommand(updateCommand);
 program.addCommand(contextCommand);
 
 program.parse();
@@ -707,9 +475,8 @@ Each command is a separate module:
 import { Command } from 'commander';
 
 export const checkCommand = new Command('check')
-  .description('Run verification checks')
+  .description('Run ESLint and Ruff checks')
   .argument('[path]', 'path to check')
-  .option('--no-verify', 'skip config verification')
   .option('--json', 'JSON output')
   .action(async (path, options) => {
     // Implementation
