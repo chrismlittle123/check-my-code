@@ -68,6 +68,10 @@ async function discoverFiles(targetPath: string, projectRoot: string): Promise<s
       '**/build/**',
       '**/__pycache__/**',
       '**/.venv/**',
+      // Linter config files should not be linted
+      '**/eslint.config.*',
+      '**/ruff.toml',
+      '**/pyproject.toml',
     ],
   });
 

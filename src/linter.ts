@@ -33,6 +33,7 @@ export async function runLinters(projectRoot: string, files: string[]): Promise<
 async function runRuff(projectRoot: string, files: string[]): Promise<Violation[]> {
   const hasRuff = await commandExists('ruff');
   if (!hasRuff) {
+    console.error('Warning: Ruff not found, skipping Python file checks');
     return [];
   }
 
@@ -57,6 +58,7 @@ async function runESLint(projectRoot: string, files: string[]): Promise<Violatio
   const hasGlobalESLint = await commandExists('eslint');
 
   if (!hasLocalESLint && !hasGlobalESLint) {
+    console.error('Warning: ESLint not found, skipping JavaScript/TypeScript file checks');
     return [];
   }
 

@@ -17,16 +17,8 @@ WORKDIR /project
 
 # Copy test project files
 COPY tests/e2e/projects/typescript-only/cmc.toml ./
+COPY tests/e2e/projects/typescript-only/eslint.config.js ./
 COPY tests/e2e/projects/typescript-only/*.ts ./
-
-# Create eslint config
-RUN echo 'import eslint from "@eslint/js";\
-import tseslint from "typescript-eslint";\
-export default tseslint.config(\
-  eslint.configs.recommended,\
-  ...tseslint.configs.recommended,\
-  { files: ["**/*.ts"], rules: { "no-var": "error", "prefer-const": "error", "@typescript-eslint/no-unused-vars": "error" } }\
-);' > eslint.config.js
 
 # Symlink node_modules from cmc
 RUN ln -s /cmc/node_modules ./node_modules

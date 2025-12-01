@@ -81,17 +81,6 @@ export async function runInDocker(
 }
 
 /**
- * Build and run a test project in Docker
- */
-export async function runProject(
-  projectName: string,
-  args: string[] = ['check']
-): Promise<DockerRunResult> {
-  const imageName = await buildImage(projectName);
-  return runInDocker(imageName, args);
-}
-
-/**
  * Check if Docker is available
  */
 export async function isDockerAvailable(): Promise<boolean> {

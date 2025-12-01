@@ -32,7 +32,15 @@ beforeAll(async () => {
   if (!dockerAvailable) return;
 
   // Build all images in parallel for faster setup
-  const projectNames = ['typescript-only', 'python-only', 'mixed-language', 'no-ruff', 'no-eslint'];
+  const projectNames = [
+    'typescript-only',
+    'python-only',
+    'mixed-language',
+    'no-ruff',
+    'no-eslint',
+    'invalid-config',
+    'no-config',
+  ];
 
   const results = await Promise.all(projectNames.map((name) => buildImage(name)));
 
@@ -51,10 +59,6 @@ afterAll(async () => {
 // TypeScript-only project tests
 // =============================================================================
 describe.skipIf(!dockerAvailable)('typescript-only project', () => {
-  it('builds successfully', () => {
-    expect(images['typescript-only']).toBe('cmc-e2e-typescript-only');
-  });
-
   it('exits 1 when violations found', async () => {
     const result = await runInDocker(images['typescript-only'], ['check']);
 
@@ -97,10 +101,6 @@ describe.skipIf(!dockerAvailable)('typescript-only project', () => {
 // Python-only project tests
 // =============================================================================
 describe.skipIf(!dockerAvailable)('python-only project', () => {
-  it('builds successfully', () => {
-    expect(images['python-only']).toBe('cmc-e2e-python-only');
-  });
-
   it('exits 1 when violations found', async () => {
     const result = await runInDocker(images['python-only'], ['check']);
 
@@ -130,10 +130,6 @@ describe.skipIf(!dockerAvailable)('python-only project', () => {
 // Mixed-language project tests
 // =============================================================================
 describe.skipIf(!dockerAvailable)('mixed-language project', () => {
-  it('builds successfully', () => {
-    expect(images['mixed-language']).toBe('cmc-e2e-mixed-language');
-  });
-
   it('detects violations from both linters', async () => {
     const result = await runInDocker(images['mixed-language'], ['check', '--json']);
     const output: JsonOutput = JSON.parse(result.stdout);
@@ -149,7 +145,7 @@ describe.skipIf(!dockerAvailable)('mixed-language project', () => {
     const result = await runInDocker(images['mixed-language'], ['check', '--json']);
     const output: JsonOutput = JSON.parse(result.stdout);
 
-    expect(output.summary.files_checked).toBe(5); // 2 py + 2 ts + eslint.config.js
+    expect(output.summary.files_checked).toBe(4); // 2 py + 2 ts (config files are ignored)
   }, 30000);
 
   it('can check only Python files', async () => {
@@ -174,10 +170,6 @@ describe.skipIf(!dockerAvailable)('mixed-language project', () => {
 // =============================================================================
 describe.skipIf(!dockerAvailable)('graceful degradation', () => {
   describe('no Ruff installed', () => {
-    it('builds successfully', () => {
-      expect(images['no-ruff']).toBe('cmc-e2e-no-ruff');
-    });
-
     it('exits 0 when Ruff unavailable (skips Python files)', async () => {
       const result = await runInDocker(images['no-ruff'], ['check', '--json']);
       const output: JsonOutput = JSON.parse(result.stdout);
@@ -186,13 +178,16 @@ describe.skipIf(!dockerAvailable)('graceful degradation', () => {
       expect(result.exitCode).toBe(0);
       expect(output.violations.length).toBe(0);
     }, 30000);
+
+    it('shows warning when Ruff is unavailable', async () => {
+      const result = await runInDocker(images['no-ruff'], ['check']);
+
+      expect(result.stderr).toContain('Ruff not found');
+      expect(result.stderr).toContain('skipping Python');
+    }, 30000);
   });
 
   describe('no ESLint installed', () => {
-    it('builds successfully', () => {
-      expect(images['no-eslint']).toBe('cmc-e2e-no-eslint');
-    });
-
     it('exits 0 when ESLint unavailable (skips TS files)', async () => {
       const result = await runInDocker(images['no-eslint'], ['check', '--json']);
       const output: JsonOutput = JSON.parse(result.stdout);
@@ -200,6 +195,13 @@ describe.skipIf(!dockerAvailable)('graceful degradation', () => {
       // Should not fail, just report no violations since ESLint is skipped
       expect(result.exitCode).toBe(0);
       expect(output.violations.length).toBe(0);
+    }, 30000);
+
+    it('shows warning when ESLint is unavailable', async () => {
+      const result = await runInDocker(images['no-eslint'], ['check']);
+
+      expect(result.stderr).toContain('ESLint not found');
+      expect(result.stderr).toContain('skipping JavaScript/TypeScript');
     }, 30000);
   });
 });
@@ -233,12 +235,85 @@ describe.skipIf(!dockerAvailable)('JSON output format', () => {
 });
 
 // =============================================================================
+// Text output format tests
+// =============================================================================
+describe.skipIf(!dockerAvailable)('text output format', () => {
+  it('shows success message when no violations', async () => {
+    const result = await runInDocker(images['typescript-only'], ['check', 'clean.ts']);
+
+    expect(result.stdout).toContain('No violations found');
+    expect(result.stdout).toContain('1 files checked');
+  }, 30000);
+
+  it('shows violation details in text format', async () => {
+    const result = await runInDocker(images['typescript-only'], ['check', 'violation.ts']);
+
+    // Should show file:line [linter/rule] message format
+    expect(result.stdout).toMatch(/violation\.ts:\d+ \[eslint\/no-var\]/);
+    expect(result.stdout).toContain('violation');
+  }, 30000);
+
+  it('shows violation count summary', async () => {
+    const result = await runInDocker(images['typescript-only'], ['check']);
+
+    expect(result.stdout).toMatch(/\d+ violations? found/);
+  }, 30000);
+});
+
+// =============================================================================
+// Config error handling tests
+// =============================================================================
+describe.skipIf(!dockerAvailable)('config error handling', () => {
+  describe('invalid config', () => {
+    it('exits with config error for missing project.name', async () => {
+      const result = await runInDocker(images['invalid-config'], ['check']);
+
+      // Exit code 2 is CONFIG_ERROR
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain('Invalid cmc.toml');
+    }, 30000);
+  });
+
+  describe('no config', () => {
+    it('exits with config error when cmc.toml missing', async () => {
+      const result = await runInDocker(images['no-config'], ['check']);
+
+      // Exit code 2 is CONFIG_ERROR
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain('No cmc.toml found');
+    }, 30000);
+  });
+});
+
+// =============================================================================
 // Edge cases
 // =============================================================================
 describe.skipIf(!dockerAvailable)('edge cases', () => {
-  it('handles nonexistent file path', async () => {
+  it('handles nonexistent file path gracefully', async () => {
     const result = await runInDocker(images['typescript-only'], ['check', 'nonexistent.ts']);
 
+    // Nonexistent paths are warned about but don't cause failure
     expect(result.stderr).toContain('Path not found');
+    expect(result.exitCode).toBe(0); // No files to check = no violations
+  }, 30000);
+});
+
+// =============================================================================
+// CLI flags
+// =============================================================================
+describe.skipIf(!dockerAvailable)('CLI flags', () => {
+  it('--version outputs version number', async () => {
+    const result = await runInDocker(images['typescript-only'], ['--version']);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toMatch(/\d+\.\d+\.\d+/);
+  }, 30000);
+
+  it('--help outputs usage information', async () => {
+    const result = await runInDocker(images['typescript-only'], ['--help']);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Usage:');
+    expect(result.stdout).toContain('check');
   }, 30000);
 });
