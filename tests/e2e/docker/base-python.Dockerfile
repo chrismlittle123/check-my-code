@@ -1,5 +1,5 @@
-# Full test environment: Python + Ruff + Node + ESLint
-# Used for: Mixed-language project tests
+# Base Python environment for e2e tests
+# Provides: Python 3.12, Node.js 20, Ruff, cmc CLI built
 FROM python:3.12-slim
 
 # Install Node.js
@@ -23,18 +23,11 @@ COPY tsconfig.json ./
 COPY src/ ./src/
 RUN npm run build
 
+# Copy community assets (for context command)
+COPY community-assets/ ./community-assets/
+
 # Setup project directory
 WORKDIR /project
-
-# Copy test project files
-COPY tests/e2e/projects/full/cmc.toml ./
-COPY tests/e2e/projects/full/eslint.config.js ./
-COPY tests/e2e/projects/full/ruff.toml ./
-COPY tests/e2e/projects/full/*.py ./
-COPY tests/e2e/projects/full/*.ts ./
-
-# Symlink node_modules from cmc
-RUN ln -s /cmc/node_modules ./node_modules
 
 ENTRYPOINT ["node", "/cmc/dist/cli/index.js"]
 CMD ["check"]

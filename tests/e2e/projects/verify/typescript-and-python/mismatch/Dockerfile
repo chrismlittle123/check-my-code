@@ -1,4 +1,4 @@
-# Context command test environment (missing ai-context config)
+# Verify command test environment (mismatching configs)
 FROM node:20-slim
 
 WORKDIR /cmc
@@ -12,17 +12,16 @@ COPY tsconfig.json ./
 COPY src/ ./src/
 RUN npm run build
 
-# Copy community assets (required for context templates)
-COPY community-assets/ ./community-assets/
-
 # Setup project directory
 WORKDIR /project
 
 # Copy test files
-COPY tests/e2e/projects/context-missing/cmc.toml ./
+COPY tests/e2e/projects/verify/typescript-and-python/mismatch/cmc.toml ./
+COPY tests/e2e/projects/verify/typescript-and-python/mismatch/eslint.config.js ./
+COPY tests/e2e/projects/verify/typescript-and-python/mismatch/ruff.toml ./
 
 # Symlink node_modules from cmc
 RUN ln -s /cmc/node_modules ./node_modules
 
 ENTRYPOINT ["node", "/cmc/dist/cli/index.js"]
-CMD ["context", "--stdout"]
+CMD ["verify"]

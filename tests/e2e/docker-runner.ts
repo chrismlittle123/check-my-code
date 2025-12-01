@@ -18,12 +18,12 @@ export interface DockerRunResult {
 
 /**
  * Build a Docker image for a test project
- * @param projectName - Name of the project directory
- * @param projectsDir - Subdirectory under tests/e2e/ containing projects (default: 'projects')
+ * @param projectPath - Path to project relative to tests/e2e/projects (e.g., 'check/typescript/default')
  */
-export async function buildImage(projectName: string, projectsDir = 'projects'): Promise<string> {
-  const imageName = `cmc-e2e-${projectName}`;
-  const dockerfilePath = join(ROOT_DIR, 'tests', 'e2e', projectsDir, projectName, 'Dockerfile');
+export async function buildImage(projectPath: string): Promise<string> {
+  // Convert path to image name (e.g., 'check/typescript/default' -> 'cmc-e2e-check-typescript-default')
+  const imageName = `cmc-e2e-${projectPath.replace(/\//g, '-')}`;
+  const dockerfilePath = join(ROOT_DIR, 'tests', 'e2e', 'projects', projectPath, 'Dockerfile');
 
   return new Promise((resolve, reject) => {
     const proc = spawn('docker', ['build', '-t', imageName, '-f', dockerfilePath, ROOT_DIR], {

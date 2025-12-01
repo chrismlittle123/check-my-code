@@ -1,4 +1,5 @@
-# Verify command test environment (missing linter config files)
+# Base Node.js environment for e2e tests
+# Provides: Node.js 20, npm, cmc CLI built, ESLint available
 FROM node:20-slim
 
 WORKDIR /cmc
@@ -12,14 +13,14 @@ COPY tsconfig.json ./
 COPY src/ ./src/
 RUN npm run build
 
+# Copy community assets (for context command)
+COPY community-assets/ ./community-assets/
+
 # Setup project directory
 WORKDIR /project
 
-# Copy test files (no eslint.config.js or ruff.toml)
-COPY tests/e2e/projects/verify-missing/cmc.toml ./
-
-# Symlink node_modules from cmc
+# Symlink node_modules from cmc (provides eslint)
 RUN ln -s /cmc/node_modules ./node_modules
 
 ENTRYPOINT ["node", "/cmc/dist/cli/index.js"]
-CMD ["verify"]
+CMD ["check"]

@@ -1,4 +1,4 @@
-# Context command test environment
+# Context command test environment (missing ai-context config)
 FROM node:20-slim
 
 WORKDIR /cmc
@@ -19,7 +19,7 @@ COPY community-assets/ ./community-assets/
 WORKDIR /project
 
 # Copy test files
-COPY tests/e2e/projects/context/cmc.toml ./
+COPY tests/e2e/projects/context/no-language/missing/cmc.toml ./
 
 # Symlink node_modules from cmc
 RUN ln -s /cmc/node_modules ./node_modules

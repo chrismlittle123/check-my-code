@@ -1,12 +1,24 @@
 /**
  * Shared setup for e2e tests
  *
- * Projects:
- * - typescript: Node + ESLint (TypeScript linting, config generation, CLI tests)
- * - python: Python + Ruff (Python linting)
- * - full: Both linters (mixed-language projects)
- * - degraded-ruff: Python files without Ruff installed
- * - degraded-eslint: TypeScript files without ESLint installed
+ * Project structure: command/language/test
+ *
+ * check/
+ *   typescript/default         - TypeScript linting
+ *   typescript/no-eslint       - Degraded: no ESLint installed
+ *   python/default             - Python linting
+ *   python/no-ruff             - Degraded: no Ruff installed
+ *   typescript-and-python/default - Mixed-language projects
+ *
+ * context/
+ *   no-language/single    - Single template
+ *   no-language/missing   - No templates configured
+ *   no-language/multiple  - Multiple templates
+ *
+ * verify/
+ *   typescript-and-python/match     - Matching configs
+ *   typescript-and-python/mismatch  - Mismatching configs
+ *   typescript-and-python/missing   - Missing config files
  */
 
 import { beforeAll, afterAll } from 'vitest';
@@ -34,41 +46,45 @@ if (!dockerAvailable) {
   console.warn('Docker not available - skipping Docker-based e2e tests');
 }
 
-// Shared image registry
+// Shared image registry (keyed by project path)
 export const images: Record<string, string> = {};
 
-// All available projects
+// All available project paths
 const ALL_PROJECTS = [
-  'typescript',
-  'python',
-  'full',
-  'degraded-ruff',
-  'degraded-eslint',
-  'context',
-  'context-multiple',
-  'context-missing',
-  'verify-match',
-  'verify-mismatch',
-  'verify-missing',
+  // check command
+  'check/typescript/default',
+  'check/typescript/no-eslint',
+  'check/python/default',
+  'check/python/no-ruff',
+  'check/typescript-and-python/default',
+  // context command
+  'context/no-language/single',
+  'context/no-language/missing',
+  'context/no-language/multiple',
+  // verify command
+  'verify/typescript-and-python/match',
+  'verify/typescript-and-python/mismatch',
+  'verify/typescript-and-python/missing',
 ];
 
 /**
- * Setup function to build Docker images for specified projects
+ * Setup function to build Docker images for specified project paths
+ * @param projectPaths - Paths relative to tests/e2e/projects (e.g., 'check/typescript/default')
  */
-export function setupImages(projectNames: string[] = ALL_PROJECTS) {
+export function setupImages(projectPaths: string[] = ALL_PROJECTS) {
   beforeAll(async () => {
     if (!dockerAvailable) return;
 
-    const results = await Promise.all(projectNames.map((name) => buildImage(name)));
+    const results = await Promise.all(projectPaths.map((path) => buildImage(path)));
 
-    projectNames.forEach((name, i) => {
-      images[name] = results[i];
+    projectPaths.forEach((path, i) => {
+      images[path] = results[i];
     });
   }, 300000);
 
   afterAll(async () => {
     if (dockerAvailable) {
-      const imagesToClean = projectNames.map((name) => images[name]).filter(Boolean);
+      const imagesToClean = projectPaths.map((path) => images[path]).filter(Boolean);
       await cleanupImages(imagesToClean);
     }
   }, 30000);

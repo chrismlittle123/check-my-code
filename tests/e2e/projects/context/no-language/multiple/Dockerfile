@@ -1,4 +1,4 @@
-# Verify command test environment (mismatching configs)
+# Context command test environment (multiple templates)
 FROM node:20-slim
 
 WORKDIR /cmc
@@ -12,16 +12,17 @@ COPY tsconfig.json ./
 COPY src/ ./src/
 RUN npm run build
 
+# Copy community assets (required for context templates)
+COPY community-assets/ ./community-assets/
+
 # Setup project directory
 WORKDIR /project
 
 # Copy test files
-COPY tests/e2e/projects/verify-mismatch/cmc.toml ./
-COPY tests/e2e/projects/verify-mismatch/eslint.config.js ./
-COPY tests/e2e/projects/verify-mismatch/ruff.toml ./
+COPY tests/e2e/projects/context/no-language/multiple/cmc.toml ./
 
 # Symlink node_modules from cmc
 RUN ln -s /cmc/node_modules ./node_modules
 
 ENTRYPOINT ["node", "/cmc/dist/cli/index.js"]
-CMD ["verify"]
+CMD ["context", "--stdout"]

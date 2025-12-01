@@ -27,9 +27,9 @@ RUN npm run build
 WORKDIR /project
 
 # Copy test project files
-COPY tests/e2e/projects/python/cmc.toml ./
-COPY tests/e2e/projects/python/ruff.toml ./
-COPY tests/e2e/projects/python/*.py ./
+COPY tests/e2e/projects/check/python/default/cmc.toml ./
+COPY tests/e2e/projects/check/python/default/ruff.toml ./
+COPY tests/e2e/projects/check/python/default/*.py ./
 
 ENTRYPOINT ["node", "/cmc/dist/cli/index.js"]
 CMD ["check"]

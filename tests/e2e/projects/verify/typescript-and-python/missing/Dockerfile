@@ -1,5 +1,4 @@
-# TypeScript test environment: Node.js + ESLint
-# Used for: TypeScript linting, config generation, CLI tests, error handling
+# Verify command test environment (missing linter config files)
 FROM node:20-slim
 
 WORKDIR /cmc
@@ -16,13 +15,11 @@ RUN npm run build
 # Setup project directory
 WORKDIR /project
 
-# Copy test files
-COPY tests/e2e/projects/typescript/cmc.toml ./
-COPY tests/e2e/projects/typescript/eslint.config.js ./
-COPY tests/e2e/projects/typescript/*.ts ./
+# Copy test files (no eslint.config.js or ruff.toml)
+COPY tests/e2e/projects/verify/typescript-and-python/missing/cmc.toml ./
 
 # Symlink node_modules from cmc
 RUN ln -s /cmc/node_modules ./node_modules
 
 ENTRYPOINT ["node", "/cmc/dist/cli/index.js"]
-CMD ["check"]
+CMD ["verify"]

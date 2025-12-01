@@ -17,8 +17,8 @@ COPY dist/ ./dist/
 WORKDIR /project
 
 # Copy test project files (TS files to check, but no ESLint to check them)
-COPY tests/e2e/projects/typescript/cmc.toml ./
-COPY tests/e2e/projects/typescript/*.ts ./
+COPY tests/e2e/projects/check/typescript/default/cmc.toml ./
+COPY tests/e2e/projects/check/typescript/default/*.ts ./
 
 ENTRYPOINT ["node", "/cmc/dist/cli/index.js"]
 CMD ["check"]
