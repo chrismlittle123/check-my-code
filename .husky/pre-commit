@@ -10,6 +10,7 @@
 # 1. ESLint - Check for code quality issues and auto-fix where possible
 # 2. Prettier - Format code consistently
 # 3. TypeScript - Type-check staged files
+# 4. Check kebab-case directory names in tests/e2e/projects
 #
 # To bypass (use sparingly): git commit --no-verify
 # =============================================================================
@@ -20,6 +21,13 @@ echo "🔍 Running pre-commit checks..."
 npx lint-staged
 
 # Check exit code
+if [ $? -ne 0 ]; then
+  echo "❌ Pre-commit checks failed. Please fix the errors above."
+  exit 1
+fi
+
+# Check kebab-case directory names
+./scripts/check-kebab-case.sh
 if [ $? -ne 0 ]; then
   echo "❌ Pre-commit checks failed. Please fix the errors above."
   exit 1
