@@ -35,8 +35,8 @@
  *   empty-ruleset   - No rulesets defined
  */
 
-import { beforeAll, afterAll } from 'vitest';
-import { isDockerAvailable, cleanupImages, buildImage } from './docker-runner.js';
+import { beforeAll } from 'vitest';
+import { isDockerAvailable, buildImage } from './docker-runner.js';
 
 export interface JsonOutput {
   violations: {
@@ -101,6 +101,9 @@ const ALL_PROJECTS = [
 /**
  * Setup function to build Docker images for specified project paths
  * @param projectPaths - Paths relative to tests/e2e/projects (e.g., 'check/typescript/default')
+ *
+ * Note: Images are NOT cleaned up between test files to allow reuse.
+ * Run `docker rmi $(docker images -q 'cmc-e2e-*')` manually to clean up.
  */
 export function setupImages(projectPaths: string[] = ALL_PROJECTS) {
   beforeAll(async () => {
@@ -113,10 +116,5 @@ export function setupImages(projectPaths: string[] = ALL_PROJECTS) {
     });
   }, 300000);
 
-  afterAll(async () => {
-    if (dockerAvailable) {
-      const imagesToClean = projectPaths.map((path) => images[path]).filter(Boolean);
-      await cleanupImages(imagesToClean);
-    }
-  }, 30000);
+  // No cleanup - images are reused across test files for speed
 }

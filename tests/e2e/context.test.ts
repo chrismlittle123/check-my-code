@@ -13,7 +13,11 @@ setupImages([
   'context/no-language/missing',
   'context/no-language/invalid-source',
   'context/no-language/invalid-template',
+  'context/no-language/private-repo',
 ]);
+
+// Check if SSH agent is available for private repo tests
+const sshAgentAvailable = !!process.env.SSH_AUTH_SOCK;
 
 // =============================================================================
 // Context: stdout output
@@ -309,4 +313,32 @@ describe.skipIf(!dockerAvailable)('cmc context - help', () => {
     expect(result.stdout).toContain('--target');
     expect(result.stdout).toContain('--stdout');
   }, 30000);
+});
+
+// =============================================================================
+// Context: Private repository access
+// =============================================================================
+describe.skipIf(!dockerAvailable || !sshAgentAvailable)('cmc context - private repo access', () => {
+  it('fetches templates from private repo via SSH', async () => {
+    const result = await runInDocker(
+      images['context/no-language/private-repo'],
+      ['context', '--stdout'],
+      { sshAgent: true }
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('TypeScript 5.5 Coding Standards');
+  }, 60000);
+
+  it('includes expected content from private repo template', async () => {
+    const result = await runInDocker(
+      images['context/no-language/private-repo'],
+      ['context', '--stdout'],
+      { sshAgent: true }
+    );
+
+    expect(result.stdout).toContain('NEVER use `var`');
+    expect(result.stdout).toContain('NEVER use `any` type');
+    expect(result.stdout).toContain('strict equality');
+  }, 60000);
 });
