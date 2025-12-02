@@ -50,7 +50,7 @@ function validateAiContextConfig(config: Config): { templates: string[]; source:
     console.error('Error: No ai-context templates configured in cmc.toml.');
     console.error('\nAdd to your cmc.toml:');
     console.error('  [ai-context]');
-    console.error('  templates = ["typescript-strict"]');
+    console.error('  templates = ["typescript/5.5"]');
     process.exit(ExitCode.CONFIG_ERROR);
   }
   return {
@@ -59,10 +59,91 @@ function validateAiContextConfig(config: Config): { templates: string[]; source:
   };
 }
 
+// Manifest structure for prompts.json
+interface PromptsManifest {
+  schema_version: string;
+  prompts: Record<
+    string,
+    {
+      description: string;
+      format: string;
+      versions: Record<string, string | { file: string }>;
+    }
+  >;
+}
+
+// Cache the manifest to avoid fetching it multiple times
+let manifestCache: PromptsManifest | null = null;
+
+async function loadManifest(source: string): Promise<PromptsManifest> {
+  if (manifestCache) {
+    return manifestCache;
+  }
+
+  try {
+    const content = await fetchRemoteFile(source, 'prompts.json');
+    manifestCache = JSON.parse(content) as PromptsManifest;
+    return manifestCache;
+  } catch (error) {
+    if (error instanceof RemoteFetchError) {
+      throw new TemplateError(
+        `Failed to load prompts manifest.\n` + `Source: ${source}\n` + `Error: ${error.message}`
+      );
+    }
+    throw error;
+  }
+}
+
+function resolveTemplatePath(
+  manifest: PromptsManifest,
+  templateName: string,
+  requestedVersion?: string
+): string {
+  const prompt = manifest.prompts[templateName];
+  if (!prompt) {
+    const available = Object.keys(manifest.prompts).join(', ');
+    throw new TemplateError(
+      `Template "${templateName}" not found.\n` + `Available templates: ${available}`
+    );
+  }
+
+  // Resolve version: use requested version, or 'latest', or first available
+  const version = requestedVersion ?? 'latest';
+  const versionEntry = prompt.versions[version];
+
+  if (!versionEntry) {
+    const availableVersions = Object.keys(prompt.versions).join(', ');
+    throw new TemplateError(
+      `Version "${version}" not found for template "${templateName}".\n` +
+        `Available versions: ${availableVersions}`
+    );
+  }
+
+  // Handle 'latest' which points to another version
+  if (typeof versionEntry === 'string') {
+    const resolvedEntry = prompt.versions[versionEntry];
+    if (!resolvedEntry || typeof resolvedEntry === 'string') {
+      throw new TemplateError(`Invalid version reference for "${templateName}@${version}"`);
+    }
+    return resolvedEntry.file;
+  }
+
+  return versionEntry.file;
+}
+
 async function loadTemplate(templateName: string, source: string): Promise<string> {
   try {
-    // Fetch template from remote repository
-    const content = await fetchRemoteFile(source, `${templateName}.md`);
+    // Parse template name for optional version: "typescript/strict@1.0.0"
+    const [name, version] = templateName.split('@');
+
+    // Fetch and parse manifest
+    const manifest = await loadManifest(source);
+
+    // Resolve the file path from manifest
+    const filePath = resolveTemplatePath(manifest, name, version);
+
+    // Fetch the actual template file
+    const content = await fetchRemoteFile(source, filePath);
     return content;
   } catch (error) {
     if (error instanceof RemoteFetchError) {
@@ -143,7 +224,7 @@ Examples:
 
 Requires ai-context templates in cmc.toml:
   [ai-context]
-  templates = ["typescript-strict"]`
+  templates = ["typescript/5.5"]`
   )
   .action(async (options: ContextOptions) => {
     try {

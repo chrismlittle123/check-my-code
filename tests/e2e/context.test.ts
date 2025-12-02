@@ -23,7 +23,7 @@ describe.skipIf(!dockerAvailable)('cmc context - stdout', () => {
     const result = await runInDocker(images['context/no-language/single'], ['context', '--stdout']);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('TypeScript Coding Standards');
+    expect(result.stdout).toContain('TypeScript 5.5 Coding Standards');
     expect(result.stdout).toContain('NEVER use `var`');
   }, 30000);
 
@@ -34,8 +34,8 @@ describe.skipIf(!dockerAvailable)('cmc context - stdout', () => {
     ]);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('TypeScript Coding Standards');
-    expect(result.stdout).toContain('Python Coding Standards');
+    expect(result.stdout).toContain('TypeScript 5.5 Coding Standards');
+    expect(result.stdout).toContain('Python 3.12 Coding Standards');
   }, 30000);
 });
 
@@ -43,7 +43,7 @@ describe.skipIf(!dockerAvailable)('cmc context - stdout', () => {
 // Context: Template content verification (community-assets)
 // =============================================================================
 describe.skipIf(!dockerAvailable)('cmc context - template content', () => {
-  describe('typescript-strict template', () => {
+  describe('typescript/5.5 template', () => {
     it('includes variable declaration rules', async () => {
       const result = await runInDocker(images['context/no-language/single'], [
         'context',
@@ -97,9 +97,21 @@ describe.skipIf(!dockerAvailable)('cmc context - template content', () => {
       expect(result.stdout).toContain('ES module imports');
       expect(result.stdout).toContain('Sort imports');
     }, 30000);
+
+    it('includes TypeScript 5.5 specific features', async () => {
+      const result = await runInDocker(images['context/no-language/single'], [
+        'context',
+        '--stdout',
+      ]);
+
+      expect(result.stdout).toContain('### TypeScript 5.5 Features');
+      expect(result.stdout).toContain('inferred type predicates');
+      expect(result.stdout).toContain('`satisfies` operator');
+      expect(result.stdout).toContain('`using` declarations');
+    }, 30000);
   });
 
-  describe('python-prod template', () => {
+  describe('python/3.12 template', () => {
     it('includes import rules', async () => {
       const result = await runInDocker(images['context/no-language/multiple'], [
         'context',
@@ -107,8 +119,8 @@ describe.skipIf(!dockerAvailable)('cmc context - template content', () => {
       ]);
 
       expect(result.stdout).toContain('Remove all unused imports');
-      expect(result.stdout).toContain('Sort imports in the standard order');
-      expect(result.stdout).toContain('absolute imports over relative imports');
+      expect(result.stdout).toContain('Sort imports');
+      expect(result.stdout).toContain('absolute imports over relative');
     }, 30000);
 
     it('includes code style rules', async () => {
@@ -117,10 +129,8 @@ describe.skipIf(!dockerAvailable)('cmc context - template content', () => {
         '--stdout',
       ]);
 
-      expect(result.stdout).toContain('### Code Style');
-      expect(result.stdout).toContain('Maximum line length: 120 characters');
-      expect(result.stdout).toContain('f-strings for string formatting');
-      expect(result.stdout).toContain('modern Python syntax (3.10+)');
+      expect(result.stdout).toContain('100 characters');
+      expect(result.stdout).toContain('f-strings');
     }, 30000);
 
     it('includes type hint rules', async () => {
@@ -129,19 +139,19 @@ describe.skipIf(!dockerAvailable)('cmc context - template content', () => {
         '--stdout',
       ]);
 
-      expect(result.stdout).toContain('### Type Hints');
-      expect(result.stdout).toContain('type hints to all function signatures');
-      expect(result.stdout).toContain('from __future__ import annotations');
+      expect(result.stdout).toContain('type hints');
+      expect(result.stdout).toContain('built-in generics');
     }, 30000);
 
-    it('includes Python error handling rules', async () => {
+    it('includes Python 3.12 specific features', async () => {
       const result = await runInDocker(images['context/no-language/multiple'], [
         'context',
         '--stdout',
       ]);
 
-      expect(result.stdout).toContain('specific with exception types');
-      expect(result.stdout).toContain('context managers');
+      expect(result.stdout).toContain('`match` statements');
+      expect(result.stdout).toContain('`type` statement');
+      expect(result.stdout).toContain('exception groups');
     }, 30000);
 
     it('includes naming convention rules', async () => {
@@ -150,7 +160,6 @@ describe.skipIf(!dockerAvailable)('cmc context - template content', () => {
         '--stdout',
       ]);
 
-      expect(result.stdout).toContain('### Naming');
       expect(result.stdout).toContain('snake_case');
       expect(result.stdout).toContain('PascalCase');
       expect(result.stdout).toContain('SCREAMING_SNAKE_CASE');
@@ -164,8 +173,8 @@ describe.skipIf(!dockerAvailable)('cmc context - template content', () => {
         '--stdout',
       ]);
 
-      expect(result.stdout).toContain('## TypeScript Coding Standards');
-      expect(result.stdout).toContain('## Python Coding Standards');
+      expect(result.stdout).toContain('# TypeScript 5.5 Coding Standards');
+      expect(result.stdout).toContain('# Python 3.12 Coding Standards');
     }, 30000);
 
     it('preserves order: TypeScript first, Python second', async () => {
@@ -174,8 +183,8 @@ describe.skipIf(!dockerAvailable)('cmc context - template content', () => {
         '--stdout',
       ]);
 
-      const tsIndex = result.stdout.indexOf('TypeScript Coding Standards');
-      const pyIndex = result.stdout.indexOf('Python Coding Standards');
+      const tsIndex = result.stdout.indexOf('TypeScript 5.5 Coding Standards');
+      const pyIndex = result.stdout.indexOf('Python 3.12 Coding Standards');
 
       expect(tsIndex).toBeLessThan(pyIndex);
     }, 30000);

@@ -30,7 +30,7 @@ export interface AiContextConfig {
 
 // Default community repository for AI context templates
 export const DEFAULT_AI_CONTEXT_SOURCE =
-  'github:chrismlittle123/check-my-code-community/ai-contexts@latest';
+  'github:chrismlittle123/check-my-code-community/prompts@latest';
 
 // Supported AI tool targets for context output
 export type AiTarget = 'claude' | 'cursor' | 'copilot';

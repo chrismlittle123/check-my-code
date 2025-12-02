@@ -112,7 +112,7 @@ select = ["E", "F", "I", "UP"]
 name = "my-project"
 
 [ai-context]
-templates = ["typescript-strict", "python-prod"]
+templates = ["typescript/5.5", "python/3.12"]
 ```
 
 ## AI Context Templates
@@ -121,16 +121,23 @@ The `cmc context` command fetches templates from the [check-my-code-community](h
 
 **Available templates:**
 
-| Template            | Description                        |
-| ------------------- | ---------------------------------- |
-| `typescript-strict` | Strict TypeScript coding standards |
-| `python-prod`       | Production Python coding standards |
+| Template         | Description                                  |
+| ---------------- | -------------------------------------------- |
+| `typescript/5.5` | TypeScript 5.5 coding standards (Node.js 20) |
+| `python/3.12`    | Python 3.12 coding standards                 |
 
 Use them in your `cmc.toml`:
 
 ```toml
 [ai-context]
-templates = ["typescript-strict", "python-prod"]
+templates = ["typescript/5.5", "python/3.12"]
+```
+
+You can pin a specific version:
+
+```toml
+[ai-context]
+templates = ["typescript/5.5@1.0.0"]
 ```
 
 You can also use a custom source repository:
@@ -138,7 +145,7 @@ You can also use a custom source repository:
 ```toml
 [ai-context]
 templates = ["my-template"]
-source = "github:myorg/my-templates/ai-contexts@v1.0.0"
+source = "github:myorg/my-templates/prompts@v1.0.0"
 ```
 
 ## Exit Codes

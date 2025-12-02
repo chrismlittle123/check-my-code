@@ -2,4 +2,4 @@
 name = "context-multiple-test"
 
 [ai-context]
-templates = ["typescript-strict", "python-prod"]
+templates = ["typescript/5.5", "python/3.12"]
