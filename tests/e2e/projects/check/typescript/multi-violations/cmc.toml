@@ -1,0 +1,7 @@
+[project]
+name = "multi-violations-test"
+
+[rulesets.eslint.rules]
+"no-var" = "error"
+"prefer-const" = "error"
+"eqeqeq" = ["error", "always"]

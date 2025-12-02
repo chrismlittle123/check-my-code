@@ -11,6 +11,8 @@ setupImages([
   'context/no-language/single',
   'context/no-language/multiple',
   'context/no-language/missing',
+  'context/no-language/invalid-source',
+  'context/no-language/invalid-template',
 ]);
 
 // =============================================================================
@@ -249,6 +251,42 @@ describe.skipIf(!dockerAvailable)('cmc context - error handling', () => {
     expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain('Either --target or --stdout must be specified');
   }, 30000);
+});
+
+// =============================================================================
+// Context: Remote fetch error handling
+// =============================================================================
+describe.skipIf(!dockerAvailable)('cmc context - remote fetch errors', () => {
+  it('exits with error when remote source repo does not exist', async () => {
+    const result = await runInDocker(images['context/no-language/invalid-source'], [
+      'context',
+      '--stdout',
+    ]);
+
+    expect(result.exitCode).toBe(3); // RUNTIME_ERROR
+    expect(result.stderr).toContain('Failed to clone');
+  }, 60000); // Longer timeout for network operations
+
+  it('exits with error when template file not found in source', async () => {
+    const result = await runInDocker(images['context/no-language/invalid-template'], [
+      'context',
+      '--stdout',
+    ]);
+
+    expect(result.exitCode).toBe(3); // RUNTIME_ERROR
+    expect(result.stderr).toContain('not found');
+  }, 60000); // Longer timeout for network operations
+
+  it('shows helpful error message for invalid source', async () => {
+    const result = await runInDocker(images['context/no-language/invalid-source'], [
+      'context',
+      '--stdout',
+    ]);
+
+    // Should show error with context about the source
+    expect(result.stderr.length).toBeGreaterThan(0);
+    expect(result.exitCode).not.toBe(0);
+  }, 60000);
 });
 
 // =============================================================================

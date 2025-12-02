@@ -1,0 +1,5 @@
+[project]
+name = "empty-project-test"
+
+[rulesets.eslint.rules]
+"no-var" = "error"

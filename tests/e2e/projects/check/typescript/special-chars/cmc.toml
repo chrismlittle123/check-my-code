@@ -1,0 +1,5 @@
+[project]
+name = "special-chars-test"
+
+[rulesets.eslint.rules]
+"no-var" = "error"

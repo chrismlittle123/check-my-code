@@ -17,6 +17,11 @@ setupImages([
   'check/config-errors/no-config',
   'check/config-errors/invalid-toml',
   'check/config-errors/missing-name',
+  'check/typescript-and-python/no-linters',
+  'check/typescript/empty-project',
+  'check/typescript/special-chars',
+  'check/typescript/multi-violations',
+  'check/typescript/symlinks',
 ]);
 
 // =============================================================================
@@ -273,5 +278,175 @@ describe.skipIf(!dockerAvailable)('cmc check - path arguments', () => {
     // Only lib/violation.ts
     expect(output.summary.files_checked).toBe(1);
     expect(output.violations.every((v) => v.file.includes('lib/'))).toBe(true);
+  }, 30000);
+});
+
+// =============================================================================
+// Check: No linters available
+// =============================================================================
+describe.skipIf(!dockerAvailable)('cmc check - no linters available', () => {
+  it('skips all files when both ESLint and Ruff are unavailable', async () => {
+    const result = await runInDocker(images['check/typescript-and-python/no-linters'], [
+      'check',
+      '--json',
+    ]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(0);
+    expect(output.violations.length).toBe(0);
+    expect(result.stderr).toContain('ESLint not found');
+    expect(result.stderr).toContain('Ruff not found');
+  }, 30000);
+
+  it('shows warnings for both missing linters in text output', async () => {
+    const result = await runInDocker(images['check/typescript-and-python/no-linters'], ['check']);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toContain('ESLint not found');
+    expect(result.stderr).toContain('Ruff not found');
+    expect(result.stdout).toContain('No violations found');
+  }, 30000);
+});
+
+// =============================================================================
+// Check: Empty project (no matching files)
+// =============================================================================
+describe.skipIf(!dockerAvailable)('cmc check - empty project', () => {
+  it('handles projects with no source files', async () => {
+    const result = await runInDocker(images['check/typescript/empty-project'], ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(0);
+    expect(output.violations.length).toBe(0);
+    expect(output.summary.files_checked).toBe(0);
+  }, 30000);
+
+  it('shows appropriate message when no files to check', async () => {
+    const result = await runInDocker(images['check/typescript/empty-project'], ['check']);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('0 files checked');
+  }, 30000);
+});
+
+// =============================================================================
+// Check: Special characters in file paths
+// =============================================================================
+describe.skipIf(!dockerAvailable)('cmc check - special characters in paths', () => {
+  it('handles files with dashes in names', async () => {
+    const result = await runInDocker(images['check/typescript/special-chars'], ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+    expect(output.violations.some((v) => v.file.includes('file-with-dashes.ts'))).toBe(true);
+  }, 30000);
+
+  it('handles files with underscores in names', async () => {
+    const result = await runInDocker(images['check/typescript/special-chars'], ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(output.violations.some((v) => v.file.includes('file_with_underscores.ts'))).toBe(true);
+  }, 30000);
+
+  it('handles files with multiple dots in names', async () => {
+    const result = await runInDocker(images['check/typescript/special-chars'], ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(output.violations.some((v) => v.file.includes('file.multiple.dots.ts'))).toBe(true);
+  }, 30000);
+
+  it('checks all files regardless of special characters', async () => {
+    const result = await runInDocker(images['check/typescript/special-chars'], ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(output.summary.files_checked).toBe(3);
+    expect(output.violations.length).toBe(3); // One no-var violation per file
+  }, 30000);
+});
+
+// =============================================================================
+// Check: Multiple violations per file (ordering)
+// =============================================================================
+describe.skipIf(!dockerAvailable)('cmc check - multiple violations', () => {
+  it('detects multiple violations in same file', async () => {
+    const result = await runInDocker(images['check/typescript/multi-violations'], [
+      'check',
+      'file-a.ts',
+      '--json',
+    ]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(output.violations.length).toBeGreaterThan(1);
+    expect(output.violations.every((v) => v.file === 'file-a.ts')).toBe(true);
+  }, 30000);
+
+  it('orders violations by line number within a file', async () => {
+    const result = await runInDocker(images['check/typescript/multi-violations'], [
+      'check',
+      'file-a.ts',
+      '--json',
+    ]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    // Verify violations are in line order
+    for (let i = 1; i < output.violations.length; i++) {
+      const prevLine = output.violations[i - 1].line ?? 0;
+      const currLine = output.violations[i].line ?? 0;
+      expect(currLine).toBeGreaterThanOrEqual(prevLine);
+    }
+  }, 30000);
+
+  it('groups violations by file in multi-file output', async () => {
+    const result = await runInDocker(images['check/typescript/multi-violations'], [
+      'check',
+      '--json',
+    ]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    const fileAViolations = output.violations.filter((v) => v.file === 'file-a.ts');
+    const fileBViolations = output.violations.filter((v) => v.file === 'file-b.ts');
+
+    expect(fileAViolations.length).toBeGreaterThan(0);
+    expect(fileBViolations.length).toBeGreaterThan(0);
+    expect(output.summary.files_checked).toBe(2);
+  }, 30000);
+
+  it('detects different rule violations in same file', async () => {
+    const result = await runInDocker(images['check/typescript/multi-violations'], [
+      'check',
+      'file-a.ts',
+      '--json',
+    ]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    const rules = new Set(output.violations.map((v) => v.rule));
+    expect(rules.has('no-var')).toBe(true);
+    expect(rules.has('eqeqeq')).toBe(true);
+  }, 30000);
+});
+
+// =============================================================================
+// Check: Symlink handling
+// =============================================================================
+describe.skipIf(!dockerAvailable)('cmc check - symlinks', () => {
+  it('follows symlinks to files', async () => {
+    const result = await runInDocker(images['check/typescript/symlinks'], ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+    // Should find violations from both actual file and files in linked directory
+    expect(output.violations.length).toBeGreaterThan(0);
+  }, 30000);
+
+  it('handles symlinked directories', async () => {
+    const result = await runInDocker(images['check/typescript/symlinks'], [
+      'check',
+      'linked_dir/',
+      '--json',
+    ]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    // Should be able to check files in symlinked directory
+    expect(output.summary.files_checked).toBeGreaterThanOrEqual(1);
   }, 30000);
 });

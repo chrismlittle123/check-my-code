@@ -1,0 +1,11 @@
+[project]
+name = "no-linters-test"
+
+[rulesets.eslint.rules]
+"no-var" = "error"
+
+[rulesets.ruff]
+line-length = 100
+
+[rulesets.ruff.lint]
+select = ["E", "F"]

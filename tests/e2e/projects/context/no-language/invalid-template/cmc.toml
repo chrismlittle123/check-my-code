@@ -1,0 +1,6 @@
+[project]
+name = "invalid-template-test"
+
+[ai-context]
+# Valid source, but nonexistent template name
+templates = ["nonexistent-template-xyz"]

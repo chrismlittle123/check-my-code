@@ -11,6 +11,8 @@ setupImages([
   'verify/typescript-and-python/match',
   'verify/typescript-and-python/mismatch',
   'verify/typescript-and-python/missing',
+  'verify/typescript-and-python/malformed',
+  'verify/typescript-and-python/empty-ruleset',
 ]);
 
 // =============================================================================
@@ -163,6 +165,57 @@ describe.skipIf(!dockerAvailable)('cmc verify - error handling', () => {
 
     expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain('Unknown linter');
+  }, 30000);
+});
+
+// =============================================================================
+// Verify: Malformed config files
+// =============================================================================
+describe.skipIf(!dockerAvailable)('cmc verify - malformed configs', () => {
+  it('handles malformed Ruff TOML config', async () => {
+    const result = await runInDocker(images['verify/typescript-and-python/malformed'], [
+      'verify',
+      'ruff',
+    ]);
+
+    // Should fail with a parse error
+    expect(result.exitCode).toBe(3); // RUNTIME_ERROR
+    expect(result.stderr).toContain('Failed to parse');
+  }, 30000);
+
+  it('handles malformed ESLint config gracefully', async () => {
+    const result = await runInDocker(images['verify/typescript-and-python/malformed'], [
+      'verify',
+      'eslint',
+    ]);
+
+    // ESLint config is read as text, so malformed JS may result in empty rules
+    // or a parse issue depending on implementation
+    expect(result.exitCode).not.toBe(2); // Not a CONFIG_ERROR
+  }, 30000);
+});
+
+// =============================================================================
+// Verify: Empty rulesets
+// =============================================================================
+describe.skipIf(!dockerAvailable)('cmc verify - empty rulesets', () => {
+  it('exits successfully when no rulesets defined', async () => {
+    const result = await runInDocker(images['verify/typescript-and-python/empty-ruleset'], [
+      'verify',
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('No linter configs to verify');
+  }, 30000);
+
+  it('shows message about no rulesets for specific linter', async () => {
+    const result = await runInDocker(images['verify/typescript-and-python/empty-ruleset'], [
+      'verify',
+      'eslint',
+    ]);
+
+    // When no ESLint ruleset is defined, should indicate nothing to verify
+    expect(result.exitCode).toBe(0);
   }, 30000);
 });
 

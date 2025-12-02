@@ -1,0 +1,4 @@
+[project]
+name = "empty-ruleset-test"
+
+# No rulesets defined - empty config
