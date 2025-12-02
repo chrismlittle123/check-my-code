@@ -3,6 +3,7 @@
   "$id": "https://raw.githubusercontent.com/chrismlittle123/check-my-code-community/main/schema.json",
   "title": "cmc.toml",
   "description": "cmc.toml configuration schema",
+  "version": "1.0.0",
   "type": "object",
   "properties": {
     "project": {

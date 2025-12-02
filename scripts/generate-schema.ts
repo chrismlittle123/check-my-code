@@ -101,12 +101,16 @@ const jsonSchema = z.toJSONSchema(configSchema, {
   io: 'input',
 });
 
+// Schema version - increment when making breaking changes
+const SCHEMA_VERSION = '1.0.0';
+
 // Add schema metadata
 const schemaWithMeta = {
   $schema: 'http://json-schema.org/draft-07/schema#',
   $id: 'https://raw.githubusercontent.com/chrismlittle123/check-my-code-community/main/schema.json',
   title: 'cmc.toml',
   description: 'Configuration schema for check-my-code (cmc) CLI tool',
+  version: SCHEMA_VERSION,
   ...jsonSchema,
 };
 
