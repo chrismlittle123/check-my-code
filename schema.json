@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/chrismlittle123/check-my-code-community/main/schema.json",
+  "title": "cmc.toml",
+  "description": "cmc.toml configuration schema",
+  "type": "object",
+  "properties": {
+    "project": {
+      "description": "Project configuration",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Project name",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["name"]
+    },
+    "extends": {
+      "description": "Inherit rulesets from remote repositories",
+      "type": "object",
+      "properties": {
+        "eslint": {
+          "description": "Remote ESLint ruleset (format: github:owner/repo/path@version)",
+          "type": "string",
+          "pattern": "^github:[^/]+\\/[^/@]+(?:\\/[^@]*)?@.+$"
+        },
+        "ruff": {
+          "description": "Remote Ruff ruleset (format: github:owner/repo/path@version)",
+          "type": "string",
+          "pattern": "^github:[^/]+\\/[^/@]+(?:\\/[^@]*)?@.+$"
+        }
+      }
+    },
+    "ai-context": {
+      "description": "AI context configuration for coding assistants",
+      "type": "object",
+      "properties": {
+        "templates": {
+          "description": "Template names to load (e.g., [\"typescript-strict\", \"python-prod\"])",
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "source": {
+          "description": "Custom source repository (format: github:owner/repo/path@version)",
+          "type": "string",
+          "pattern": "^github:[^/]+\\/[^/@]+(?:\\/[^@]*)?@.+$"
+        }
+      },
+      "required": ["templates"]
+    },
+    "rulesets": {
+      "description": "Linter rulesets",
+      "type": "object",
+      "properties": {
+        "eslint": {
+          "description": "ESLint configuration",
+          "type": "object",
+          "properties": {
+            "rules": {
+              "description": "ESLint rules configuration",
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": ["off", "warn", "error"]
+                  },
+                  {
+                    "type": "array",
+                    "prefixItems": [
+                      {
+                        "type": "string"
+                      }
+                    ],
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "ruff": {
+          "description": "Ruff configuration",
+          "type": "object",
+          "properties": {
+            "line-length": {
+              "description": "Maximum line length",
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "lint": {
+              "description": "Ruff lint configuration",
+              "type": "object",
+              "properties": {
+                "select": {
+                  "description": "Ruff rule codes to enable",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "ignore": {
+                  "description": "Ruff rule codes to ignore",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "additionalProperties": {}
+        }
+      }
+    }
+  },
+  "required": ["project"]
+}

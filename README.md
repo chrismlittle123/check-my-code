@@ -115,6 +115,32 @@ name = "my-project"
 templates = ["typescript-strict", "python-prod"]
 ```
 
+## AI Context Templates
+
+The `cmc context` command fetches templates from the [check-my-code-community](https://github.com/chrismlittle123/check-my-code-community) repository.
+
+**Available templates:**
+
+| Template            | Description                        |
+| ------------------- | ---------------------------------- |
+| `typescript-strict` | Strict TypeScript coding standards |
+| `python-prod`       | Production Python coding standards |
+
+Use them in your `cmc.toml`:
+
+```toml
+[ai-context]
+templates = ["typescript-strict", "python-prod"]
+```
+
+You can also use a custom source repository:
+
+```toml
+[ai-context]
+templates = ["my-template"]
+source = "github:myorg/my-templates/ai-contexts@v1.0.0"
+```
+
 ## Exit Codes
 
 | Code | Meaning                 |
@@ -138,6 +164,85 @@ templates = ["typescript-strict", "python-prod"]
 - Ruff (for Python linting)
 
 Linters are optional - cmc gracefully skips files if the corresponding linter isn't installed.
+
+## Troubleshooting
+
+### ESLint not found
+
+```
+Skipping ESLint: not installed
+```
+
+Install ESLint in your project:
+
+```bash
+npm install eslint @eslint/js typescript-eslint --save-dev
+```
+
+Or globally:
+
+```bash
+npm install -g eslint
+```
+
+### Ruff not found
+
+```
+Skipping Ruff: not installed
+```
+
+Install Ruff:
+
+```bash
+# macOS
+brew install ruff
+
+# pip
+pip install ruff
+
+# pipx
+pipx install ruff
+```
+
+### No cmc.toml found
+
+```
+Error: No cmc.toml found
+```
+
+Create a `cmc.toml` file in your project root:
+
+```toml
+[project]
+name = "my-project"
+```
+
+### Template not found
+
+```
+Error: Template "my-template" not found
+```
+
+Check that the template name matches one of the [available templates](#ai-context-templates), or verify your custom source repository contains the template file.
+
+### Git not available (for remote templates)
+
+```
+Error: git is not installed or not in PATH
+```
+
+The `cmc context` command uses git to fetch remote templates. Install git:
+
+```bash
+# macOS
+xcode-select --install
+
+# Ubuntu/Debian
+sudo apt install git
+
+# Windows
+winget install Git.Git
+```
 
 ## License
 

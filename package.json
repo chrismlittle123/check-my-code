@@ -23,6 +23,7 @@
     "lint:fix": "eslint src/ tests/ --fix",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "typecheck": "tsc --noEmit",
+    "generate:schema": "npx ts-node scripts/generate-schema.ts",
     "prepare": "husky",
     "prepublishOnly": "npm run build"
   },
