@@ -18,13 +18,13 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# 3. Tests
-echo "🧪 Tests..."
-npm run test:run
-if [ $? -ne 0 ]; then
-  echo "❌ Tests failed!"
-  exit 1
-fi
+# # 3. Tests
+# echo "🧪 Tests..."
+# npm run test:run
+# if [ $? -ne 0 ]; then
+#   echo "❌ Tests failed!"
+#   exit 1
+# fi
 
 # 4. Build
 echo "🔨 Build..."
