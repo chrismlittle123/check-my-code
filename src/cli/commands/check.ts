@@ -7,9 +7,18 @@ import { runLinters, LinterError } from '../../linter.js';
 import { ExitCode, type CheckResult } from '../../types.js';
 
 export const checkCommand = new Command('check')
-  .description('Run ESLint and Ruff checks')
+  .description('Run ESLint and Ruff checks on project files')
   .argument('[path]', 'Path to check (default: current directory)')
   .option('--json', 'Output results as JSON', false)
+  .addHelpText(
+    'after',
+    `
+Examples:
+  $ cmc check                Check entire project
+  $ cmc check src/           Check specific directory
+  $ cmc check src/main.ts    Check specific file
+  $ cmc check --json         Output as JSON for CI/tooling`
+  )
   .action(async (path: string | undefined, options: { json?: boolean }) => {
     try {
       const result = await runCheck(path);

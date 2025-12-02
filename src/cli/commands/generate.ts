@@ -26,6 +26,15 @@ export const generateCommand = new Command('generate')
   .argument('<linter>', 'Linter to generate config for (eslint, ruff)')
   .option('--force', 'Overwrite existing config file', false)
   .option('--stdout', 'Output to stdout instead of file', false)
+  .addHelpText(
+    'after',
+    `
+Examples:
+  $ cmc generate eslint          Generate eslint.config.js
+  $ cmc generate ruff            Generate ruff.toml
+  $ cmc generate eslint --force  Overwrite existing config
+  $ cmc generate eslint --stdout Preview config without writing`
+  )
   .action(async (linter: string, options: { force?: boolean; stdout?: boolean }) => {
     try {
       const target = validateLinterTarget(linter);

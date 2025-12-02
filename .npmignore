@@ -1,0 +1,38 @@
+# Source files (dist is published)
+src/
+
+# Tests
+tests/
+
+# Development files
+.github/
+.husky/
+.vscode/
+scripts/
+
+# Config files
+tsconfig.json
+tsconfig.eslint.json
+eslint.config.js
+.prettierrc
+vitest.config.ts
+
+# Documentation (README is included by default)
+CLAUDE.md
+check-my-code-prd.md
+
+# Local config
+cmc.toml
+
+# Build artifacts
+coverage/
+.cmc/
+
+# Git
+.git/
+.gitignore
+
+# Misc
+*.log
+.DS_Store
+*.tgz

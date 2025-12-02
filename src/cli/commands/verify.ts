@@ -29,6 +29,16 @@ const LINTER_CONFIGS: Record<LinterTarget, string> = {
 export const verifyCommand = new Command('verify')
   .description('Check that linter config files match the ruleset defined in cmc.toml')
   .argument('[linter]', 'Linter to verify (eslint, ruff). If omitted, verifies all.')
+  .addHelpText(
+    'after',
+    `
+Examples:
+  $ cmc verify           Verify all linter configs
+  $ cmc verify eslint    Verify only ESLint config
+  $ cmc verify ruff      Verify only Ruff config
+
+Use in CI to ensure configs haven't drifted from cmc.toml.`
+  )
   .action(async (linter?: string) => {
     try {
       const projectRoot = findProjectRoot();

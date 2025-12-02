@@ -15,7 +15,28 @@ const pkg = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf-
 
 const program = new Command();
 
-program.name('cmc').description('Run ESLint and Ruff linters on your code').version(pkg.version);
+program
+  .name('cmc')
+  .description('A unified CLI for running ESLint and Ruff linters on your code')
+  .version(pkg.version)
+  .addHelpText(
+    'after',
+    `
+Examples:
+  $ cmc check                    Run linters on entire project
+  $ cmc check src/               Check specific directory
+  $ cmc check --json             Output results as JSON
+  $ cmc generate eslint          Generate eslint.config.js
+  $ cmc verify                   Verify linter configs match cmc.toml
+  $ cmc context --target claude  Add coding standards to CLAUDE.md
+
+Getting started:
+  Create a cmc.toml in your project root:
+    [project]
+    name = "my-project"
+
+Documentation: https://github.com/chrismlittle123/check-my-code`
+  );
 
 program.addCommand(checkCommand);
 program.addCommand(contextCommand);

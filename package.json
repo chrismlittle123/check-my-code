@@ -1,10 +1,18 @@
 {
   "name": "check-my-code",
   "version": "1.0.0",
-  "description": "Run ESLint and Ruff linters on your code",
+  "description": "A CLI tool that runs ESLint and Ruff linters on your code with a unified interface",
   "main": "dist/cli/index.js",
   "bin": {
     "cmc": "dist/cli/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chrismlittle123/check-my-code.git"
+  },
+  "homepage": "https://github.com/chrismlittle123/check-my-code#readme",
+  "bugs": {
+    "url": "https://github.com/chrismlittle123/check-my-code/issues"
   },
   "scripts": {
     "build": "tsc",
@@ -15,7 +23,8 @@
     "lint:fix": "eslint src/ tests/ --fix",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "typecheck": "tsc --noEmit",
-    "prepare": "husky"
+    "prepare": "husky",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "linter",
@@ -23,9 +32,11 @@
     "ruff",
     "cli",
     "typescript",
-    "python"
+    "python",
+    "code-quality",
+    "static-analysis"
   ],
-  "author": "",
+  "author": "chrismlittle123",
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^9.15.0",

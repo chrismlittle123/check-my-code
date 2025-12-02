@@ -132,6 +132,19 @@ export const contextCommand = new Command('context')
   .description('Append coding standards context to AI agent configuration files')
   .option('--target <tool>', 'Target AI tool: claude, cursor, or copilot')
   .option('--stdout', 'Output to stdout instead of appending to file', false)
+  .addHelpText(
+    'after',
+    `
+Examples:
+  $ cmc context --target claude   Append to CLAUDE.md
+  $ cmc context --target cursor   Append to .cursorrules
+  $ cmc context --target copilot  Append to .github/copilot-instructions.md
+  $ cmc context --stdout          Preview output without writing
+
+Requires ai-context templates in cmc.toml:
+  [ai-context]
+  templates = ["typescript-strict"]`
+  )
   .action(async (options: ContextOptions) => {
     try {
       validateOptions(options);
