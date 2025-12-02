@@ -1,6 +1,6 @@
 [project]
 name = "invalid-template-test"
 
-[ai-context]
+[prompts]
 # Valid source, but nonexistent template name
 templates = ["nonexistent-template-xyz"]

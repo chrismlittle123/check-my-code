@@ -38,7 +38,7 @@ export class RemoteFetchError extends Error {
  * Format: github:owner/repo/path@version
  * Examples:
  *   - github:chrismlittle123/check-my-code-community/rulesets/typescript@v1.0.0
- *   - github:myorg/configs/ai-contexts@latest
+ *   - github:myorg/configs/promptss@latest
  *   - github:owner/repo@main (path defaults to root)
  */
 export function parseRemoteRef(ref: string): RemoteRef {
@@ -51,7 +51,7 @@ export function parseRemoteRef(ref: string): RemoteRef {
         `Expected format: github:owner/repo/path@version\n` +
         `Examples:\n` +
         `  github:owner/repo/rulesets/typescript@v1.0.0\n` +
-        `  github:owner/repo/ai-contexts@latest`
+        `  github:owner/repo/promptss@latest`
     );
   }
 

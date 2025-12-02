@@ -1,5 +1,5 @@
 [project]
 name = "check-my-code"
 
-[ai-context]
+[prompts]
 templates = ["typescript-strict", "python-prod"]

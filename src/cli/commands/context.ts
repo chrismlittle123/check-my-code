@@ -46,16 +46,16 @@ function validateOptions(options: ContextOptions): void {
 }
 
 function validateAiContextConfig(config: Config): { templates: string[]; source: string } {
-  if (!config['ai-context']?.templates?.length) {
-    console.error('Error: No ai-context templates configured in cmc.toml.');
+  if (!config['prompts']?.templates?.length) {
+    console.error('Error: No prompts templates configured in cmc.toml.');
     console.error('\nAdd to your cmc.toml:');
-    console.error('  [ai-context]');
+    console.error('  [prompts]');
     console.error('  templates = ["typescript/5.5"]');
     process.exit(ExitCode.CONFIG_ERROR);
   }
   return {
-    templates: config['ai-context'].templates,
-    source: config['ai-context'].source ?? DEFAULT_AI_CONTEXT_SOURCE,
+    templates: config['prompts'].templates,
+    source: config['prompts'].source ?? DEFAULT_AI_CONTEXT_SOURCE,
   };
 }
 
@@ -222,8 +222,8 @@ Examples:
   $ cmc context --target copilot  Append to .github/copilot-instructions.md
   $ cmc context --stdout          Preview output without writing
 
-Requires ai-context templates in cmc.toml:
-  [ai-context]
+Requires prompts templates in cmc.toml:
+  [prompts]
   templates = ["typescript/5.5"]`
   )
   .action(async (options: ContextOptions) => {

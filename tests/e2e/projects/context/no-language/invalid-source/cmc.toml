@@ -1,7 +1,7 @@
 [project]
 name = "invalid-source-test"
 
-[ai-context]
+[prompts]
 templates = ["typescript-strict"]
 # Invalid source URL - nonexistent repo
-source = "github:nonexistent-owner-xyz/nonexistent-repo-abc/ai-contexts@main"
+source = "github:nonexistent-owner-xyz/nonexistent-repo-abc/promptss@main"

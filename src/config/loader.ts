@@ -80,7 +80,7 @@ const configSchema = z.object({
     name: z.string().min(1, 'project name cannot be empty'),
   }),
   extends: extendsSchema.optional(),
-  'ai-context': aiContextSchema.optional(),
+  prompts: aiContextSchema.optional(),
   rulesets: z
     .object({
       eslint: z

@@ -1,5 +1,5 @@
 [project]
 name = "context-test"
 
-[ai-context]
+[prompts]
 templates = ["typescript/5.5"]

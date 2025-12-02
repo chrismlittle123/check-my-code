@@ -244,7 +244,7 @@ describe.skipIf(!dockerAvailable)('cmc context - error handling', () => {
     ]);
 
     expect(result.exitCode).toBe(2);
-    expect(result.stderr).toContain('No ai-context templates configured');
+    expect(result.stderr).toContain('No prompts templates configured');
   }, 30000);
 
   it('exits with error for invalid target', async () => {

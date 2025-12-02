@@ -74,7 +74,7 @@ const configSchema = z
       })
       .describe('Project configuration'),
     extends: extendsSchema.optional().describe('Inherit rulesets from remote repositories'),
-    'ai-context': aiContextSchema
+    'prompts': aiContextSchema
       .optional()
       .describe('AI context configuration for coding assistants'),
     rulesets: z

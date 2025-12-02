@@ -105,7 +105,7 @@ Projects require a `cmc.toml` file:
 name = "project-name"
 
 # Optional: AI context templates
-[ai-context]
+[prompts]
 templates = ["typescript/5.5", "python/3.12"]
 
 # Optional: ESLint rules

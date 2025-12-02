@@ -46,13 +46,13 @@ describe('parseRemoteRef', () => {
     });
 
     it('parses @latest version', () => {
-      const ref = parseRemoteRef('github:owner/repo/ai-contexts@latest');
+      const ref = parseRemoteRef('github:owner/repo/promptss@latest');
 
       expect(ref).toEqual({
         host: 'github',
         owner: 'owner',
         repo: 'repo',
-        path: 'ai-contexts',
+        path: 'promptss',
         version: 'latest',
       });
     });

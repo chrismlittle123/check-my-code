@@ -3,7 +3,7 @@ export interface Config {
     name: string;
   };
   extends?: ExtendsConfig;
-  'ai-context'?: AiContextConfig;
+  prompts?: AiContextConfig;
   rulesets?: {
     eslint?: {
       rules?: Record<string, ESLintRuleValue>;

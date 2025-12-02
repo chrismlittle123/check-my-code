@@ -34,7 +34,7 @@
         }
       }
     },
-    "ai-context": {
+    "prompts": {
       "description": "AI context configuration for coding assistants",
       "type": "object",
       "properties": {

@@ -301,7 +301,7 @@ cmc context --stdout          # Output to stdout instead of file
 
 **Behaviour:**
 
-1. Reads `cmc.toml` to find configured templates in `[ai-context]` section
+1. Reads `cmc.toml` to find configured templates in `[prompts]` section
 2. Fetches `prompts.json` manifest from remote source (default: `github:chrismlittle123/check-my-code-community/prompts@latest`)
 3. Resolves template versions and fetches template files
 4. Concatenates multiple templates if specified
@@ -408,7 +408,7 @@ eslint = "github:chrismlittle123/check-my-code-community/rulesets/typescript@v1.
 ruff = "github:chrismlittle123/check-my-code-community/rulesets/python@latest"
 
 # AI context templates (for `cmc context`)
-[ai-context]
+[prompts]
 templates = ["typescript/5.5", "python/3.12"]
 
 # Local ESLint rule overrides - can only ADD rules, not weaken base rules
@@ -505,7 +505,7 @@ check-my-code-community/
 
 **Purpose:** Pre-written markdown files containing coding standards and guidelines for AI agents.
 
-**Template Resolution:** Template names in `[ai-context].templates` are resolved via `prompts.json` manifest:
+**Template Resolution:** Template names in `[prompts].templates` are resolved via `prompts.json` manifest:
 
 - `"typescript/5.5"` → looks up in `prompts.json`, resolves to `prompts/typescript/5.5/1.0.0.md`
 - `"python/3.12"` → looks up in `prompts.json`, resolves to `prompts/python/3.12/1.0.0.md`

@@ -111,7 +111,7 @@ select = ["E", "F", "I", "UP"]
 [project]
 name = "my-project"
 
-[ai-context]
+[prompts]
 templates = ["typescript/5.5", "python/3.12"]
 ```
 
@@ -129,21 +129,21 @@ The `cmc context` command fetches templates from the [check-my-code-community](h
 Use them in your `cmc.toml`:
 
 ```toml
-[ai-context]
+[prompts]
 templates = ["typescript/5.5", "python/3.12"]
 ```
 
 You can pin a specific version:
 
 ```toml
-[ai-context]
+[prompts]
 templates = ["typescript/5.5@1.0.0"]
 ```
 
 You can also use a custom source repository:
 
 ```toml
-[ai-context]
+[prompts]
 templates = ["my-template"]
 source = "github:myorg/my-templates/prompts@v1.0.0"
 ```
@@ -230,7 +230,7 @@ name = "my-project"
 Error: Template "my-template" not found
 ```
 
-Check that the template name matches one of the [available templates](#ai-context-templates), or verify your custom source repository contains the template file.
+Check that the template name matches one of the [available templates](#prompts-templates), or verify your custom source repository contains the template file.
 
 ### Git not available (for remote templates)
 
