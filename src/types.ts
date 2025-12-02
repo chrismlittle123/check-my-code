@@ -2,6 +2,7 @@ export interface Config {
   project: {
     name: string;
   };
+  extends?: ExtendsConfig;
   'ai-context'?: AiContextConfig;
   rulesets?: {
     eslint?: {
@@ -11,10 +12,25 @@ export interface Config {
   };
 }
 
+// Remote config inheritance (v2)
+// Format: github:owner/repo/path@version
+export interface ExtendsConfig {
+  eslint?: string;
+  ruff?: string;
+}
+
 // AI context configuration for `cmc context` command
 export interface AiContextConfig {
+  // Template names to load (e.g., ["typescript-strict", "python-prod"])
   templates: string[];
+  // Optional: custom source repository (defaults to community repo)
+  // Format: github:owner/repo/path@version
+  source?: string;
 }
+
+// Default community repository for AI context templates
+export const DEFAULT_AI_CONTEXT_SOURCE =
+  'github:chrismlittle123/check-my-code-community/ai-contexts@latest';
 
 // Supported AI tool targets for context output
 export type AiTarget = 'claude' | 'cursor' | 'copilot';

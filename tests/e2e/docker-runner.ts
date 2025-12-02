@@ -37,7 +37,7 @@ export async function buildImage(projectPath: string): Promise<string> {
       if (code === 0) {
         resolve(imageName);
       } else {
-        reject(new Error(`Docker build failed for ${projectName}: ${stderr}`));
+        reject(new Error(`Docker build failed for ${projectPath}: ${stderr}`));
       }
     });
 

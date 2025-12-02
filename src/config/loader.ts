@@ -32,9 +32,28 @@ const ruffConfigSchema = z
   })
   .passthrough(); // Allow additional ruff options
 
+// Remote reference pattern: github:owner/repo[/path]@version
+const remoteRefPattern = /^github:[^/]+\/[^/@]+(?:\/[^@]*)?@.+$/;
+
 // AI context configuration schema
 const aiContextSchema = z.object({
   templates: z.array(z.string().min(1)).min(1, 'at least one template is required'),
+  source: z
+    .string()
+    .regex(remoteRefPattern, 'must be format: github:owner/repo/path@version')
+    .optional(),
+});
+
+// Extends configuration schema (v2)
+const extendsSchema = z.object({
+  eslint: z
+    .string()
+    .regex(remoteRefPattern, 'must be format: github:owner/repo/path@version')
+    .optional(),
+  ruff: z
+    .string()
+    .regex(remoteRefPattern, 'must be format: github:owner/repo/path@version')
+    .optional(),
 });
 
 // Strip Symbol keys from an object (recursively)
@@ -60,6 +79,7 @@ const configSchema = z.object({
   project: z.object({
     name: z.string().min(1, 'project name cannot be empty'),
   }),
+  extends: extendsSchema.optional(),
   'ai-context': aiContextSchema.optional(),
   rulesets: z
     .object({

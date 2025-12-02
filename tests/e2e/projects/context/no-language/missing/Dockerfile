@@ -1,6 +1,9 @@
 # Context command test environment (missing ai-context config)
 FROM node:20-slim
 
+# Install git (required for remote template fetching)
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /cmc
 
 # Copy package files and install dependencies
@@ -11,9 +14,6 @@ RUN npm ci
 COPY tsconfig.json ./
 COPY src/ ./src/
 RUN npm run build
-
-# Copy community assets (required for context templates)
-COPY community-assets/ ./community-assets/
 
 # Setup project directory
 WORKDIR /project

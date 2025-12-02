@@ -2,9 +2,15 @@ import { Command } from 'commander';
 import { existsSync, mkdirSync } from 'fs';
 import { readFile, appendFile } from 'fs/promises';
 import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 import { loadConfig, findProjectRoot, ConfigError } from '../../config/loader.js';
-import { ExitCode, AI_TARGET_FILES, type AiTarget, type Config } from '../../types.js';
+import { fetchRemoteFile, RemoteFetchError } from '../../remote/fetcher.js';
+import {
+  ExitCode,
+  AI_TARGET_FILES,
+  DEFAULT_AI_CONTEXT_SOURCE,
+  type AiTarget,
+  type Config,
+} from '../../types.js';
 
 const VALID_TARGETS: AiTarget[] = ['claude', 'cursor', 'copilot'];
 
@@ -39,7 +45,7 @@ function validateOptions(options: ContextOptions): void {
   }
 }
 
-function validateAiContextConfig(config: Config): string[] {
+function validateAiContextConfig(config: Config): { templates: string[]; source: string } {
   if (!config['ai-context']?.templates?.length) {
     console.error('Error: No ai-context templates configured in cmc.toml.');
     console.error('\nAdd to your cmc.toml:');
@@ -47,33 +53,36 @@ function validateAiContextConfig(config: Config): string[] {
     console.error('  templates = ["typescript-strict"]');
     process.exit(ExitCode.CONFIG_ERROR);
   }
-  return config['ai-context'].templates;
+  return {
+    templates: config['ai-context'].templates,
+    source: config['ai-context'].source ?? DEFAULT_AI_CONTEXT_SOURCE,
+  };
 }
 
-async function loadTemplate(templateName: string): Promise<string> {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
-  const templatePath = join(
-    __dirname,
-    '..',
-    '..',
-    '..',
-    'community-assets',
-    'ai-contexts',
-    `${templateName}.md`
-  );
-
-  if (!existsSync(templatePath)) {
-    throw new TemplateError(
-      `Template "${templateName}" not found.\nExpected at: community-assets/ai-contexts/${templateName}.md`
-    );
+async function loadTemplate(templateName: string, source: string): Promise<string> {
+  try {
+    // Fetch template from remote repository
+    const content = await fetchRemoteFile(source, `${templateName}.md`);
+    return content;
+  } catch (error) {
+    if (error instanceof RemoteFetchError) {
+      throw new TemplateError(
+        `Template "${templateName}" not found.\n` +
+          `Source: ${source}\n` +
+          `Error: ${error.message}`
+      );
+    }
+    throw error;
   }
-
-  return readFile(templatePath, 'utf-8');
 }
 
-async function loadAllTemplates(templates: string[]): Promise<string> {
-  const contents = await Promise.all(templates.map(loadTemplate));
+async function loadAllTemplates(templates: string[], source: string): Promise<string> {
+  // Load templates sequentially to avoid race conditions in git cache
+  const contents: string[] = [];
+  for (const template of templates) {
+    // eslint-disable-next-line no-await-in-loop
+    contents.push(await loadTemplate(template, source));
+  }
   return contents.join('\n\n');
 }
 
@@ -111,6 +120,10 @@ function handleError(error: unknown): never {
     console.error(`Error: ${error.message}`);
     process.exit(ExitCode.RUNTIME_ERROR);
   }
+  if (error instanceof RemoteFetchError) {
+    console.error(`Error: ${error.message}`);
+    process.exit(ExitCode.RUNTIME_ERROR);
+  }
   console.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   process.exit(ExitCode.RUNTIME_ERROR);
 }
@@ -125,8 +138,8 @@ export const contextCommand = new Command('context')
 
       const projectRoot = findProjectRoot();
       const config = await loadConfig(projectRoot);
-      const templates = validateAiContextConfig(config);
-      const output = await loadAllTemplates(templates);
+      const { templates, source } = validateAiContextConfig(config);
+      const output = await loadAllTemplates(templates, source);
 
       if (options.stdout) {
         console.log(output);
