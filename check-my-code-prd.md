@@ -302,9 +302,10 @@ cmc context --stdout          # Output to stdout instead of file
 **Behaviour:**
 
 1. Reads `cmc.toml` to find configured templates in `[ai-context]` section
-2. Loads template file(s) from `community-assets/ai-contexts/` directory
-3. Concatenates multiple templates if specified
-4. Appends content to target AI tool's configuration file (or outputs to stdout)
+2. Fetches `prompts.json` manifest from remote source (default: `github:chrismlittle123/check-my-code-community/prompts@latest`)
+3. Resolves template versions and fetches template files
+4. Concatenates multiple templates if specified
+5. Appends content to target AI tool's configuration file (or outputs to stdout)
 
 **Flags:**
 
@@ -408,7 +409,7 @@ ruff = "github:chrismlittle123/check-my-code-community/rulesets/python@latest"
 
 # AI context templates (for `cmc context`)
 [ai-context]
-templates = ["typescript-strict", "python-prod"]
+templates = ["typescript/5.5", "python/3.12"]
 
 # Local ESLint rule overrides - can only ADD rules, not weaken base rules
 [rulesets.eslint.rules]
@@ -454,13 +455,23 @@ github:<owner>/<repo>/<path>@<version>
 ```
 check-my-code-community/
 ├── rulesets/
+│   ├── rulesets.json         # Ruleset manifest
 │   ├── typescript/
-│   │   └── cmc.toml          # ESLint rules for TypeScript
+│   │   └── 5.5/
+│   │       └── eslint/
+│   │           └── 1.0.0.toml
 │   └── python/
-│       └── cmc.toml          # Ruff rules for Python
-└── ai-contexts/
-    ├── typescript-strict.md
-    └── python-prod.md
+│       └── 3.12/
+│           └── ruff/
+│               └── 1.0.0.toml
+└── prompts/
+    ├── prompts.json          # Prompts manifest
+    ├── typescript/
+    │   └── 5.5/
+    │       └── 1.0.0.md
+    └── python/
+        └── 3.12/
+            └── 1.0.0.md
 ```
 
 **Community Repository:** `github:chrismlittle123/check-my-code-community`
@@ -490,14 +501,15 @@ check-my-code-community/
 
 #### 6.2.4 AI Context Templates
 
-**Location:** Fetched from community repository `ai-contexts/` directory.
+**Location:** Fetched from community repository `prompts/` directory via manifest-based resolution.
 
 **Purpose:** Pre-written markdown files containing coding standards and guidelines for AI agents.
 
-**Template Resolution:** Template names in `[ai-context].templates` map to files:
+**Template Resolution:** Template names in `[ai-context].templates` are resolved via `prompts.json` manifest:
 
-- `"typescript-strict"` → `community-repo/ai-contexts/typescript-strict.md`
-- `"python-prod"` → `community-repo/ai-contexts/python-prod.md`
+- `"typescript/5.5"` → looks up in `prompts.json`, resolves to `prompts/typescript/5.5/1.0.0.md`
+- `"python/3.12"` → looks up in `prompts.json`, resolves to `prompts/python/3.12/1.0.0.md`
+- `"typescript/5.5@1.0.0"` → pins specific version
 
 **Multiple Templates:** When multiple templates are specified, they are concatenated in order.
 
@@ -636,13 +648,14 @@ Track file hashes to skip unchanged files:
 
 ### 8.1 Technology Stack
 
-| Component       | Technology           |
-| --------------- | -------------------- |
-| Language        | TypeScript (Node.js) |
-| Package Manager | npm                  |
-| CLI Framework   | Commander.js         |
-| Config Parsing  | @iarna/toml          |
-| File Discovery  | glob                 |
+| Component         | Technology           |
+| ----------------- | -------------------- |
+| Language          | TypeScript (Node.js) |
+| Package Manager   | npm                  |
+| CLI Framework     | Commander.js         |
+| Config Parsing    | @iarna/toml          |
+| Schema Validation | Zod                  |
+| File Discovery    | glob                 |
 
 ### 8.2 Directory Structure
 
@@ -652,11 +665,14 @@ check-my-code/
 │   ├── cli/
 │   │   ├── index.ts           # CLI entry point
 │   │   └── commands/
-│   │       ├── check.ts
-│   │       ├── generate.ts
-│   │       └── context.ts
+│   │       ├── check.ts       # Run linters and report violations
+│   │       ├── context.ts     # Append AI context from remote templates
+│   │       ├── generate.ts    # Generate linter configs from cmc.toml
+│   │       └── verify.ts      # Verify linter configs match cmc.toml
 │   ├── config/
-│   │   └── loader.ts          # Config discovery and parsing
+│   │   └── loader.ts          # Config discovery and parsing (Zod validation)
+│   ├── remote/
+│   │   └── fetcher.ts         # Git-based remote file fetching
 │   ├── linter.ts              # ESLint and Ruff execution
 │   └── types.ts               # TypeScript interfaces
 ├── package.json

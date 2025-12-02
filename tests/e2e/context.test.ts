@@ -44,7 +44,7 @@ describe.skipIf(!dockerAvailable)('cmc context - stdout', () => {
 });
 
 // =============================================================================
-// Context: Template content verification (community-assets)
+// Context: Template content verification (remote prompts)
 // =============================================================================
 describe.skipIf(!dockerAvailable)('cmc context - template content', () => {
   describe('typescript/5.5 template', () => {

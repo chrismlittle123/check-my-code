@@ -32,26 +32,36 @@ npm run format
 node dist/cli/index.js check [path]
 node dist/cli/index.js context --target claude
 node dist/cli/index.js generate eslint
+node dist/cli/index.js verify
 
 # Run a single test file
 npm test -- tests/unit/config.test.ts
+
+# Generate JSON schema from Zod
+npm run generate:schema
 ```
 
 ## E2E Testing
 
-E2E tests use Docker to create isolated environments with/without linters. They require Docker to be installed and running.
+E2E tests use Docker with shared base images for speed. They require Docker to be installed and running.
 
 ```bash
-# Run e2e tests (auto-skips if Docker unavailable)
-npm test tests/e2e/check.test.ts
+# Run all e2e tests (auto-skips if Docker unavailable)
+npm run test:run tests/e2e/
+
+# Run specific e2e test file
+npm run test:run tests/e2e/check.test.ts
+
+# Run tests matching a pattern
+npm run test:run -- -t "private repo"
 ```
 
-Test projects in `tests/e2e/projects/` each have a Dockerfile that builds an isolated environment. Tests verify:
+**Base images** (in `tests/e2e/`):
 
-- TypeScript-only projects (ESLint)
-- Python-only projects (Ruff)
-- Mixed-language projects (both linters)
-- Graceful degradation when linters are missing
+- `Dockerfile.base` - Full image with ESLint, Ruff, git, SSH
+- `Dockerfile.base-no-linters` - For testing graceful degradation
+
+Test projects in `tests/e2e/projects/` contain only `cmc.toml` and test files - Dockerfiles are auto-generated from base images.
 
 ## Architecture
 
@@ -60,30 +70,31 @@ src/
 ├── cli/
 │   ├── index.ts          # CLI entry point (Commander.js)
 │   └── commands/
-│       ├── check.ts      # Main check command
-│       ├── context.ts    # Append AI context from templates
-│       └── generate.ts   # Generate linter configs from cmc.toml
+│       ├── check.ts      # Run linters and report violations
+│       ├── context.ts    # Append AI context from remote templates
+│       ├── generate.ts   # Generate linter configs from cmc.toml
+│       └── verify.ts     # Verify linter configs match cmc.toml
 ├── config/
-│   └── loader.ts         # cmc.toml discovery and parsing
+│   └── loader.ts         # cmc.toml discovery and parsing (Zod validation)
+├── remote/
+│   └── fetcher.ts        # Git-based remote file fetching for templates
 ├── linter.ts             # ESLint and Ruff execution
-└── types.ts              # TypeScript interfaces
-
-community-assets/
-└── ai-contexts/          # AI context templates (typescript-strict.md, python-prod.md)
+└── types.ts              # TypeScript interfaces and constants
 ```
 
-**Key flow:**
+**Key flows:**
 
-1. `check.ts` finds project root by locating `cmc.toml`
-2. Discovers files matching `*.ts,tsx,js,jsx,mjs,cjs,py,pyi`
-3. `linter.ts` runs ESLint for JS/TS files and Ruff for Python files
-4. Violations are collected and output (text or JSON)
+1. **check**: Finds `cmc.toml` → discovers files → runs ESLint/Ruff → outputs violations
+2. **context**: Loads `cmc.toml` → fetches `prompts.json` manifest from remote → resolves template versions → fetches template files → appends to target file
+3. **generate**: Loads `cmc.toml` rulesets → generates `eslint.config.js` or `ruff.toml`
+4. **verify**: Compares generated config against existing config files
 
-**Linter integration (`linter.ts`):**
+**Remote template system** (`context.ts` + `fetcher.ts`):
 
-- Checks if linters exist before running (graceful skip if missing)
-- Uses local `node_modules/.bin/eslint` if available, falls back to global
-- Parses JSON output from both linters into a unified `Violation` format
+- Templates fetched from `github:owner/repo/path@version` format
+- Default source: `github:chrismlittle123/check-my-code-community/prompts@latest`
+- Manifest-based resolution via `prompts.json` for per-template versioning
+- Git clone to `~/.cmc/cache/` with SSH support for private repos
 
 ## Configuration
 
@@ -92,6 +103,18 @@ Projects require a `cmc.toml` file:
 ```toml
 [project]
 name = "project-name"
+
+# Optional: AI context templates
+[ai-context]
+templates = ["typescript/5.5", "python/3.12"]
+
+# Optional: ESLint rules
+[rulesets.eslint.rules]
+"no-console" = "error"
+
+# Optional: Ruff configuration
+[rulesets.ruff]
+line-length = 100
 ```
 
 ## Exit Codes
