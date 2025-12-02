@@ -1,0 +1,6 @@
+# Valid TOML but missing required project.name field
+[project]
+# name is missing!
+
+[rulesets.eslint.rules]
+"no-var" = "error"

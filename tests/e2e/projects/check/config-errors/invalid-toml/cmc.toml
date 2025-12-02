@@ -1,0 +1,6 @@
+# Invalid TOML - missing closing bracket and bad syntax
+[project
+name = "broken-project"
+
+[rulesets.eslint.rules
+"no-var" = error  # missing quotes around error
