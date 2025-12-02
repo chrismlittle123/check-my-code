@@ -32,6 +32,11 @@ const ruffConfigSchema = z
   })
   .passthrough(); // Allow additional ruff options
 
+// AI context configuration schema
+const aiContextSchema = z.object({
+  templates: z.array(z.string().min(1)).min(1, 'at least one template is required'),
+});
+
 // Strip Symbol keys from an object (recursively)
 // @iarna/toml adds Symbol keys for metadata that interfere with Zod validation
 function stripSymbolKeys(obj: unknown): unknown {
@@ -55,6 +60,7 @@ const configSchema = z.object({
   project: z.object({
     name: z.string().min(1, 'project name cannot be empty'),
   }),
+  'ai-context': aiContextSchema.optional(),
   rulesets: z
     .object({
       eslint: z

@@ -1,22 +1,5 @@
 [project]
 name = "check-my-code"
-category = "production"
 
-[rulesets]
-# Using default built-in rules
-# These check file-length, require-docstrings, no-console, no-print
-default = ["default"]
-
-[paths]
-# Only check source and test files
-include = ["src/**/*", "tests/**/*"]
-# Exclude fixture files (intentionally contain violations)
-exclude = ["tests/fixtures/**/*", "node_modules/**/*", "dist/**/*"]
-
-[checks.file_length]
-max_lines = 500
-# Exclude test utilities from line limit
-exclude = ["tests/utils/**/*"]
-
-[ai]
-enabled = false
+[ai-context]
+templates = ["typescript-strict", "python-prod"]

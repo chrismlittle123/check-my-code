@@ -199,20 +199,46 @@ cmc generate ruff             # Generate ruff.toml
 
 #### 6.1.3 `cmc context`
 
-**Purpose:** Output active rules formatted for AI agent consumption.
+**Purpose:** Append coding standards context to AI agent configuration files.
 
 **Usage:**
 
 ```bash
-cmc context                   # Output markdown for AI agents
-cmc context >> CLAUDE.md      # Append to AI context file
+cmc context --target claude   # Appends to CLAUDE.md
+cmc context --target cursor   # Appends to .cursorrules
+cmc context --target copilot  # Appends to .github/copilot-instructions.md
+cmc context --stdout          # Output to stdout instead of file
 ```
 
 **Behaviour:**
 
-1. Reads `cmc.toml` ruleset configuration
-2. Formats rules as markdown in natural English
-3. Outputs to stdout with strict language ("you MUST follow these rules")
+1. Reads `cmc.toml` to find configured templates in `[ai-context]` section
+2. Loads template file(s) from `community-assets/ai-contexts/` directory
+3. Concatenates multiple templates if specified
+4. Appends content to target AI tool's configuration file (or outputs to stdout)
+
+**Flags:**
+
+| Flag              | Description                                      |
+| ----------------- | ------------------------------------------------ |
+| `--target <tool>` | Target AI tool: `claude`, `cursor`, or `copilot` |
+| `--stdout`        | Output to stdout instead of appending to file    |
+
+**Target File Locations:**
+
+| Target  | File                              |
+| ------- | --------------------------------- |
+| claude  | `CLAUDE.md`                       |
+| cursor  | `.cursorrules`                    |
+| copilot | `.github/copilot-instructions.md` |
+
+**Exit Codes:**
+
+| Code | Meaning                                 |
+| ---- | --------------------------------------- |
+| 0    | Success                                 |
+| 2    | Configuration error (missing template)  |
+| 3    | Runtime error (template file not found) |
 
 ---
 
@@ -273,20 +299,24 @@ cmc verify ruff               # Verify only Ruff config
 name = "my-project"
 ```
 
-**Full Schema (for `cmc generate`):**
+**Full Schema:**
 
 ```toml
 [project]
 name = "my-project"
 
-# ESLint rules - uses exact ESLint config syntax
+# AI context templates (for `cmc context`)
+[ai-context]
+templates = ["typescript-strict", "python-prod"]
+
+# ESLint rules - uses exact ESLint config syntax (for `cmc generate`)
 [rulesets.eslint.rules]
 no-var = "error"
 prefer-const = "error"
 eqeqeq = ["error", "always"]
 "@typescript-eslint/no-explicit-any" = "error"
 
-# Ruff configuration - uses exact Ruff config syntax
+# Ruff configuration - uses exact Ruff config syntax (for `cmc generate`)
 [rulesets.ruff]
 line-length = 120
 
@@ -295,7 +325,20 @@ select = ["E", "F", "I", "UP"]
 ignore = ["E501"]
 ```
 
-#### 6.2.2 Configuration Discovery
+#### 6.2.2 AI Context Templates
+
+**Location:** `community-assets/ai-contexts/` directory in the cmc installation.
+
+**Purpose:** Pre-written markdown files containing coding standards and guidelines for AI agents.
+
+**Template Resolution:** Template names in `[ai-context].templates` map to files:
+
+- `"typescript-strict"` → `community-assets/ai-contexts/typescript-strict.md`
+- `"python-prod"` → `community-assets/ai-contexts/python-prod.md`
+
+**Multiple Templates:** When multiple templates are specified, they are concatenated in order.
+
+#### 6.2.3 Configuration Discovery
 
 When `cmc` runs, it discovers configuration by:
 
