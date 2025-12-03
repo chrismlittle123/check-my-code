@@ -26,16 +26,16 @@ const LINTER_CONFIGS: Record<LinterTarget, string> = {
   ruff: 'ruff.toml',
 };
 
-export const verifyCommand = new Command('verify')
+export const auditCommand = new Command('audit')
   .description('Check that linter config files match the ruleset defined in cmc.toml')
-  .argument('[linter]', 'Linter to verify (eslint, ruff). If omitted, verifies all.')
+  .argument('[linter]', 'Linter to audit (eslint, ruff). If omitted, audits all.')
   .addHelpText(
     'after',
     `
 Examples:
-  $ cmc verify           Verify all linter configs
-  $ cmc verify eslint    Verify only ESLint config
-  $ cmc verify ruff      Verify only Ruff config
+  $ cmc audit           Audit all linter configs
+  $ cmc audit eslint    Audit only ESLint config
+  $ cmc audit ruff      Audit only Ruff config
 
 Use in CI to ensure configs haven't drifted from cmc.toml.`
   )

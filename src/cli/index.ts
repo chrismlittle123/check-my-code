@@ -7,7 +7,7 @@ import { Command } from 'commander';
 import { checkCommand } from './commands/check.js';
 import { contextCommand } from './commands/context.js';
 import { generateCommand } from './commands/generate.js';
-import { verifyCommand as auditCommand } from './commands/verify.js';
+import { auditCommand } from './commands/audit.js';
 import { mcpServerCommand } from './commands/mcp-server.js';
 
 // Read version from package.json
