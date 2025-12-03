@@ -703,24 +703,31 @@ tier = "production"
 # Require the use of a polyglot version manager
 polyglot_manager = "mise"
 
+# Require containerization tool
+container_runtime = "docker"
+
 [requirements]
 # Verify required configuration files exist
 file_exists = [
     ".tool-versions",      # Required by mise
-    ".nvmrc"               # Common for Node projects
+    ".nvmrc",              # Common for Node projects
+    "Dockerfile",          # Required by Docker
+    "docker-compose.yml"   # Docker Compose config
 ]
 ```
 
 **Enforcer Types:**
 
-| Enforcer           | Description                 | Validates       |
-| ------------------ | --------------------------- | --------------- |
-| `polyglot_manager` | Version manager enforcement | mise, asdf, rtx |
-| `file_exists`      | Required file presence      | Any file paths  |
+| Enforcer            | Description                  | Validates       |
+| ------------------- | ---------------------------- | --------------- |
+| `polyglot_manager`  | Version manager enforcement  | mise, asdf, rtx |
+| `container_runtime` | Containerization enforcement | docker, podman  |
+| `file_exists`       | Required file presence       | Any file paths  |
 
 **Use Cases:**
 
 - Ensure all projects use consistent version management
+- Enforce containerization standards (Docker/Podman)
 - Verify required configuration files are present
 - Enforce tool consistency across teams
 

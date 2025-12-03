@@ -332,7 +332,7 @@ winget install Git.Git
 ### v2 (Planned)
 
 - **Config inheritance**: Remote config inheritance from git repositories
-- **Environment enforcers**: Verify version managers (mise, asdf) and required files
+- **Environment enforcers**: Verify version managers (mise, asdf), container runtimes (Docker, Podman), and required files
 - **Extended linting**: Formatting, type safety, security, complexity checks
 - **Custom hooks**: User-defined pre/post validation scripts
 
