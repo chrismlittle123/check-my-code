@@ -9,7 +9,12 @@ import { glob } from 'glob';
 import { stat } from 'fs/promises';
 import { resolve, relative } from 'path';
 import { runLinters, runLintersFix } from '../linter.js';
-import { loadConfig, findProjectRoot, ConfigError } from '../config/loader.js';
+import {
+  loadConfig,
+  findProjectRoot,
+  ConfigError,
+  validateConfigContent,
+} from '../config/loader.js';
 import { fetchRemoteFile, RemoteFetchError } from '../remote/fetcher.js';
 import { DEFAULT_AI_CONTEXT_SOURCE, type Config } from '../types.js';
 import {
@@ -28,6 +33,7 @@ const ErrorCode = {
   FILE_NOT_FOUND: 'FILE_NOT_FOUND',
   TEMPLATE_NOT_FOUND: 'TEMPLATE_NOT_FOUND',
   RUNTIME_ERROR: 'RUNTIME_ERROR',
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
 } as const;
 
 interface SuccessResponse {
@@ -438,6 +444,96 @@ async function handleGetStatus() {
   );
 }
 
+// Schema version for suggest_config responses
+const SCHEMA_VERSION = '1.0.0';
+
+// Tool handler for suggest_config
+async function handleSuggestConfig({ description }: { description: string }) {
+  if (!description || description.trim().length === 0) {
+    return toTextContent(
+      makeError(ErrorCode.VALIDATION_ERROR, 'Description cannot be empty', true)
+    );
+  }
+
+  // Return guidance for the AI to generate the config, along with schema info
+  // The AI client will use this to generate appropriate TOML
+  const schemaGuide = `
+Generate a valid cmc.toml configuration for the following project:
+
+PROJECT DESCRIPTION:
+${description}
+
+SCHEMA REQUIREMENTS:
+- [project] section with "name" field (required, non-empty string)
+- [prompts] section (optional) with "templates" array for AI coding guidelines
+  - Available templates: "typescript/5.5", "python/3.12"
+- [rulesets.eslint.rules] section (optional) for ESLint rules
+  - Rule values: "off", "warn", "error", or array like ["error", "always"]
+- [rulesets.ruff] section (optional) for Ruff Python linter config
+  - "line-length" (integer)
+  - [rulesets.ruff.lint] with "select" and "ignore" arrays
+
+EXAMPLE CONFIG:
+\`\`\`toml
+[project]
+name = "my-api"
+
+[prompts]
+templates = ["typescript/5.5"]
+
+[rulesets.eslint.rules]
+"no-console" = "warn"
+"@typescript-eslint/no-explicit-any" = "error"
+
+[rulesets.ruff]
+line-length = 100
+
+[rulesets.ruff.lint]
+select = ["E", "F", "I", "UP"]
+\`\`\`
+
+GUIDELINES:
+- For TypeScript projects: Add strict typing rules, use typescript/5.5 template
+- For Python projects: Add Ruff rules for style (E, F), imports (I), upgrades (UP)
+- For production/strict projects: Use "error" level, add more rules
+- For development/flexible projects: Use "warn" level, fewer rules
+
+Return ONLY the TOML content, no markdown code blocks or explanation.
+`.trim();
+
+  return toTextContent(
+    makeSuccess({
+      prompt: schemaGuide,
+      schema_version: SCHEMA_VERSION,
+      validation_endpoint: 'Use validate_config tool to validate the generated TOML',
+    })
+  );
+}
+
+// Tool handler for validate_config
+async function handleValidateConfig({ config }: { config: string }) {
+  if (!config || config.trim().length === 0) {
+    return toTextContent(makeError(ErrorCode.VALIDATION_ERROR, 'Config cannot be empty', true));
+  }
+
+  const result = await validateConfigContent(config);
+
+  if (!result.valid) {
+    return toTextContent(
+      makeError(ErrorCode.VALIDATION_ERROR, `Invalid config:\n${result.errors?.join('\n')}`, true)
+    );
+  }
+
+  return toTextContent(
+    makeSuccess({
+      validated: true,
+      config: config,
+      parsed: result.config,
+      schema_version: SCHEMA_VERSION,
+    })
+  );
+}
+
 export function registerTools(server: McpServer): void {
   server.tool(
     'check_files',
@@ -490,5 +586,27 @@ export function registerTools(server: McpServer): void {
     'Get current session state including project info and statistics.',
     {},
     handleGetStatus
+  );
+
+  server.tool(
+    'suggest_config',
+    'Generate a cmc.toml configuration based on a project description. Returns a prompt with schema guidance for the AI to generate appropriate config.',
+    {
+      description: z
+        .string()
+        .describe(
+          'Natural language description of the project (e.g., "A TypeScript REST API using Express with strict type checking")'
+        ),
+    },
+    handleSuggestConfig
+  );
+
+  server.tool(
+    'validate_config',
+    'Validate TOML content against the cmc.toml schema. Use after suggest_config to verify generated config.',
+    {
+      config: z.string().describe('TOML content to validate against the cmc.toml schema'),
+    },
+    handleValidateConfig
   );
 }

@@ -632,13 +632,15 @@ claude mcp add cmc -- npx -y check-my-code mcp-server
 
 #### 6.5.2 MCP Tools
 
-| Tool             | Description                         | Parameters             |
-| ---------------- | ----------------------------------- | ---------------------- |
-| `check_files`    | Lint specific files                 | `files: string[]`      |
-| `check_project`  | Lint entire project or subdirectory | `path?: string`        |
-| `fix_files`      | Auto-fix violations in files        | `files: string[]`      |
-| `get_guidelines` | Fetch coding standards templates    | `templates?: string[]` |
-| `get_status`     | Get current session state           | (none)                 |
+| Tool              | Description                                | Parameters             |
+| ----------------- | ------------------------------------------ | ---------------------- |
+| `check_files`     | Lint specific files                        | `files: string[]`      |
+| `check_project`   | Lint entire project or subdirectory        | `path?: string`        |
+| `fix_files`       | Auto-fix violations in files               | `files: string[]`      |
+| `get_guidelines`  | Fetch coding standards templates           | `templates?: string[]` |
+| `get_status`      | Get current session state                  | (none)                 |
+| `suggest_config`  | Generate cmc.toml from project description | `description: string`  |
+| `validate_config` | Validate TOML against cmc.toml schema      | `config: string`       |
 
 #### 6.5.3 Tool Response Format
 
@@ -675,6 +677,77 @@ All tools return structured JSON responses:
 - `FILE_NOT_FOUND` - Requested file doesn't exist
 - `TEMPLATE_NOT_FOUND` - Requested template doesn't exist
 - `RUNTIME_ERROR` - Linter execution failed
+- `VALIDATION_ERROR` - Generated config failed schema validation
+
+#### 6.5.4 suggest_config Tool
+
+**Purpose:** Generate a valid `cmc.toml` configuration based on a natural language project description. This enables AI agents to bootstrap new projects or suggest configurations for existing projects without a `cmc.toml`.
+
+**Parameters:**
+
+| Parameter     | Type   | Required | Description                                 |
+| ------------- | ------ | -------- | ------------------------------------------- |
+| `description` | string | Yes      | Natural language description of the project |
+
+**Behaviour:**
+
+1. AI agent calls `suggest_config` with a project description (e.g., "A TypeScript REST API using Express with strict type checking")
+2. Tool returns a prompt with schema guidance and examples
+3. AI agent generates TOML config based on the prompt
+4. AI agent calls `validate_config` to verify the generated config
+5. If valid, the config can be written to `cmc.toml`
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "prompt": "Generate a valid cmc.toml configuration for...",
+  "schema_version": "1.0.0",
+  "validation_endpoint": "Use validate_config tool to validate the generated TOML"
+}
+```
+
+**Use Cases:**
+
+- AI agent bootstrapping a new project
+- Suggesting stricter rules for production services
+- Migrating existing projects to use `cmc`
+
+#### 6.5.5 validate_config Tool
+
+**Purpose:** Validate TOML content against the `cmc.toml` schema. Use after `suggest_config` to verify generated configuration is valid.
+
+**Parameters:**
+
+| Parameter | Type   | Required | Description                                      |
+| --------- | ------ | -------- | ------------------------------------------------ |
+| `config`  | string | Yes      | TOML content to validate against cmc.toml schema |
+
+**Response (valid):**
+
+```json
+{
+  "success": true,
+  "validated": true,
+  "config": "[project]\nname = \"my-api\"\n...",
+  "parsed": { "project": { "name": "my-api" }, ... },
+  "schema_version": "1.0.0"
+}
+```
+
+**Response (invalid):**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid config:\nproject.name: project name cannot be empty",
+    "recoverable": true
+  }
+}
+```
 
 ---
 

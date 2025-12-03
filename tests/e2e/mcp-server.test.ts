@@ -44,6 +44,8 @@ describe.skipIf(!dockerAvailable)('cmc mcp-server - tools/list', () => {
     expect(toolNames).toContain('fix_files');
     expect(toolNames).toContain('get_guidelines');
     expect(toolNames).toContain('get_status');
+    expect(toolNames).toContain('suggest_config');
+    expect(toolNames).toContain('validate_config');
   }, 60000);
 
   it('provides descriptions for all tools', async () => {
@@ -272,5 +274,178 @@ describe.skipIf(!dockerAvailable)('cmc mcp-server - error handling', () => {
     expect(content.error?.code).toBe('FILE_NOT_FOUND');
     expect(content.error?.message).toBeDefined();
     expect(content.error?.recoverable).toBeTypeOf('boolean');
+  }, 60000);
+});
+
+// =============================================================================
+// MCP Server: suggest_config tool
+// =============================================================================
+describe.skipIf(!dockerAvailable)('cmc mcp-server - suggest_config', () => {
+  it('returns schema guidance for project description', async () => {
+    const result = await runMcpToolCall(images['mcp-server/default'], 'suggest_config', {
+      description: 'A TypeScript REST API using Express with strict type checking',
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      prompt: string;
+      schema_version: string;
+      validation_endpoint: string;
+    };
+
+    expect(content).not.toBeNull();
+    expect(content.success).toBe(true);
+    expect(content.prompt).toBeDefined();
+    expect(content.prompt).toContain('TypeScript REST API');
+    expect(content.prompt).toContain('[project]');
+    expect(content.prompt).toContain('[rulesets.eslint.rules]');
+    expect(content.schema_version).toBe('1.0.0');
+    expect(content.validation_endpoint).toContain('validate_config');
+  }, 60000);
+
+  it('handles Python project description', async () => {
+    const result = await runMcpToolCall(images['mcp-server/default'], 'suggest_config', {
+      description: 'A Python data processing pipeline with pandas',
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      prompt: string;
+    };
+
+    expect(content).not.toBeNull();
+    expect(content.success).toBe(true);
+    expect(content.prompt).toContain('Python data processing');
+    expect(content.prompt).toContain('[rulesets.ruff]');
+  }, 60000);
+
+  it('returns error for empty description', async () => {
+    const result = await runMcpToolCall(images['mcp-server/default'], 'suggest_config', {
+      description: '',
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      error?: { code: string };
+    };
+
+    expect(content).not.toBeNull();
+    expect(content.success).toBe(false);
+    expect(content.error?.code).toBe('VALIDATION_ERROR');
+  }, 60000);
+});
+
+// =============================================================================
+// MCP Server: validate_config tool
+// =============================================================================
+describe.skipIf(!dockerAvailable)('cmc mcp-server - validate_config', () => {
+  it('validates correct TOML config', async () => {
+    const validConfig = `[project]
+name = "my-project"
+
+[rulesets.eslint.rules]
+"no-console" = "warn"
+`;
+
+    const result = await runMcpToolCall(images['mcp-server/default'], 'validate_config', {
+      config: validConfig,
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      validated: boolean;
+      config: string;
+      parsed: { project: { name: string } };
+      schema_version: string;
+    };
+
+    expect(content).not.toBeNull();
+    expect(content.success).toBe(true);
+    expect(content.validated).toBe(true);
+    expect(content.parsed.project.name).toBe('my-project');
+    expect(content.schema_version).toBe('1.0.0');
+  }, 60000);
+
+  it('returns error for invalid TOML syntax', async () => {
+    const invalidToml = `[project
+name = "missing bracket"`;
+
+    const result = await runMcpToolCall(images['mcp-server/default'], 'validate_config', {
+      config: invalidToml,
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      error?: { code: string; message: string };
+    };
+
+    expect(content).not.toBeNull();
+    expect(content.success).toBe(false);
+    expect(content.error?.code).toBe('VALIDATION_ERROR');
+    expect(content.error?.message).toContain('Invalid TOML syntax');
+  }, 60000);
+
+  it('returns error for missing required fields', async () => {
+    const missingName = `[project]
+# name is missing
+`;
+
+    const result = await runMcpToolCall(images['mcp-server/default'], 'validate_config', {
+      config: missingName,
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      error?: { code: string; message: string };
+    };
+
+    expect(content).not.toBeNull();
+    expect(content.success).toBe(false);
+    expect(content.error?.code).toBe('VALIDATION_ERROR');
+  }, 60000);
+
+  it('returns error for empty config', async () => {
+    const result = await runMcpToolCall(images['mcp-server/default'], 'validate_config', {
+      config: '',
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      error?: { code: string };
+    };
+
+    expect(content).not.toBeNull();
+    expect(content.success).toBe(false);
+    expect(content.error?.code).toBe('VALIDATION_ERROR');
+  }, 60000);
+
+  it('validates config with ruff rules', async () => {
+    const ruffConfig = `[project]
+name = "python-project"
+
+[rulesets.ruff]
+line-length = 100
+
+[rulesets.ruff.lint]
+select = ["E", "F", "I"]
+`;
+
+    const result = await runMcpToolCall(images['mcp-server/default'], 'validate_config', {
+      config: ruffConfig,
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      validated: boolean;
+      parsed: {
+        project: { name: string };
+        rulesets: { ruff: { 'line-length': number } };
+      };
+    };
+
+    expect(content).not.toBeNull();
+    expect(content.success).toBe(true);
+    expect(content.validated).toBe(true);
+    expect(content.parsed.rulesets.ruff['line-length']).toBe(100);
   }, 60000);
 });

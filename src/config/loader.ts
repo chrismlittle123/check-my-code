@@ -58,7 +58,7 @@ const extendsSchema = z.object({
 
 // Strip Symbol keys from an object (recursively)
 // @iarna/toml adds Symbol keys for metadata that interfere with Zod validation
-function stripSymbolKeys(obj: unknown): unknown {
+export function stripSymbolKeys(obj: unknown): unknown {
   if (obj === null || typeof obj !== 'object') {
     return obj;
   }
@@ -75,7 +75,7 @@ function stripSymbolKeys(obj: unknown): unknown {
 }
 
 // Full cmc.toml schema
-const configSchema = z.object({
+export const configSchema = z.object({
   project: z.object({
     name: z.string().min(1, 'project name cannot be empty'),
   }),
@@ -148,4 +148,50 @@ export function findProjectRoot(): string {
   }
 
   return process.cwd();
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  config?: Config;
+  errors?: string[];
+}
+
+/**
+ * Validate TOML content against the cmc.toml schema.
+ * Returns validation result with parsed config or errors.
+ */
+export async function validateConfigContent(tomlContent: string): Promise<ValidationResult> {
+  const TOML = await import('@iarna/toml');
+
+  let parsed: unknown;
+  try {
+    parsed = TOML.parse(tomlContent);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Parse error';
+    return {
+      valid: false,
+      errors: [`Invalid TOML syntax: ${message}`],
+    };
+  }
+
+  // Strip Symbol keys added by @iarna/toml
+  parsed = stripSymbolKeys(parsed);
+
+  // Validate against schema
+  const result = configSchema.safeParse(parsed);
+  if (!result.success) {
+    const errors = result.error.issues.map((issue) => {
+      const pathStr = issue.path.map((p) => String(p)).join('.');
+      return `${pathStr}: ${issue.message}`;
+    });
+    return {
+      valid: false,
+      errors,
+    };
+  }
+
+  return {
+    valid: true,
+    config: result.data as Config,
+  };
 }

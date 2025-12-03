@@ -105,15 +105,17 @@ cmc mcp-server                # Start MCP server (communicates via stdio)
 
 ## MCP Server
 
-The MCP server enables AI agents to proactively lint code and enforce coding standards. It exposes 5 tools:
+The MCP server enables AI agents to proactively lint code and enforce coding standards. It exposes 7 tools:
 
-| Tool             | Description                         |
-| ---------------- | ----------------------------------- |
-| `check_files`    | Lint specific files                 |
-| `check_project`  | Lint entire project or subdirectory |
-| `fix_files`      | Auto-fix violations in files        |
-| `get_guidelines` | Fetch coding standards templates    |
-| `get_status`     | Get current session state           |
+| Tool              | Description                                |
+| ----------------- | ------------------------------------------ |
+| `check_files`     | Lint specific files                        |
+| `check_project`   | Lint entire project or subdirectory        |
+| `fix_files`       | Auto-fix violations in files               |
+| `get_guidelines`  | Fetch coding standards templates           |
+| `get_status`      | Get current session state                  |
+| `suggest_config`  | Generate cmc.toml from project description |
+| `validate_config` | Validate TOML against cmc.toml schema      |
 
 ### Setup
 
