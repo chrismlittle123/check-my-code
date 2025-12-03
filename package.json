@@ -1,6 +1,6 @@
 {
   "name": "check-my-code",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "A CLI tool that runs ESLint and Ruff linters on your code with a unified interface",
   "main": "dist/cli/index.js",
   "bin": {
@@ -25,7 +25,8 @@
     "typecheck": "tsc --noEmit",
     "generate:schema": "npx ts-node scripts/generate-schema.ts",
     "prepare": "husky",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "postversion": "git push && git push --tags"
   },
   "keywords": [
     "linter",
