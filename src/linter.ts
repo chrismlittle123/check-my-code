@@ -11,6 +11,13 @@ export class LinterError extends Error {
   }
 }
 
+// Result type for fix operations
+export interface FixResult {
+  fixedCount: number;
+  remainingViolations: Violation[];
+  filesModified: string[];
+}
+
 export async function runLinters(projectRoot: string, files: string[]): Promise<Violation[]> {
   const violations: Violation[] = [];
 
@@ -182,4 +189,200 @@ function runCommand(cmd: string, args: string[], cwd: string): Promise<string> {
       }
     });
   });
+}
+
+/**
+ * Run linters with --fix flag to auto-fix violations.
+ * Returns the number of fixes applied and any remaining violations.
+ */
+export async function runLintersFix(projectRoot: string, files: string[]): Promise<FixResult> {
+  const pythonFiles = files.filter((f) => f.endsWith('.py') || f.endsWith('.pyi'));
+  const jsFiles = files.filter((f) => /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(f));
+
+  const filesModified: string[] = [];
+  let totalFixed = 0;
+
+  // Run fixes
+  if (pythonFiles.length > 0) {
+    const ruffResult = await runRuffFix(projectRoot, pythonFiles);
+    totalFixed += ruffResult.fixedCount;
+    filesModified.push(...ruffResult.filesModified);
+  }
+
+  if (jsFiles.length > 0) {
+    const eslintResult = await runESLintFix(projectRoot, jsFiles);
+    totalFixed += eslintResult.fixedCount;
+    filesModified.push(...eslintResult.filesModified);
+  }
+
+  // Re-run linters to get remaining violations
+  const remainingViolations = await runLinters(projectRoot, files);
+
+  return {
+    fixedCount: totalFixed,
+    remainingViolations,
+    filesModified: [...new Set(filesModified)], // Deduplicate
+  };
+}
+
+async function runRuffFix(
+  projectRoot: string,
+  files: string[]
+): Promise<{ fixedCount: number; filesModified: string[] }> {
+  const hasRuff = await commandExists('ruff');
+  if (!hasRuff) {
+    return { fixedCount: 0, filesModified: [] };
+  }
+
+  // First, get the violations count before fix
+  const absoluteFiles = files.map((f) => join(projectRoot, f));
+  let beforeCount = 0;
+
+  try {
+    const beforeOutput = await runCommand(
+      'ruff',
+      ['check', '--output-format=json', ...absoluteFiles],
+      projectRoot
+    );
+    const beforeResults = JSON.parse(beforeOutput) as unknown[];
+    beforeCount = beforeResults.length;
+  } catch (error) {
+    if (error instanceof CommandError && error.stdout) {
+      try {
+        const beforeResults = JSON.parse(error.stdout) as unknown[];
+        beforeCount = beforeResults.length;
+      } catch {
+        // Ignore parse errors
+      }
+    }
+  }
+
+  // Run fix
+  try {
+    await runCommand('ruff', ['check', '--fix', ...absoluteFiles], projectRoot);
+  } catch {
+    // Ruff exits with non-zero if there are unfixable violations, which is expected
+  }
+
+  // Get violations count after fix
+  let afterCount = 0;
+  try {
+    const afterOutput = await runCommand(
+      'ruff',
+      ['check', '--output-format=json', ...absoluteFiles],
+      projectRoot
+    );
+    const afterResults = JSON.parse(afterOutput) as unknown[];
+    afterCount = afterResults.length;
+  } catch (error) {
+    if (error instanceof CommandError && error.stdout) {
+      try {
+        const afterResults = JSON.parse(error.stdout) as unknown[];
+        afterCount = afterResults.length;
+      } catch {
+        // Ignore parse errors
+      }
+    }
+  }
+
+  const fixedCount = Math.max(0, beforeCount - afterCount);
+
+  return {
+    fixedCount,
+    filesModified: fixedCount > 0 ? files : [],
+  };
+}
+
+async function runESLintFix(
+  projectRoot: string,
+  files: string[]
+): Promise<{ fixedCount: number; filesModified: string[] }> {
+  const localEslintPath = join(projectRoot, 'node_modules', '.bin', 'eslint');
+  const hasLocalESLint = existsSync(localEslintPath);
+  const hasGlobalESLint = await commandExists('eslint');
+
+  if (!hasLocalESLint && !hasGlobalESLint) {
+    return { fixedCount: 0, filesModified: [] };
+  }
+
+  const eslintBin = hasLocalESLint ? localEslintPath : 'eslint';
+  const absoluteFiles = files.map((f) => join(projectRoot, f));
+
+  // Get violations count before fix
+  let beforeCount = 0;
+  try {
+    const beforeOutput = await runCommand(
+      eslintBin,
+      [
+        '--format=json',
+        '--no-error-on-unmatched-pattern',
+        '--no-ignore',
+        '--no-warn-ignored',
+        ...absoluteFiles,
+      ],
+      projectRoot
+    );
+    const beforeResults = JSON.parse(beforeOutput) as { messages?: unknown[] }[];
+    beforeCount = beforeResults.reduce((sum, r) => sum + (r.messages?.length ?? 0), 0);
+  } catch (error) {
+    if (error instanceof CommandError && error.stdout) {
+      try {
+        const beforeResults = JSON.parse(error.stdout) as { messages?: unknown[] }[];
+        beforeCount = beforeResults.reduce((sum, r) => sum + (r.messages?.length ?? 0), 0);
+      } catch {
+        // Ignore parse errors
+      }
+    }
+  }
+
+  // Run fix
+  try {
+    await runCommand(
+      eslintBin,
+      [
+        '--fix',
+        '--no-error-on-unmatched-pattern',
+        '--no-ignore',
+        '--no-warn-ignored',
+        ...absoluteFiles,
+      ],
+      projectRoot
+    );
+  } catch {
+    // ESLint exits with non-zero if there are unfixable violations
+  }
+
+  // Get violations count after fix
+  let afterCount = 0;
+  try {
+    const afterOutput = await runCommand(
+      eslintBin,
+      [
+        '--format=json',
+        '--no-error-on-unmatched-pattern',
+        '--no-ignore',
+        '--no-warn-ignored',
+        ...absoluteFiles,
+      ],
+      projectRoot
+    );
+    const afterResults = JSON.parse(afterOutput) as { messages?: unknown[] }[];
+    afterCount = afterResults.reduce((sum, r) => sum + (r.messages?.length ?? 0), 0);
+  } catch (error) {
+    if (error instanceof CommandError && error.stdout) {
+      try {
+        const afterResults = JSON.parse(error.stdout) as { messages?: unknown[] }[];
+        afterCount = afterResults.reduce((sum, r) => sum + (r.messages?.length ?? 0), 0);
+      } catch {
+        // Ignore parse errors
+      }
+    }
+  }
+
+  const fixedCount = Math.max(0, beforeCount - afterCount);
+
+  return {
+    fixedCount,
+    filesModified: fixedCount > 0 ? files : [],
+  };
 }

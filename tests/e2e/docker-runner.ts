@@ -32,6 +32,26 @@ export interface DockerRunResult {
   exitCode: number;
 }
 
+export interface McpToolCallResult {
+  response: McpResponse | null;
+  stderr: string;
+  exitCode: number;
+}
+
+export interface McpResponse {
+  jsonrpc: string;
+  id: number;
+  result?: {
+    content?: { type: string; text: string }[];
+    tools?: { name: string; description: string }[];
+    [key: string]: unknown;
+  };
+  error?: {
+    code: number;
+    message: string;
+  };
+}
+
 /**
  * Build a base image (only once per test run)
  */
@@ -261,5 +281,251 @@ export async function cleanupImages(imageNames?: string[]): Promise<void> {
         resolve();
       }
     });
+  });
+}
+
+/**
+ * Create MCP JSON-RPC request message
+ */
+function createMcpRequest(method: string, params: Record<string, unknown> = {}, id = 1): string {
+  return JSON.stringify({ jsonrpc: '2.0', method, params, id });
+}
+
+/**
+ * Run MCP server in Docker and send tool calls via stdin
+ * @param imageName - Docker image name
+ * @param toolName - MCP tool name to call
+ * @param toolArgs - Arguments to pass to the tool
+ * @param timeoutMs - Timeout in milliseconds (default 30000)
+ */
+export async function runMcpToolCall(
+  imageName: string,
+  toolName: string,
+  toolArgs: Record<string, unknown> = {},
+  timeoutMs = 30000
+): Promise<McpToolCallResult> {
+  return new Promise((resolve) => {
+    const dockerArgs = ['run', '--rm', '-i', imageName, 'mcp-server'];
+    const proc = spawn('docker', dockerArgs);
+
+    let stdout = '';
+    let stderr = '';
+    let resolved = false;
+
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        proc.kill();
+        resolve({
+          response: null,
+          stderr: stderr + '\nTimeout waiting for MCP response',
+          exitCode: 1,
+        });
+      }
+    }, timeoutMs);
+
+    proc.stdout.on('data', (data) => {
+      stdout += data.toString();
+      // Try to parse complete JSON-RPC responses
+      const lines = stdout.split('\n').filter((line) => line.trim());
+      for (const line of lines) {
+        try {
+          const parsed = JSON.parse(line) as McpResponse;
+          // If we got a response to our tool call (id: 2), resolve
+          if (parsed.id === 2 && !resolved) {
+            resolved = true;
+            clearTimeout(timeout);
+            proc.kill();
+            resolve({
+              response: parsed,
+              stderr,
+              exitCode: 0,
+            });
+          }
+        } catch {
+          // Not valid JSON yet, continue
+        }
+      }
+    });
+
+    proc.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    proc.on('close', (code) => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        // Try to parse any response we got
+        let response: McpResponse | null = null;
+        const lines = stdout.split('\n').filter((line) => line.trim());
+        for (const line of lines) {
+          try {
+            const parsed = JSON.parse(line) as McpResponse;
+            if (parsed.id === 2) {
+              response = parsed;
+              break;
+            }
+          } catch {
+            // Not valid JSON
+          }
+        }
+        resolve({
+          response,
+          stderr,
+          exitCode: code ?? 1,
+        });
+      }
+    });
+
+    proc.on('error', (err) => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        resolve({
+          response: null,
+          stderr: err.message,
+          exitCode: 1,
+        });
+      }
+    });
+
+    // Send MCP initialization and tool call
+    // 1. Initialize
+    const initRequest = createMcpRequest(
+      'initialize',
+      {
+        protocolVersion: '2024-11-05',
+        capabilities: {},
+        clientInfo: { name: 'test-client', version: '1.0.0' },
+      },
+      1
+    );
+
+    // 2. Call tool
+    const toolRequest = createMcpRequest(
+      'tools/call',
+      {
+        name: toolName,
+        arguments: toolArgs,
+      },
+      2
+    );
+
+    // Write requests with newline separators
+    proc.stdin.write(initRequest + '\n');
+    proc.stdin.write(toolRequest + '\n');
+    proc.stdin.end();
+  });
+}
+
+/**
+ * Run MCP server and list available tools
+ * @param imageName - Docker image name
+ * @param timeoutMs - Timeout in milliseconds (default 30000)
+ */
+export async function runMcpListTools(
+  imageName: string,
+  timeoutMs = 30000
+): Promise<McpToolCallResult> {
+  return new Promise((resolve) => {
+    const dockerArgs = ['run', '--rm', '-i', imageName, 'mcp-server'];
+    const proc = spawn('docker', dockerArgs);
+
+    let stdout = '';
+    let stderr = '';
+    let resolved = false;
+
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        proc.kill();
+        resolve({
+          response: null,
+          stderr: stderr + '\nTimeout waiting for MCP response',
+          exitCode: 1,
+        });
+      }
+    }, timeoutMs);
+
+    proc.stdout.on('data', (data) => {
+      stdout += data.toString();
+      const lines = stdout.split('\n').filter((line) => line.trim());
+      for (const line of lines) {
+        try {
+          const parsed = JSON.parse(line) as McpResponse;
+          if (parsed.id === 2 && !resolved) {
+            resolved = true;
+            clearTimeout(timeout);
+            proc.kill();
+            resolve({
+              response: parsed,
+              stderr,
+              exitCode: 0,
+            });
+          }
+        } catch {
+          // Not valid JSON yet
+        }
+      }
+    });
+
+    proc.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    proc.on('close', (code) => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        let response: McpResponse | null = null;
+        const lines = stdout.split('\n').filter((line) => line.trim());
+        for (const line of lines) {
+          try {
+            const parsed = JSON.parse(line) as McpResponse;
+            if (parsed.id === 2) {
+              response = parsed;
+              break;
+            }
+          } catch {
+            // Not valid JSON
+          }
+        }
+        resolve({
+          response,
+          stderr,
+          exitCode: code ?? 1,
+        });
+      }
+    });
+
+    proc.on('error', (err) => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        resolve({
+          response: null,
+          stderr: err.message,
+          exitCode: 1,
+        });
+      }
+    });
+
+    // Send MCP initialization and list tools
+    const initRequest = createMcpRequest(
+      'initialize',
+      {
+        protocolVersion: '2024-11-05',
+        capabilities: {},
+        clientInfo: { name: 'test-client', version: '1.0.0' },
+      },
+      1
+    );
+
+    const listToolsRequest = createMcpRequest('tools/list', {}, 2);
+
+    proc.stdin.write(initRequest + '\n');
+    proc.stdin.write(listToolsRequest + '\n');
+    proc.stdin.end();
   });
 }

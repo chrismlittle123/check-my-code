@@ -22,7 +22,7 @@
  *   no-language/invalid-source  - Invalid remote source URL
  *   no-language/invalid-template - Template not found in source
  *
- * verify/
+ * audit/
  *   typescript-and-python/match        - Matching configs
  *   typescript-and-python/mismatch     - Mismatching configs
  *   typescript-and-python/missing      - Missing config files
@@ -33,6 +33,9 @@
  *   existing-config  - Configs already exist
  *   fresh           - No existing configs
  *   empty-ruleset   - No rulesets defined
+ *
+ * mcp-server/
+ *   default         - MCP server with TypeScript and Python files
  */
 
 import { beforeAll } from 'vitest';
@@ -86,16 +89,18 @@ const ALL_PROJECTS = [
   'context/no-language/multiple',
   'context/no-language/invalid-source',
   'context/no-language/invalid-template',
-  // verify command
-  'verify/typescript-and-python/match',
-  'verify/typescript-and-python/mismatch',
-  'verify/typescript-and-python/missing',
-  'verify/typescript-and-python/malformed',
-  'verify/typescript-and-python/empty-ruleset',
+  // audit command
+  'audit/typescript-and-python/match',
+  'audit/typescript-and-python/mismatch',
+  'audit/typescript-and-python/missing',
+  'audit/typescript-and-python/malformed',
+  'audit/typescript-and-python/empty-ruleset',
   // generate command
   'generate/existing-config',
   'generate/fresh',
   'generate/empty-ruleset',
+  // mcp-server command
+  'mcp-server/default',
 ];
 
 /**

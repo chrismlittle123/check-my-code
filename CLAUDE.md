@@ -32,7 +32,8 @@ npm run format
 node dist/cli/index.js check [path]
 node dist/cli/index.js context --target claude
 node dist/cli/index.js generate eslint
-node dist/cli/index.js verify
+node dist/cli/index.js audit
+node dist/cli/index.js mcp-server
 
 # Run a single test file
 npm test -- tests/unit/config.test.ts
@@ -73,9 +74,14 @@ src/
 │       ├── check.ts      # Run linters and report violations
 │       ├── context.ts    # Append AI context from remote templates
 │       ├── generate.ts   # Generate linter configs from cmc.toml
-│       └── verify.ts     # Verify linter configs match cmc.toml
+│       ├── audit.ts     # Audit linter configs match cmc.toml
+│       └── mcp-server.ts # Start MCP server for AI agents
 ├── config/
 │   └── loader.ts         # cmc.toml discovery and parsing (Zod validation)
+├── mcp/
+│   ├── server.ts         # MCP server setup (stdio transport)
+│   ├── tools.ts          # MCP tool definitions and handlers
+│   └── state.ts          # Session state management
 ├── remote/
 │   └── fetcher.ts        # Git-based remote file fetching for templates
 ├── linter.ts             # ESLint and Ruff execution
@@ -87,7 +93,8 @@ src/
 1. **check**: Finds `cmc.toml` → discovers files → runs ESLint/Ruff → outputs violations
 2. **context**: Loads `cmc.toml` → fetches `prompts.json` manifest from remote → resolves template versions → fetches template files → appends to target file
 3. **generate**: Loads `cmc.toml` rulesets → generates `eslint.config.js` or `ruff.toml`
-4. **verify**: Compares generated config against existing config files
+4. **audit**: Compares generated config against existing config files
+5. **mcp-server**: Starts MCP server exposing linting tools to AI agents
 
 **Remote template system** (`context.ts` + `fetcher.ts`):
 
@@ -123,3 +130,34 @@ line-length = 100
 - 1: Violations found
 - 2: Configuration error (invalid/missing cmc.toml)
 - 3: Runtime error (linter failed)
+
+## MCP Server
+
+The `mcp-server` command starts an MCP (Model Context Protocol) server that exposes linting functionality to AI agents.
+
+**Setup for Claude Code:**
+
+```bash
+claude mcp add cmc -- npx -y check-my-code mcp-server
+```
+
+**Setup for Cursor/Claude Desktop** (add to MCP config):
+
+```json
+{
+  "mcpServers": {
+    "cmc": {
+      "command": "npx",
+      "args": ["-y", "check-my-code", "mcp-server"]
+    }
+  }
+}
+```
+
+**Available MCP tools:**
+
+- `check_files` - Lint specific files
+- `check_project` - Lint entire project or subdirectory
+- `fix_files` - Auto-fix violations using ESLint --fix / Ruff --fix
+- `get_guidelines` - Fetch coding standards templates
+- `get_status` - Get session state and statistics

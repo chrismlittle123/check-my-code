@@ -1,0 +1,11 @@
+[project]
+name = "mcp-test-project"
+
+[rulesets.eslint.rules]
+"no-var" = "error"
+"eqeqeq" = "error"
+
+[rulesets.ruff]
+line-length = 100
+[rulesets.ruff.lint]
+select = ["F", "E"]

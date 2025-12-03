@@ -7,7 +7,8 @@ import { Command } from 'commander';
 import { checkCommand } from './commands/check.js';
 import { contextCommand } from './commands/context.js';
 import { generateCommand } from './commands/generate.js';
-import { verifyCommand } from './commands/verify.js';
+import { auditCommand } from './commands/verify.js';
+import { mcpServerCommand } from './commands/mcp-server.js';
 
 // Read version from package.json
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -27,7 +28,7 @@ Examples:
   $ cmc check src/               Check specific directory
   $ cmc check --json             Output results as JSON
   $ cmc generate eslint          Generate eslint.config.js
-  $ cmc verify                   Verify linter configs match cmc.toml
+  $ cmc audit                    Audit linter configs match cmc.toml
   $ cmc context --target claude  Add coding standards to CLAUDE.md
 
 Getting started:
@@ -41,6 +42,7 @@ Documentation: https://github.com/chrismlittle123/check-my-code`
 program.addCommand(checkCommand);
 program.addCommand(contextCommand);
 program.addCommand(generateCommand);
-program.addCommand(verifyCommand);
+program.addCommand(auditCommand);
+program.addCommand(mcpServerCommand);
 
 program.parse();
