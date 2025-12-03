@@ -1,4 +1,4 @@
 [project]
-name = "empty-ruleset-verify-test"
+name = "empty-ruleset-audit-test"
 
 # No rulesets defined - empty config

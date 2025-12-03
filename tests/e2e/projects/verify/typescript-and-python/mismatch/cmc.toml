@@ -1,5 +1,5 @@
 [project]
-name = "verify-mismatch-test"
+name = "audit-mismatch-test"
 
 [rulesets.eslint.rules]
 "no-var" = "error"

@@ -1,5 +1,5 @@
 [project]
-name = "verify-missing-test"
+name = "audit-missing-test"
 
 [rulesets.eslint.rules]
 "no-var" = "error"

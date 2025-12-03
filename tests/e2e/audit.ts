@@ -1,5 +1,5 @@
 /**
- * E2E tests for `cmc verify` command
+ * E2E tests for `cmc audit` command
  */
 
 import { describe, it, expect } from 'vitest';
@@ -8,20 +8,20 @@ import { dockerAvailable, images, setupImages } from './setup.js';
 
 // Setup: Build required images
 setupImages([
-  'verify/typescript-and-python/match',
-  'verify/typescript-and-python/mismatch',
-  'verify/typescript-and-python/missing',
-  'verify/typescript-and-python/malformed',
-  'verify/typescript-and-python/empty-ruleset',
+  'audit/typescript-and-python/match',
+  'audit/typescript-and-python/mismatch',
+  'audit/typescript-and-python/missing',
+  'audit/typescript-and-python/malformed',
+  'audit/typescript-and-python/empty-ruleset',
 ]);
 
 // =============================================================================
 // Verify: Matching configs
 // =============================================================================
-describe.skipIf(!dockerAvailable)('cmc verify - matching configs', () => {
+describe.skipIf(!dockerAvailable)('cmc audit - matching configs', () => {
   it('exits 0 when ESLint config matches cmc.toml', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/match'], [
-      'verify',
+    const result = await runInDocker(images['audit/typescript-and-python/match'], [
+      'audit',
       'eslint',
     ]);
 
@@ -30,8 +30,8 @@ describe.skipIf(!dockerAvailable)('cmc verify - matching configs', () => {
   }, 30000);
 
   it('exits 0 when Ruff config matches cmc.toml', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/match'], [
-      'verify',
+    const result = await runInDocker(images['audit/typescript-and-python/match'], [
+      'audit',
       'ruff',
     ]);
 
@@ -40,7 +40,7 @@ describe.skipIf(!dockerAvailable)('cmc verify - matching configs', () => {
   }, 30000);
 
   it('exits 0 when all configs match (no argument)', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/match'], ['verify']);
+    const result = await runInDocker(images['audit/typescript-and-python/match'], ['audit']);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('✓ eslint.config.js matches cmc.toml ruleset');
@@ -51,10 +51,10 @@ describe.skipIf(!dockerAvailable)('cmc verify - matching configs', () => {
 // =============================================================================
 // Verify: Mismatching configs
 // =============================================================================
-describe.skipIf(!dockerAvailable)('cmc verify - mismatching configs', () => {
+describe.skipIf(!dockerAvailable)('cmc audit - mismatching configs', () => {
   it('exits 1 when ESLint config has mismatches', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/mismatch'], [
-      'verify',
+    const result = await runInDocker(images['audit/typescript-and-python/mismatch'], [
+      'audit',
       'eslint',
     ]);
 
@@ -63,8 +63,8 @@ describe.skipIf(!dockerAvailable)('cmc verify - mismatching configs', () => {
   }, 30000);
 
   it('reports missing ESLint rules', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/mismatch'], [
-      'verify',
+    const result = await runInDocker(images['audit/typescript-and-python/mismatch'], [
+      'audit',
       'eslint',
     ]);
 
@@ -73,8 +73,8 @@ describe.skipIf(!dockerAvailable)('cmc verify - mismatching configs', () => {
   }, 30000);
 
   it('reports extra ESLint rules', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/mismatch'], [
-      'verify',
+    const result = await runInDocker(images['audit/typescript-and-python/mismatch'], [
+      'audit',
       'eslint',
     ]);
 
@@ -82,8 +82,8 @@ describe.skipIf(!dockerAvailable)('cmc verify - mismatching configs', () => {
   }, 30000);
 
   it('exits 1 when Ruff config has mismatches', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/mismatch'], [
-      'verify',
+    const result = await runInDocker(images['audit/typescript-and-python/mismatch'], [
+      'audit',
       'ruff',
     ]);
 
@@ -92,8 +92,8 @@ describe.skipIf(!dockerAvailable)('cmc verify - mismatching configs', () => {
   }, 30000);
 
   it('reports different Ruff values', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/mismatch'], [
-      'verify',
+    const result = await runInDocker(images['audit/typescript-and-python/mismatch'], [
+      'audit',
       'ruff',
     ]);
 
@@ -102,8 +102,8 @@ describe.skipIf(!dockerAvailable)('cmc verify - mismatching configs', () => {
   }, 30000);
 
   it('reports missing Ruff rules', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/mismatch'], [
-      'verify',
+    const result = await runInDocker(images['audit/typescript-and-python/mismatch'], [
+      'audit',
       'ruff',
     ]);
 
@@ -111,7 +111,7 @@ describe.skipIf(!dockerAvailable)('cmc verify - mismatching configs', () => {
   }, 30000);
 
   it('exits 1 when any config mismatches (no argument)', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/mismatch'], ['verify']);
+    const result = await runInDocker(images['audit/typescript-and-python/mismatch'], ['audit']);
 
     expect(result.exitCode).toBe(1);
     expect(result.stdout).toContain('✗ eslint.config.js has mismatches');
@@ -122,10 +122,10 @@ describe.skipIf(!dockerAvailable)('cmc verify - mismatching configs', () => {
 // =============================================================================
 // Verify: Missing linter config files
 // =============================================================================
-describe.skipIf(!dockerAvailable)('cmc verify - missing config files', () => {
+describe.skipIf(!dockerAvailable)('cmc audit - missing config files', () => {
   it('exits 3 when ESLint config file not found', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/missing'], [
-      'verify',
+    const result = await runInDocker(images['audit/typescript-and-python/missing'], [
+      'audit',
       'eslint',
     ]);
 
@@ -135,8 +135,8 @@ describe.skipIf(!dockerAvailable)('cmc verify - missing config files', () => {
   }, 30000);
 
   it('exits 3 when Ruff config file not found', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/missing'], [
-      'verify',
+    const result = await runInDocker(images['audit/typescript-and-python/missing'], [
+      'audit',
       'ruff',
     ]);
 
@@ -146,7 +146,7 @@ describe.skipIf(!dockerAvailable)('cmc verify - missing config files', () => {
   }, 30000);
 
   it('exits 3 when verifying all and first config not found', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/missing'], ['verify']);
+    const result = await runInDocker(images['audit/typescript-and-python/missing'], ['audit']);
 
     expect(result.exitCode).toBe(3);
     expect(result.stderr).toContain('Linter config file not found');
@@ -156,10 +156,10 @@ describe.skipIf(!dockerAvailable)('cmc verify - missing config files', () => {
 // =============================================================================
 // Verify: Error handling
 // =============================================================================
-describe.skipIf(!dockerAvailable)('cmc verify - error handling', () => {
+describe.skipIf(!dockerAvailable)('cmc audit - error handling', () => {
   it('exits 2 for unknown linter', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/match'], [
-      'verify',
+    const result = await runInDocker(images['audit/typescript-and-python/match'], [
+      'audit',
       'unknown',
     ]);
 
@@ -171,10 +171,10 @@ describe.skipIf(!dockerAvailable)('cmc verify - error handling', () => {
 // =============================================================================
 // Verify: Malformed config files
 // =============================================================================
-describe.skipIf(!dockerAvailable)('cmc verify - malformed configs', () => {
+describe.skipIf(!dockerAvailable)('cmc audit - malformed configs', () => {
   it('handles malformed Ruff TOML config', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/malformed'], [
-      'verify',
+    const result = await runInDocker(images['audit/typescript-and-python/malformed'], [
+      'audit',
       'ruff',
     ]);
 
@@ -184,8 +184,8 @@ describe.skipIf(!dockerAvailable)('cmc verify - malformed configs', () => {
   }, 30000);
 
   it('handles malformed ESLint config gracefully', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/malformed'], [
-      'verify',
+    const result = await runInDocker(images['audit/typescript-and-python/malformed'], [
+      'audit',
       'eslint',
     ]);
 
@@ -198,23 +198,23 @@ describe.skipIf(!dockerAvailable)('cmc verify - malformed configs', () => {
 // =============================================================================
 // Verify: Empty rulesets
 // =============================================================================
-describe.skipIf(!dockerAvailable)('cmc verify - empty rulesets', () => {
+describe.skipIf(!dockerAvailable)('cmc audit - empty rulesets', () => {
   it('exits successfully when no rulesets defined', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/empty-ruleset'], [
-      'verify',
+    const result = await runInDocker(images['audit/typescript-and-python/empty-ruleset'], [
+      'audit',
     ]);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('No linter configs to verify');
+    expect(result.stdout).toContain('No linter configs to audit');
   }, 30000);
 
   it('shows message about no rulesets for specific linter', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/empty-ruleset'], [
-      'verify',
+    const result = await runInDocker(images['audit/typescript-and-python/empty-ruleset'], [
+      'audit',
       'eslint',
     ]);
 
-    // When no ESLint ruleset is defined, should indicate nothing to verify
+    // When no ESLint ruleset is defined, should indicate nothing to audit
     expect(result.exitCode).toBe(0);
   }, 30000);
 });
@@ -222,15 +222,15 @@ describe.skipIf(!dockerAvailable)('cmc verify - empty rulesets', () => {
 // =============================================================================
 // Verify: Help text
 // =============================================================================
-describe.skipIf(!dockerAvailable)('cmc verify - help', () => {
+describe.skipIf(!dockerAvailable)('cmc audit - help', () => {
   it('shows help with usage information', async () => {
-    const result = await runInDocker(images['verify/typescript-and-python/match'], [
-      'verify',
+    const result = await runInDocker(images['audit/typescript-and-python/match'], [
+      'audit',
       '--help',
     ]);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('verify');
+    expect(result.stdout).toContain('audit');
     expect(result.stdout).toContain('linter');
   }, 30000);
 });

@@ -67,7 +67,7 @@ Use in CI to ensure configs haven't drifted from cmc.toml.`
       }
 
       if (results.length === 0) {
-        console.log('No linter configs to verify (no rulesets defined in cmc.toml)');
+        console.log('No linter configs to audit (no rulesets defined in cmc.toml)');
         process.exit(ExitCode.SUCCESS);
       }
 
