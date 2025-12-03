@@ -1,12 +1,30 @@
 # check-my-code (cmc)
 
-A CLI tool that runs ESLint and Ruff linters on your code with a unified interface.
+A CLI tool that runs ESLint and Ruff linters on your code with a unified interface. It acts as a **configuration manager**, **verification layer**, and **context provider** for AI coding agents.
+
+## The Problem
+
+Every repository has its own ESLint and Ruff configs, leading to:
+
+- Configuration sprawl across projects
+- Config drift as developers make local changes
+- Friction adopting organization-wide standards
+- AI agents that don't know your team's coding standards
+
+## The Solution
+
+`cmc` uses `cmc.toml` as a single source of truth:
+
+- Define rules once, generate linter configs as artifacts
+- Inherit rules from remote repositories (private or community)
+- Provide context to AI agents so they write compliant code from the start
 
 ## Features
 
 - **Unified linting**: Run ESLint (TypeScript/JavaScript) and Ruff (Python) with a single command
-- **Configuration management**: Generate and verify linter configs from a central `cmc.toml`
+- **Configuration management**: Generate and audit linter configs from a central `cmc.toml`
 - **AI context**: Export coding standards for AI coding agents (Claude, Cursor, Copilot)
+- **MCP server**: Enable AI agents to proactively lint code via Model Context Protocol
 - **Graceful degradation**: Works with whatever linters you have installed
 
 ## Installation
@@ -56,14 +74,14 @@ cmc generate eslint --force   # Overwrite existing config
 cmc generate eslint --stdout  # Output to stdout
 ```
 
-### `cmc verify`
+### `cmc audit`
 
 Check that linter configs match the ruleset defined in `cmc.toml`.
 
 ```bash
-cmc verify                    # Verify all linter configs
-cmc verify eslint             # Verify only ESLint config
-cmc verify ruff               # Verify only Ruff config
+cmc audit                    # Audit all linter configs
+cmc audit eslint             # Audit only ESLint config
+cmc audit ruff               # Audit only Ruff config
 ```
 
 ### `cmc context`
@@ -75,6 +93,49 @@ cmc context --target claude   # Appends to CLAUDE.md
 cmc context --target cursor   # Appends to .cursorrules
 cmc context --target copilot  # Appends to .github/copilot-instructions.md
 cmc context --stdout          # Output to stdout
+```
+
+### `cmc mcp-server`
+
+Start an MCP (Model Context Protocol) server for AI agent integration.
+
+```bash
+cmc mcp-server                # Start MCP server (communicates via stdio)
+```
+
+## MCP Server
+
+The MCP server enables AI agents to proactively lint code and enforce coding standards. It exposes 5 tools:
+
+| Tool             | Description                         |
+| ---------------- | ----------------------------------- |
+| `check_files`    | Lint specific files                 |
+| `check_project`  | Lint entire project or subdirectory |
+| `fix_files`      | Auto-fix violations in files        |
+| `get_guidelines` | Fetch coding standards templates    |
+| `get_status`     | Get current session state           |
+
+### Setup
+
+**Claude Code:**
+
+```bash
+claude mcp add cmc -- npx -y check-my-code mcp-server
+```
+
+**Cursor / Claude Desktop / other MCP clients:**
+
+Add to your MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "cmc": {
+      "command": "npx",
+      "args": ["-y", "check-my-code", "mcp-server"]
+    }
+  }
+}
 ```
 
 ## Configuration
@@ -230,7 +291,7 @@ name = "my-project"
 Error: Template "my-template" not found
 ```
 
-Check that the template name matches one of the [available templates](#prompts-templates), or verify your custom source repository contains the template file.
+Check that the template name matches one of the [available templates](#prompts-templates), or audit your custom source repository contains the template file.
 
 ### Git not available (for remote templates)
 
@@ -250,6 +311,30 @@ sudo apt install git
 # Windows
 winget install Git.Git
 ```
+
+## Design Principles
+
+- **Single source of truth**: `cmc.toml` is authoritative; linter configs are generated artifacts
+- **Additive-only inheritance**: Projects can only add or strengthen rules, not weaken them
+- **Linter-first**: Delegates to native linters (ESLint, Ruff) for actual checking
+- **Graceful degradation**: Silently skips missing linters rather than failing
+- **Agent-agnostic**: Works with any AI coding tool via standardized context output
+
+## Roadmap
+
+### v1 (Current)
+
+- CLI commands: `check`, `generate`, `audit`, `context`, `mcp-server`
+- ESLint + Ruff support
+- AI context templates from community repository
+- MCP server for AI agent integration
+
+### v2 (Planned)
+
+- **Config inheritance**: Remote config inheritance from git repositories
+- **Environment enforcers**: Verify version managers (mise, asdf) and required files
+- **Extended linting**: Formatting, type safety, security, complexity checks
+- **Custom hooks**: User-defined pre/post validation scripts
 
 ## License
 

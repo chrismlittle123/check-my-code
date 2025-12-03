@@ -18,7 +18,8 @@
    - 6.2 [Configuration System](#62-configuration-system)
    - 6.3 [Linter Integration](#63-linter-integration)
    - 6.4 [Output & Exit Codes](#64-output--exit-codes)
-7. [Feature Specifications (v3 Future)](#7-feature-specifications-v3-future)
+   - 6.5 [MCP Server](#65-mcp-server)
+7. [Feature Specifications (v2 Future)](#7-feature-specifications-v2-future)
 8. [Technical Specifications](#8-technical-specifications)
 9. [Glossary](#9-glossary)
 
@@ -72,7 +73,7 @@ A single tool that:
 2. **Inherits rules** from remote repositories (private git repos or community presets)
 3. **Generates configs** for new projects (`cmc generate`)
 4. **Syncs configs** for existing projects (`cmc sync`)
-5. **Verifies configs** match the source of truth (`cmc verify`)
+5. **Verifies configs** match the source of truth (`cmc audit`)
 6. **Runs linters** (ESLint, Ruff) on specified files or directories
 7. **Provides context** to AI coding agents so they write compliant code
 
@@ -124,7 +125,7 @@ The minimum viable product focuses on core functionality:
 - `cmc check` - Run linters and report violations
 - `cmc generate` - Create linter configs from `cmc.toml` ruleset (overwrites)
 - `cmc context` - Output rules for AI agents
-- `cmc verify` - Check linter configs match ruleset (without running linters)
+- `cmc audit` - Check linter configs match ruleset (without running linters)
 
 **Features:**
 
@@ -147,17 +148,6 @@ The minimum viable product focuses on core functionality:
 - Version pinning for remote configs (`@v1.0.0`, `@latest`)
 - Additive-only rule inheritance (cannot weaken base rules)
 - Conflict detection and reporting
-
-### v3 Future
-
-Features deferred to future versions:
-
-- `cmc diff` - Show changes since last check
-- `cmc dry-run` - Preview what would be checked
-- `cmc report` - Generate detailed reports (including HTML)
-- Nested config inheritance (base extends another base)
-- Smart checking (file hash caching)
-- Colored output, progress indicators
 
 ---
 
@@ -233,7 +223,7 @@ cmc generate ruff             # Generate ruff.toml
 | --------- | -------------- | ------------------------------------------ |
 | Generated | `cmc generate` | New project, start fresh                   |
 | Amended   | `cmc sync`     | Existing project, merge rules (v2)         |
-| Verified  | `cmc verify`   | Check compliance without modifying configs |
+| Verified  | `cmc audit`    | Check compliance without modifying configs |
 
 ---
 
@@ -332,16 +322,16 @@ cmc context --stdout          # Output to stdout instead of file
 
 ---
 
-#### 6.1.5 `cmc verify`
+#### 6.1.5 `cmc audit`
 
 **Purpose:** Check that linter config files contain all rules defined in `cmc.toml` without running the linters or modifying any files. Use this in CI/CD to ensure configs haven't drifted.
 
 **Usage:**
 
 ```bash
-cmc verify                    # Verify all linter configs match cmc.toml
-cmc verify eslint             # Verify only ESLint config
-cmc verify ruff               # Verify only Ruff config
+cmc audit                    # Audit all linter configs match cmc.toml
+cmc audit eslint             # Audit only ESLint config
+cmc audit ruff               # Audit only Ruff config
 ```
 
 **Behaviour:**
@@ -616,29 +606,172 @@ src/utils.ts:42 [eslint/no-var] Unexpected var, use let or const instead
 
 ---
 
-## 7. Feature Specifications (v3 Future)
+### 6.5 MCP Server
 
-### 7.1 Smart Checking
+#### 6.5.1 Overview
 
-Track file hashes to skip unchanged files:
+`cmc` includes an MCP (Model Context Protocol) server that enables AI agents (Claude Code, Cursor, Codex, Gemini) to proactively lint code and enforce coding standards.
 
-- State stored in `.cmc/state.json`
-- `--all` flag to force full check
-- Cache invalidation on ruleset changes
+**Usage:**
 
-### 7.2 Additional Commands
+```bash
+# Claude Code
+claude mcp add cmc -- npx -y check-my-code mcp-server
+
+# Cursor / Claude Desktop / other MCP clients
+# Add to MCP config JSON:
+{
+  "mcpServers": {
+    "cmc": {
+      "command": "npx",
+      "args": ["-y", "check-my-code", "mcp-server"]
+    }
+  }
+}
+```
+
+#### 6.5.2 MCP Tools
+
+| Tool             | Description                         | Parameters             |
+| ---------------- | ----------------------------------- | ---------------------- |
+| `check_files`    | Lint specific files                 | `files: string[]`      |
+| `check_project`  | Lint entire project or subdirectory | `path?: string`        |
+| `fix_files`      | Auto-fix violations in files        | `files: string[]`      |
+| `get_guidelines` | Fetch coding standards templates    | `templates?: string[]` |
+| `get_status`     | Get current session state           | (none)                 |
+
+#### 6.5.3 Tool Response Format
+
+All tools return structured JSON responses:
+
+**Success:**
+
+```json
+{
+  "success": true,
+  "violations": [...],
+  "files_checked": 5,
+  "has_violations": true
+}
+```
+
+**Error:**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "CONFIG_NOT_FOUND",
+    "message": "No cmc.toml found in project",
+    "recoverable": false
+  }
+}
+```
+
+**Error Codes:**
+
+- `CONFIG_NOT_FOUND` - No cmc.toml in project
+- `CONFIG_INVALID` - Invalid cmc.toml
+- `FILE_NOT_FOUND` - Requested file doesn't exist
+- `TEMPLATE_NOT_FOUND` - Requested template doesn't exist
+- `RUNTIME_ERROR` - Linter execution failed
+
+---
+
+## 7. Feature Specifications (v2 Future)
+
+### 7.1 Config Inheritance
+
+Remote config inheritance from git repositories:
+
+- Community presets from central repository
+- Version pinning for remote configs (`@v1.0.0`, `@latest`)
+- Additive-only rule inheritance (cannot weaken base rules)
+- Conflict detection and reporting
+- `cmc sync` command to merge/amend rules into existing configs
+
+### 7.2 Environment Enforcers
+
+Meta-standard enforcement for development environments:
+
+```toml
+[project]
+name = "payment-service"
+tier = "production"
+
+[enforcers]
+# Require the use of a polyglot version manager
+polyglot_manager = "mise"
+
+[requirements]
+# Verify required configuration files exist
+file_exists = [
+    ".tool-versions",      # Required by mise
+    ".nvmrc"               # Common for Node projects
+]
+```
+
+**Enforcer Types:**
+
+| Enforcer           | Description                 | Validates       |
+| ------------------ | --------------------------- | --------------- |
+| `polyglot_manager` | Version manager enforcement | mise, asdf, rtx |
+| `file_exists`      | Required file presence      | Any file paths  |
+
+**Use Cases:**
+
+- Ensure all projects use consistent version management
+- Verify required configuration files are present
+- Enforce tool consistency across teams
+
+### 7.3 Extended Linting Categories
+
+Additional linting beyond style violations:
+
+**Formatting:**
+
+- Code formatting standards (Prettier, Black)
+- Import ordering
+- Consistent indentation
+
+**Type Safety:**
+
+- TypeScript strict mode enforcement
+- Python type hints coverage
+- Generic type usage
+
+**Security:**
+
+- Secrets detection
+- Dependency vulnerability scanning
+- Unsafe code patterns
+
+**Complexity:**
+
+- Cyclomatic complexity limits
+- Function length limits
+- File size limits
+
+### 7.4 Custom Hooks
+
+User-defined validation scripts:
+
+```toml
+[hooks]
+pre_check = "./scripts/validate-env.sh"
+post_check = "./scripts/notify-violations.sh"
+```
+
+### 7.5 Additional Commands
 
 - `cmc diff` - Show changes since last check
 - `cmc dry-run` - Preview what would be checked
 - `cmc report` - Generate detailed reports (including HTML)
 
-### 7.3 Enhanced Output
+### 7.6 Enhanced Features
 
-- Colored output
-- Progress indicators
-
-### 7.4 Advanced Inheritance
-
+- Smart checking with file hash caching
+- Colored output and progress indicators
 - Nested config inheritance (base extends another base)
 - Multiple inheritance sources per linter
 
@@ -668,7 +801,7 @@ check-my-code/
 │   │       ├── check.ts       # Run linters and report violations
 │   │       ├── context.ts     # Append AI context from remote templates
 │   │       ├── generate.ts    # Generate linter configs from cmc.toml
-│   │       └── verify.ts      # Verify linter configs match cmc.toml
+│   │       └── audit.ts      # Audit linter configs match cmc.toml
 │   ├── config/
 │   │   └── loader.ts          # Config discovery and parsing (Zod validation)
 │   ├── remote/
@@ -701,7 +834,3 @@ check-my-code/
 | **Rule**    | A single linter configuration (e.g., `"no-var": "error"`) |
 | **Context** | Rules formatted for consumption by AI coding agents       |
 | **Agent**   | An AI coding tool (Claude Code, Codex, Gemini CLI)        |
-
----
-
-_End of Document_
