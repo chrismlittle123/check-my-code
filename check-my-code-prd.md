@@ -20,6 +20,7 @@
    - 6.4 [Output & Exit Codes](#64-output--exit-codes)
    - 6.5 [MCP Server](#65-mcp-server)
 7. [Feature Specifications (v2 Future)](#7-feature-specifications-v2-future)
+   - 7.7 [CI/CD Integration](#77-cicd-integration)
 8. [Technical Specifications](#8-technical-specifications)
 9. [Glossary](#9-glossary)
 
@@ -854,6 +855,89 @@ post_check = "./scripts/notify-violations.sh"
 - Colored output and progress indicators
 - Nested config inheritance (base extends another base)
 - Multiple inheritance sources per linter
+
+### 7.7 CI/CD Integration
+
+Encapsulate CI/CD rules, thresholds, and workflows as part of the `cmc.toml` configuration. This extends `cmc` from a linting tool to a complete code quality pipeline manager.
+
+**Inspiration:** [cookiecutter-uv-hypermodern-python](https://github.com/bosd/cookiecutter-uv-hypermodern-python) provides a reference for modern Python project standards.
+
+```toml
+[project]
+name = "payment-service"
+tier = "production"  # Controls default thresholds
+
+[ci]
+# Code coverage configuration
+[ci.coverage]
+provider = "codecov"           # codecov, coveralls, or local
+threshold = 80                 # Minimum coverage percentage
+fail_under = 70                # Hard fail threshold
+exclude = ["tests/**", "scripts/**"]
+
+# Tier-based threshold presets
+[ci.coverage.tiers]
+production = 90
+internal = 80
+experimental = 60
+
+[ci.tests]
+# Test runner configuration
+runner = "pytest"              # pytest, vitest, jest
+parallel = true
+timeout = 300                  # seconds
+on_pull_request = true         # Run tests on PRs
+on_push = ["main", "develop"]  # Branches to test on push
+
+# Python-specific test config
+[ci.tests.pytest]
+markers = ["unit", "integration", "e2e"]
+fail_fast = true
+coverage = true
+
+# Node-specific test config
+[ci.tests.vitest]
+coverage_provider = "v8"
+
+[ci.branch_protection]
+# Branch protection rules (can generate GitHub/GitLab configs)
+main = { require_reviews = 2, require_status_checks = true, require_linear_history = true }
+develop = { require_reviews = 1, require_status_checks = true }
+
+[ci.releases]
+# Release management
+versioning = "bumpver"         # bumpver, semantic-release, changesets
+tag_format = "v{version}"
+changelog = true
+```
+
+**Commands:**
+
+```bash
+cmc ci generate github     # Generate .github/workflows/*.yml
+cmc ci generate gitlab     # Generate .gitlab-ci.yml
+cmc ci audit               # Verify CI config matches cmc.toml
+cmc ci status              # Show current CI/CD configuration
+```
+
+**CI/CD Features:**
+
+| Feature             | Description                                             |
+| ------------------- | ------------------------------------------------------- |
+| Coverage thresholds | Tier-based coverage requirements with fail conditions   |
+| Test runners        | Configure pytest, vitest, jest with consistent settings |
+| Branch protection   | Generate GitHub/GitLab branch protection rules          |
+| PR workflows        | Auto-generate test/lint workflows for pull requests     |
+| Release automation  | Integrate with bumpver, semantic-release for versioning |
+| Status checks       | Define required status checks per branch                |
+
+**Use Cases:**
+
+- Enforce minimum 90% coverage for production services
+- Ensure all PRs run tests before merge
+- Standardize branch protection across repositories
+- Generate CI workflow files from a single source of truth
+- Tier-based quality gates (stricter for production, relaxed for experiments)
 
 ---
 
