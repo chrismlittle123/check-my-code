@@ -21,6 +21,9 @@
    - 6.5 [MCP Server](#65-mcp-server)
 7. [Feature Specifications (v2 Future)](#7-feature-specifications-v2-future)
    - 7.7 [CI/CD Integration](#77-cicd-integration)
+   - 7.8 [MCP Server Configuration](#78-mcp-server-configuration)
+   - 7.9 [Documentation Requirements](#79-documentation-requirements)
+   - 7.10 [Security Scanning](#710-security-scanning)
 8. [Technical Specifications](#8-technical-specifications)
 9. [Glossary](#9-glossary)
 
@@ -938,6 +941,153 @@ cmc ci status              # Show current CI/CD configuration
 - Standardize branch protection across repositories
 - Generate CI workflow files from a single source of truth
 - Tier-based quality gates (stricter for production, relaxed for experiments)
+
+**PR Constraints:**
+
+Extend CI/CD configuration to enforce small, atomic PRs:
+
+```toml
+[ci.pr]
+max_files_changed = 20                # Encourage small PRs
+max_lines_changed = 500               # Limit PR size
+require_tests = true                  # PR must include test changes
+require_description = true            # PR must have description
+```
+
+### 7.8 MCP Server Configuration
+
+Define recommended and required MCP servers for AI coding agents. This ensures consistent tooling across the team and enables agents to access approved resources.
+
+```toml
+[mcp]
+# Recommended MCP servers for this project
+servers = [
+    "context7",                        # Library documentation
+    "cmc",                             # check-my-code linting
+    "github"                           # GitHub integration
+]
+
+# Required servers (agent setup will warn if missing)
+required = ["cmc"]
+
+# Server-specific configuration
+[mcp.context7]
+enabled = true
+cache_ttl = 3600                       # Cache docs for 1 hour
+
+[mcp.cmc]
+enabled = true
+auto_check = true                      # Auto-lint on file save
+```
+
+**Use Cases:**
+
+- Standardize which MCP servers the team uses
+- Ensure agents have access to up-to-date library documentation (Context7)
+- Warn developers if required MCP servers are not configured
+- Provide server-specific settings per project
+
+### 7.9 Documentation Requirements
+
+Enforce documentation standards based on project tier. Verify required documentation files exist and meet basic structural requirements.
+
+```toml
+[docs]
+# ADR (Architectural Decision Records) requirements
+require_adr = true                     # Tier 2+ should have ADRs
+adr_path = "docs/adr/"                 # Where ADRs live
+adr_template = "docs/adr/template.md"  # Optional template file
+
+# Diagram requirements (Tier 3)
+require_diagrams = true
+diagram_path = "docs/diagrams/"
+diagram_formats = ["mermaid", "svg"]   # Accepted formats
+
+# Testing documentation
+manual_testing_checklist = "TESTING_CHECKLIST.md"  # Required for Tier 3
+regression_test_path = "tests/regression/"          # Verify regression tests exist
+
+# README requirements
+require_readme = true
+readme_sections = ["Installation", "Usage", "Testing"]  # Required sections
+```
+
+**Commands:**
+
+```bash
+cmc docs audit                 # Verify documentation requirements
+cmc docs init                  # Generate documentation scaffolding
+```
+
+**Tier-Based Defaults:**
+
+| Requirement       | Tier 1   | Tier 2              | Tier 3                     |
+| ----------------- | -------- | ------------------- | -------------------------- |
+| README            | Optional | Required            | Required + sections        |
+| ADRs              | None     | For major decisions | All architecture decisions |
+| Diagrams          | None     | Optional            | Required for complex flows |
+| Testing checklist | None     | Brief               | Comprehensive              |
+| Regression tests  | None     | Basic               | Comprehensive suite        |
+
+### 7.10 Security Scanning
+
+Integrate security scanning tools to detect secrets, vulnerabilities, and unsafe patterns before they reach the repository.
+
+```toml
+[security]
+# Secrets detection
+secrets_scanner = "gitleaks"           # gitleaks, detect-secrets, trufflehog
+secrets_config = ".gitleaks.toml"      # Custom config file
+scan_on_commit = true                  # Run in pre-commit hook
+fail_on_secrets = true                 # Block commits with secrets
+
+# Blocked commands (for AI agents like Claude Code)
+[security.blocked_commands]
+patterns = [
+    "rm -rf /",
+    "rm -rf ~",
+    "docker run --privileged",
+    "> /dev/sda",
+    "chmod 777",
+    "curl | bash",
+    "wget | sh"
+]
+
+# Dependency vulnerability scanning
+[security.dependencies]
+scanner = "npm-audit"                  # npm-audit, pip-audit, safety
+fail_on_severity = "high"              # low, medium, high, critical
+ignore_advisories = []                 # CVEs to ignore (with justification)
+
+# Code security patterns
+[security.code]
+check_sql_injection = true
+check_xss = true
+check_command_injection = true
+```
+
+**Commands:**
+
+```bash
+cmc security scan              # Run all security scans
+cmc security secrets           # Scan for secrets only
+cmc security deps              # Scan dependencies only
+cmc security audit             # Full security audit report
+```
+
+**Integration:**
+
+- Pre-commit hooks for secrets detection
+- CI/CD pipeline integration for dependency scanning
+- Generate `.gitleaks.toml` or `.pre-commit-config.yaml` from cmc.toml
+- Export blocked commands config for Claude Code / Cursor
+
+**Use Cases:**
+
+- Prevent secrets from being committed to repositories
+- Block dangerous commands in AI coding agents
+- Scan dependencies for known vulnerabilities
+- Enforce OWASP security patterns in code
 
 ---
 
