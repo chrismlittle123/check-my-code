@@ -24,6 +24,8 @@
    - 7.8 [MCP Server Configuration](#78-mcp-server-configuration)
    - 7.9 [Documentation Requirements](#79-documentation-requirements)
    - 7.10 [Security Scanning](#710-security-scanning)
+   - 7.11 [AI Agent Security & Configuration](#711-ai-agent-security--configuration)
+   - 7.12 [Code Quality & Conventions](#712-code-quality--conventions)
 8. [Technical Specifications](#8-technical-specifications)
 9. [Glossary](#9-glossary)
 
@@ -1088,6 +1090,358 @@ cmc security audit             # Full security audit report
 - Block dangerous commands in AI coding agents
 - Scan dependencies for known vulnerabilities
 - Enforce OWASP security patterns in code
+
+### 7.11 AI Agent Security & Configuration
+
+Unified security enforcement and configuration management for all AI coding agents. CMC generates and audits agent-specific config files from a single source of truth.
+
+**Supported Agents:**
+
+| Agent          | Config File                     | Capabilities                             |
+| -------------- | ------------------------------- | ---------------------------------------- |
+| Claude Code    | `.claude/settings.json`         | Deny commands, paths, tools; permissions |
+| Cursor         | `.cursor/rules`, `.cursorrules` | Rules, deny patterns, context            |
+| GitHub Copilot | `.github/copilot-settings.json` | Content exclusions                       |
+| Windsurf       | `.windsurfrules`                | Rules and restrictions                   |
+| Aider          | `.aider.conf.yml`               | Model settings, file restrictions        |
+
+**Configuration:**
+
+```toml
+[ai.security]
+# Universal deny rules (applied to all agents)
+deny_commands = [
+    "rm -rf /",
+    "rm -rf ~",
+    "rm -rf .",
+    "docker run --privileged",
+    "> /dev/sda",
+    "chmod 777",
+    "curl | bash",
+    "wget | sh",
+    "git push --force origin main",
+    "DROP TABLE",
+    "DELETE FROM"
+]
+
+deny_paths = [
+    ".env*",
+    "*.pem",
+    "*.key",
+    "**/secrets/**",
+    "**/credentials/**",
+    "**/.aws/**",
+    "**/node_modules/**"
+]
+
+deny_patterns = [
+    "password\\s*=",
+    "api_key\\s*=",
+    "secret\\s*="
+]
+
+# Tool restrictions (for agents that support it)
+[ai.security.tools]
+# Allowlist approach (more restrictive)
+# allow = ["Read", "Edit", "Grep", "Glob", "Write"]
+# Denylist approach (less restrictive)
+deny = ["Bash"]  # Or specific dangerous tools
+
+[ai.security.files]
+max_file_size = 100000               # Bytes - prevent reading huge files
+deny_binary = true                   # Block binary file access
+deny_extensions = [".exe", ".dll", ".so", ".dylib"]
+
+# Agent-specific overrides
+[ai.claude]
+# Claude Code specific settings
+permissions = {
+    allow_bash = "ask",              # ask, allow, deny
+    allow_write = "allow",
+    allow_mcp = "allow"
+}
+max_context_tokens = 100000
+
+[ai.cursor]
+# Cursor specific settings
+always_apply_rules = true
+index_exclude = ["dist/**", "build/**", "node_modules/**"]
+
+[ai.copilot]
+# GitHub Copilot specific
+content_exclusion_patterns = ["*.env", "*.pem", "*.key"]
+```
+
+**Templates:**
+
+CMC can apply security templates based on project tier:
+
+```toml
+[ai.security]
+# Use predefined security template
+template = "production"              # minimal, standard, production, paranoid
+
+# Templates define sensible defaults:
+# - minimal: Basic deny patterns only
+# - standard: Common dangerous commands blocked
+# - production: Strict path/file restrictions, tool limits
+# - paranoid: Allowlist-only, maximum restrictions
+```
+
+**Commands:**
+
+```bash
+cmc ai generate                # Generate all agent configs
+cmc ai generate claude         # Generate .claude/settings.json
+cmc ai generate cursor         # Generate .cursorrules
+cmc ai generate copilot        # Generate .github/copilot-settings.json
+
+cmc ai audit                   # Verify all agent configs match cmc.toml
+cmc ai audit claude            # Audit specific agent config
+
+cmc ai diff                    # Show drift between cmc.toml and agent configs
+
+cmc ai templates               # List available security templates
+cmc ai templates show production  # Show what a template includes
+```
+
+**Generated Files:**
+
+Example `.claude/settings.json` generated from cmc.toml:
+
+```json
+{
+  "permissions": {
+    "allow_bash": "ask",
+    "allow_write": "allow",
+    "allow_mcp": "allow"
+  },
+  "deny": {
+    "commands": ["rm -rf /", "docker run --privileged", ...],
+    "paths": [".env*", "*.pem", "**/secrets/**", ...],
+    "tools": ["Bash"]
+  },
+  "generated_by": "check-my-code",
+  "generated_at": "2025-12-04T10:30:00Z",
+  "source": "cmc.toml"
+}
+```
+
+**Enforcement Modes:**
+
+| Mode       | Behavior                                                         |
+| ---------- | ---------------------------------------------------------------- |
+| `generate` | Create agent config files from cmc.toml                          |
+| `audit`    | Check configs match cmc.toml, report drift                       |
+| `sync`     | Update agent configs to match cmc.toml (with conflict detection) |
+| `verify`   | CI check that fails if configs don't match                       |
+
+**Use Cases:**
+
+- Enforce consistent security rules across all AI coding tools
+- Prevent agents from accessing secrets, credentials, or sensitive paths
+- Block dangerous commands before they execute
+- Apply tier-based security templates (stricter for production projects)
+- Audit drift between cmc.toml and actual agent configurations
+- Onboard new developers with correct agent security settings automatically
+
+### 7.12 Code Quality & Conventions
+
+Comprehensive code quality enforcement covering size limits, complexity metrics, naming conventions, and structural requirements. This extends CMC beyond linting to full codebase health management.
+
+**Configuration:**
+
+```toml
+[code.limits]
+# Size limits - prevent god files/functions/classes
+max_file_lines = 300
+max_function_lines = 50
+max_class_lines = 200
+max_parameters = 5
+max_nesting_depth = 4
+
+[code.metrics]
+# Complexity thresholds
+analyzer = "radon"                     # radon (Python), escomplex (JS/TS)
+max_cyclomatic = 10                    # Cyclomatic complexity per function
+max_cognitive = 15                     # Cognitive complexity per function
+maintainability_threshold = 20         # Radon maintainability index (A/B grade)
+halstead_threshold = 100               # Halstead difficulty
+
+[code.quality]
+# Dead code and duplication
+dead_code_scanner = "vulture"          # vulture (Python), ts-prune (TS)
+dead_code_threshold = 0                # Zero tolerance for dead code
+duplication_scanner = "jscpd"          # jscpd, CPD
+duplication_threshold = 5              # Max allowed duplicate blocks
+min_duplicate_lines = 5                # Minimum lines to count as duplicate
+
+[code.patterns]
+# Forbidden patterns (regex) - fail if found
+forbid = [
+    "dict\\[",                          # Force typed dicts/dataclasses/Pydantic
+    "Dict\\[",
+    "Any\\]",                           # No Any types in production
+    "# type: ignore$",                  # No blanket type ignores (must have code)
+    "# noqa$",                          # No blanket noqa (must have code)
+    "TODO",                             # No TODOs in production tier
+    "FIXME",
+    "HACK",
+    "print\\(",                         # No print statements (use logging)
+    "console\\.log"
+]
+
+# Required patterns - fail if NOT found
+require = [
+    "__all__"                           # Python modules must export explicitly
+]
+
+[conventions.files]
+# File naming conventions
+casing = "snake_case"                  # snake_case, kebab-case, PascalCase
+extension_map = { yaml = "yml", jpeg = "jpg" }  # Normalize extensions
+max_path_length = 100                  # Prevent deeply nested paths
+
+[conventions.structure]
+# Required directory structure
+required_dirs = [
+    "src/domain",
+    "src/application",
+    "src/infrastructure",
+    "tests/unit",
+    "tests/integration"
+]
+
+# Required files
+required_files = [
+    "README.md",
+    "pyproject.toml",                  # or package.json
+    ".gitignore"
+]
+
+[git.commits]
+# Commit message format (conventional commits)
+pattern = "^(feat|fix|chore|docs|refactor|test|perf|ci)(\\(\\w+\\))?: .{1,50}"
+require_issue = true                   # Must reference an issue
+issue_pattern = "PROJ-\\d+"            # Jira/Linear ticket format
+max_subject_length = 50
+max_body_line_length = 72
+require_body = false                   # Require commit body for non-trivial changes
+
+[git.hooks]
+# Pre-commit hook configuration
+check_merge_conflict = true            # Fail if conflict markers present
+trailing_whitespace = true             # Remove trailing whitespace
+end_of_file_fixer = true               # Ensure files end with newline
+mixed_line_endings = "lf"              # lf, crlf, or native
+no_commit_to_branch = ["main", "master", "production"]
+detect_private_key = true              # Block commits with private keys
+check_added_large_files = 500          # KB - warn on large file additions
+
+[docs.docstrings]
+# Docstring requirements
+style = "google"                       # google, numpy, sphinx, epytext
+scanner = "interrogate"                # interrogate (Python), typedoc (TS)
+coverage_threshold = 80                # Minimum docstring coverage %
+require_for = ["public"]               # public, all, none
+fail_under = 70                        # Hard fail threshold
+
+[rulesets.mypy]
+# Python type checking
+enabled = true
+strict = true
+ignore_missing_imports = false
+disallow_untyped_defs = true
+disallow_any_explicit = true           # No explicit Any
+warn_return_any = true
+
+[rulesets.yaml]
+# YAML file linting
+scanner = "yamllint"
+max_line_length = 120
+allow_duplicate_keys = false
+
+[rulesets.json]
+# JSON file linting
+scanner = "jsonlint"
+allow_comments = false
+allow_trailing_commas = false
+
+[api]
+# API specification enforcement
+openapi_path = "openapi.yaml"
+openapi_diff = true                    # Fail if spec changes without version bump
+require_openapi_version = true         # Spec version must match package version
+validate_examples = true               # Validate OpenAPI examples against schema
+
+[testing.integration]
+# Integration test requirements
+require_endpoint_coverage = true       # All API endpoints must have tests
+endpoint_discovery = "openapi"         # openapi, fastapi, flask, express
+coverage_threshold = 100               # % of endpoints that must be tested
+```
+
+**Commands:**
+
+```bash
+cmc quality                    # Run all quality checks
+cmc quality limits             # Check size limits only
+cmc quality metrics            # Check complexity metrics only
+cmc quality patterns           # Check forbidden/required patterns
+cmc quality duplication        # Check code duplication
+
+cmc conventions                # Check all conventions
+cmc conventions files          # Check file naming
+cmc conventions structure      # Check directory structure
+
+cmc score                      # Aggregate quality score
+cmc score --details            # Detailed breakdown
+cmc score --json               # JSON output for CI
+```
+
+**Quality Score Output:**
+
+```
+📊 Codebase Quality Score: 73/100
+
+  Linting:        95/100  ✓
+  Type Safety:    80/100  ✓
+  Test Coverage:  65/100  ⚠
+  Complexity:     70/100  ⚠
+  Documentation:  55/100  ✗
+  Security:       90/100  ✓
+  Architecture:   75/100  ⚠
+
+Improvements needed:
+  - 12 functions exceed max_cyclomatic (10)
+  - 3 files missing docstrings
+  - tests/integration coverage at 65% (target: 100%)
+
+Run `cmc quality --fix` to auto-fix where possible
+Run `cmc score --details` for full breakdown
+```
+
+**Tier-Based Defaults:**
+
+| Check               | Tier 1 (Prototype) | Tier 2 (Internal) | Tier 3 (Production) |
+| ------------------- | ------------------ | ----------------- | ------------------- |
+| max_file_lines      | 1000               | 500               | 300                 |
+| max_function_lines  | 100                | 75                | 50                  |
+| max_cyclomatic      | 20                 | 15                | 10                  |
+| docstring_coverage  | 0%                 | 50%               | 80%                 |
+| forbid patterns     | None               | Basic             | Strict              |
+| require_issue       | No                 | Yes               | Yes                 |
+| dead_code_threshold | 50                 | 10                | 0                   |
+
+**Use Cases:**
+
+- Prevent file/function bloat before it happens
+- Enforce consistent naming conventions across the team
+- Block commits that don't reference tickets
+- Detect and remove dead code automatically
+- Find copy-paste duplication early
+- Generate aggregate quality scores for dashboards
+- Gradually increase strictness as project matures (tier promotion)
 
 ---
 
