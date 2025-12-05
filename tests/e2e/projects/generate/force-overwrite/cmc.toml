@@ -1,0 +1,13 @@
+[project]
+name = "force-overwrite-test"
+
+[rulesets.eslint.rules]
+"no-var" = "error"
+"prefer-const" = "error"
+"eqeqeq" = "error"
+
+[rulesets.ruff]
+line-length = 120
+
+[rulesets.ruff.lint]
+select = ["E", "F", "I"]

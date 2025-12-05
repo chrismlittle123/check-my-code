@@ -1,0 +1,5 @@
+[project]
+name = "with-ignored-dirs-test"
+
+[rulesets.eslint.rules]
+"no-var" = "error"

@@ -1,0 +1,7 @@
+[project]
+name = "clean-project-test"
+
+[rulesets.eslint.rules]
+"no-var" = "error"
+"prefer-const" = "error"
+"eqeqeq" = ["error", "always"]

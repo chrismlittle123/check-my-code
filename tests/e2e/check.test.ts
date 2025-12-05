@@ -3,7 +3,11 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { symlink, unlink } from 'fs/promises';
+import { join } from 'path';
 import { run } from './runner.js';
+
+const PROJECTS_DIR = join(process.cwd(), 'tests', 'e2e', 'projects');
 
 interface JsonOutput {
   violations: {
@@ -178,10 +182,104 @@ describe('cmc check - edge cases', () => {
   });
 
   it('follows symlinks to files', async () => {
-    const result = await run('check/typescript/symlinks', ['check', '--json']);
+    // Create symlink for this test (not tracked in git due to prettier issues)
+    const symlinkDir = join(PROJECTS_DIR, 'check', 'typescript', 'symlinks');
+    const linkPath = join(symlinkDir, 'linked.ts');
+
+    // Create symlink (cleanup first in case it exists)
+    try {
+      await unlink(linkPath);
+    } catch {
+      // Ignore if doesn't exist
+    }
+    await symlink('actual.ts', linkPath);
+
+    try {
+      const result = await run('check/typescript/symlinks', ['check', '--json']);
+      const output: JsonOutput = JSON.parse(result.stdout);
+
+      expect(result.exitCode).toBe(1);
+      expect(output.violations.length).toBeGreaterThan(0);
+      // Should find violations in both actual.ts and linked.ts (symlink)
+      expect(output.summary.files_checked).toBe(2);
+    } finally {
+      // Cleanup symlink
+      await unlink(linkPath);
+    }
+  });
+});
+
+// =============================================================================
+// Check: Path argument (subdirectories and specific paths)
+// =============================================================================
+describe('cmc check - path argument', () => {
+  it('checks only files in specified subdirectory', async () => {
+    const result = await run('check/typescript/nested-dirs', ['check', 'src/', '--json']);
     const output: JsonOutput = JSON.parse(result.stdout);
 
     expect(result.exitCode).toBe(1);
-    expect(output.violations.length).toBeGreaterThan(0);
+    expect(output.summary.files_checked).toBe(2); // src/index.ts and src/utils/helpers.ts
+    expect(output.violations.every((v) => v.file.startsWith('src/'))).toBe(true);
+  });
+
+  it('checks nested subdirectory', async () => {
+    const result = await run('check/typescript/nested-dirs', ['check', 'src/utils/', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+    expect(output.summary.files_checked).toBe(1); // only src/utils/helpers.ts
+    expect(output.violations[0].file).toBe('src/utils/helpers.ts');
+  });
+
+  it('checks all files without path argument', async () => {
+    const result = await run('check/typescript/nested-dirs', ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+    expect(output.summary.files_checked).toBe(4); // root.ts, src/index.ts, src/utils/helpers.ts, lib/legacy.ts
+  });
+});
+
+// =============================================================================
+// Check: Clean project (no violations)
+// =============================================================================
+describe('cmc check - clean projects', () => {
+  it('exits 0 for project with no violations', async () => {
+    const result = await run('check/typescript/clean-project', ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(0);
+    expect(output.violations.length).toBe(0);
+    expect(output.summary.files_checked).toBe(2);
+  });
+
+  it('shows success message for clean project', async () => {
+    const result = await run('check/typescript/clean-project', ['check']);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('No violations found');
+    expect(result.stdout).toContain('2 files checked');
+  });
+});
+
+// =============================================================================
+// Check: Ignored directories (build is ignored by default)
+// =============================================================================
+describe('cmc check - ignored directories', () => {
+  it('ignores build directory and only checks src', async () => {
+    const result = await run('check/typescript/with-ignored-dirs', ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    // build/ has violations but should be ignored
+    expect(result.exitCode).toBe(0);
+    expect(output.violations.length).toBe(0);
+    expect(output.violations.some((v) => v.file.includes('build/'))).toBe(false);
+  });
+
+  it('only checks files in src directory', async () => {
+    const result = await run('check/typescript/with-ignored-dirs', ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(output.summary.files_checked).toBe(1); // only src/main.ts
   });
 });
