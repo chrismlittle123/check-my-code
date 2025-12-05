@@ -1,82 +1,98 @@
-import { Command } from 'commander';
-import { existsSync } from 'fs';
-import { writeFile } from 'fs/promises';
-import { join } from 'path';
-import { loadConfig, findProjectRoot, ConfigError } from '../../config/loader.js';
-import { ExitCode, type Config } from '../../types.js';
+import { Command } from "commander";
+import { existsSync } from "fs";
+import { writeFile } from "fs/promises";
+import { join } from "path";
+import {
+  loadConfig,
+  findProjectRoot,
+  ConfigError,
+} from "../../config/loader.js";
+import { ExitCode, type Config } from "../../types.js";
 
-type LinterTarget = 'eslint' | 'ruff' | 'tsc';
+type LinterTarget = "eslint" | "ruff" | "tsc";
 
 const LINTER_CONFIGS: Record<
   LinterTarget,
   { filename: string; generator: (config: Config) => string }
 > = {
   eslint: {
-    filename: 'eslint.config.js',
+    filename: "eslint.config.js",
     generator: generateESLintConfig,
   },
   ruff: {
-    filename: 'ruff.toml',
+    filename: "ruff.toml",
     generator: generateRuffConfig,
   },
   tsc: {
-    filename: 'tsconfig.json',
+    filename: "tsconfig.json",
     generator: generateTscConfig,
   },
 };
 
-export const generateCommand = new Command('generate')
-  .description('Generate linter config files from cmc.toml ruleset')
-  .argument('<linter>', 'Linter to generate config for (eslint, ruff, tsc)')
-  .option('--force', 'Overwrite existing config file', false)
-  .option('--stdout', 'Output to stdout instead of file', false)
+export const generateCommand = new Command("generate")
+  .description("Generate linter config files from cmc.toml ruleset")
+  .argument("<linter>", "Linter to generate config for (eslint, ruff, tsc)")
+  .option("--force", "Overwrite existing config file", false)
+  .option("--stdout", "Output to stdout instead of file", false)
   .addHelpText(
-    'after',
+    "after",
     `
 Examples:
   $ cmc generate eslint          Generate eslint.config.js
   $ cmc generate ruff            Generate ruff.toml
   $ cmc generate tsc             Generate tsconfig.json
   $ cmc generate eslint --force  Overwrite existing config
-  $ cmc generate eslint --stdout Preview config without writing`
+  $ cmc generate eslint --stdout Preview config without writing`,
   )
-  .action(async (linter: string, options: { force?: boolean; stdout?: boolean }) => {
-    try {
-      const target = validateLinterTarget(linter);
-      const projectRoot = findProjectRoot();
-      const config = await loadConfig(projectRoot);
+  .action(
+    async (linter: string, options: { force?: boolean; stdout?: boolean }) => {
+      try {
+        const target = validateLinterTarget(linter);
+        const projectRoot = findProjectRoot();
+        const config = await loadConfig(projectRoot);
 
-      const { filename, generator } = LINTER_CONFIGS[target];
-      const content = generator(config);
+        const { filename, generator } = LINTER_CONFIGS[target];
+        const content = generator(config);
 
-      if (options.stdout) {
-        console.log(content);
+        if (options.stdout) {
+          console.log(content);
+          process.exit(ExitCode.SUCCESS);
+        }
+
+        const outputPath = join(projectRoot, filename);
+
+        if (existsSync(outputPath) && !options.force) {
+          console.error(
+            `Error: ${filename} already exists. Use --force to overwrite.`,
+          );
+          process.exit(ExitCode.CONFIG_ERROR);
+        }
+
+        await writeFile(outputPath, content, "utf-8");
+        console.log(`✓ Generated ${filename}`);
         process.exit(ExitCode.SUCCESS);
+      } catch (error) {
+        console.error(
+          `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
+        if (error instanceof ConfigError) {
+          process.exit(ExitCode.CONFIG_ERROR);
+        }
+        process.exit(ExitCode.RUNTIME_ERROR);
       }
-
-      const outputPath = join(projectRoot, filename);
-
-      if (existsSync(outputPath) && !options.force) {
-        console.error(`Error: ${filename} already exists. Use --force to overwrite.`);
-        process.exit(ExitCode.CONFIG_ERROR);
-      }
-
-      await writeFile(outputPath, content, 'utf-8');
-      console.log(`✓ Generated ${filename}`);
-      process.exit(ExitCode.SUCCESS);
-    } catch (error) {
-      console.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      if (error instanceof ConfigError) {
-        process.exit(ExitCode.CONFIG_ERROR);
-      }
-      process.exit(ExitCode.RUNTIME_ERROR);
-    }
-  });
+    },
+  );
 
 function validateLinterTarget(linter: string): LinterTarget {
   const normalized = linter.toLowerCase();
-  if (normalized !== 'eslint' && normalized !== 'ruff' && normalized !== 'tsc') {
-    throw new Error(`Unknown linter: ${linter}. Supported linters: eslint, ruff, tsc`);
+  if (
+    normalized !== "eslint" &&
+    normalized !== "ruff" &&
+    normalized !== "tsc"
+  ) {
+    throw new Error(
+      `Unknown linter: ${linter}. Supported linters: eslint, ruff, tsc`,
+    );
   }
   return normalized;
 }
@@ -89,13 +105,13 @@ function generateESLintConfig(config: Config): string {
   if (hasRules) {
     const rulesJson = JSON.stringify(rules, null, 2);
     // Indent each line (except first) by 4 spaces to align inside the rules object
-    const lines = rulesJson.split('\n');
+    const lines = rulesJson.split("\n");
     rulesBlock = `${lines[0]}\n${lines
       .slice(1)
       .map((line) => `    ${line}`)
-      .join('\n')}`;
+      .join("\n")}`;
   } else {
-    rulesBlock = '{}';
+    rulesBlock = "{}";
   }
 
   return `// Generated by cmc (check-my-code)
@@ -117,25 +133,25 @@ export default tseslint.config(
 function generateRuffConfig(config: Config): string {
   const ruffConfig = config.rulesets?.ruff;
   const lines: string[] = [
-    '# Generated by cmc (check-my-code)',
-    '# Do not edit manually - regenerate with: cmc generate ruff',
-    '',
+    "# Generated by cmc (check-my-code)",
+    "# Do not edit manually - regenerate with: cmc generate ruff",
+    "",
   ];
 
   if (!ruffConfig) {
-    lines.push('# No ruff configuration defined in cmc.toml');
-    return `${lines.join('\n')}\n`;
+    lines.push("# No ruff configuration defined in cmc.toml");
+    return `${lines.join("\n")}\n`;
   }
 
   // Top-level options
-  if (ruffConfig['line-length'] !== undefined) {
-    lines.push(`line-length = ${ruffConfig['line-length']}`);
+  if (ruffConfig["line-length"] !== undefined) {
+    lines.push(`line-length = ${ruffConfig["line-length"]}`);
   }
 
   // [lint] section
   if (ruffConfig.lint) {
-    lines.push('');
-    lines.push('[lint]');
+    lines.push("");
+    lines.push("[lint]");
 
     if (ruffConfig.lint.select && ruffConfig.lint.select.length > 0) {
       lines.push(`select = ${JSON.stringify(ruffConfig.lint.select)}`);
@@ -146,7 +162,7 @@ function generateRuffConfig(config: Config): string {
     }
   }
 
-  return `${lines.join('\n')}\n`;
+  return `${lines.join("\n")}\n`;
 }
 
 function generateTscConfig(config: Config): string {
@@ -155,9 +171,9 @@ function generateTscConfig(config: Config): string {
   // Build compilerOptions from cmc.toml settings
   const compilerOptions: Record<string, unknown> = {
     // Essential defaults for modern TypeScript
-    target: 'ES2020',
-    module: 'ESNext',
-    moduleResolution: 'node',
+    target: "ES2020",
+    module: "ESNext",
+    moduleResolution: "node",
     esModuleInterop: true,
     skipLibCheck: true,
     noEmit: true,
@@ -166,23 +182,23 @@ function generateTscConfig(config: Config): string {
   if (tscConfig) {
     // Add strict type-checking options from cmc.toml
     const booleanOptions = [
-      'strict',
-      'noImplicitAny',
-      'strictNullChecks',
-      'strictFunctionTypes',
-      'strictBindCallApply',
-      'strictPropertyInitialization',
-      'noImplicitThis',
-      'alwaysStrict',
-      'noUncheckedIndexedAccess',
-      'noImplicitReturns',
-      'noFallthroughCasesInSwitch',
-      'noUnusedLocals',
-      'noUnusedParameters',
-      'exactOptionalPropertyTypes',
-      'noImplicitOverride',
-      'allowUnusedLabels',
-      'allowUnreachableCode',
+      "strict",
+      "noImplicitAny",
+      "strictNullChecks",
+      "strictFunctionTypes",
+      "strictBindCallApply",
+      "strictPropertyInitialization",
+      "noImplicitThis",
+      "alwaysStrict",
+      "noUncheckedIndexedAccess",
+      "noImplicitReturns",
+      "noFallthroughCasesInSwitch",
+      "noUnusedLocals",
+      "noUnusedParameters",
+      "exactOptionalPropertyTypes",
+      "noImplicitOverride",
+      "allowUnusedLabels",
+      "allowUnreachableCode",
     ] as const;
 
     for (const option of booleanOptions) {
@@ -193,11 +209,12 @@ function generateTscConfig(config: Config): string {
   }
 
   const output = {
-    $schema: 'https://json.schemastore.org/tsconfig',
-    _comment: 'Generated by cmc (check-my-code) - regenerate with: cmc generate tsc',
+    $schema: "https://json.schemastore.org/tsconfig",
+    _comment:
+      "Generated by cmc (check-my-code) - regenerate with: cmc generate tsc",
     compilerOptions,
-    include: ['src/**/*'],
-    exclude: ['node_modules', 'dist'],
+    include: ["src/**/*"],
+    exclude: ["node_modules", "dist"],
   };
 
   return `${JSON.stringify(output, null, 2)}\n`;

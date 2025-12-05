@@ -2,52 +2,52 @@
  * E2E tests for `cmc validate` command
  */
 
-import { describe, it, expect } from 'vitest';
-import { run } from './runner.js';
+import { describe, it, expect } from "vitest";
+import { run } from "./runner.js";
 
-describe('cmc validate - valid configs', () => {
-  it('validates minimal valid config and exits 0', async () => {
-    const result = await run('validate/valid-minimal', ['validate']);
-
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('is valid');
-  });
-
-  it('validates full config with all sections and exits 0', async () => {
-    const result = await run('validate/valid-full', ['validate']);
+describe("cmc validate - valid configs", () => {
+  it("validates minimal valid config and exits 0", async () => {
+    const result = await run("validate/valid-minimal", ["validate"]);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('is valid');
+    expect(result.stdout).toContain("is valid");
   });
 
-  it('outputs JSON when --json flag is used', async () => {
-    const result = await run('validate/valid-minimal', ['validate', '--json']);
+  it("validates full config with all sections and exits 0", async () => {
+    const result = await run("validate/valid-full", ["validate"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("is valid");
+  });
+
+  it("outputs JSON when --json flag is used", async () => {
+    const result = await run("validate/valid-minimal", ["validate", "--json"]);
     const output = JSON.parse(result.stdout);
 
     expect(result.exitCode).toBe(0);
     expect(output.valid).toBe(true);
     expect(output.errors).toHaveLength(0);
-    expect(output.configPath).toContain('cmc.toml');
+    expect(output.configPath).toContain("cmc.toml");
   });
 });
 
-describe('cmc validate - invalid configs', () => {
-  it('rejects invalid TOML syntax and exits 2', async () => {
-    const result = await run('validate/invalid-toml', ['validate']);
+describe("cmc validate - invalid configs", () => {
+  it("rejects invalid TOML syntax and exits 2", async () => {
+    const result = await run("validate/invalid-toml", ["validate"]);
 
     expect(result.exitCode).toBe(2);
-    expect(result.stdout).toContain('validation error');
+    expect(result.stdout).toContain("validation error");
   });
 
-  it('rejects schema violations and exits 2', async () => {
-    const result = await run('validate/invalid-schema', ['validate']);
+  it("rejects schema violations and exits 2", async () => {
+    const result = await run("validate/invalid-schema", ["validate"]);
 
     expect(result.exitCode).toBe(2);
-    expect(result.stdout).toContain('validation error');
+    expect(result.stdout).toContain("validation error");
   });
 
-  it('outputs JSON errors for invalid config', async () => {
-    const result = await run('validate/invalid-schema', ['validate', '--json']);
+  it("outputs JSON errors for invalid config", async () => {
+    const result = await run("validate/invalid-schema", ["validate", "--json"]);
     const output = JSON.parse(result.stdout);
 
     expect(result.exitCode).toBe(2);
@@ -55,20 +55,26 @@ describe('cmc validate - invalid configs', () => {
     expect(output.errors.length).toBeGreaterThan(0);
   });
 
-  it('shows verbose error details with --verbose flag', async () => {
-    const result = await run('validate/invalid-schema', ['validate', '--verbose']);
+  it("shows verbose error details with --verbose flag", async () => {
+    const result = await run("validate/invalid-schema", [
+      "validate",
+      "--verbose",
+    ]);
 
     expect(result.exitCode).toBe(2);
-    expect(result.stdout).toContain('Path:');
-    expect(result.stdout).toContain('Error:');
+    expect(result.stdout).toContain("Path:");
+    expect(result.stdout).toContain("Error:");
   });
 });
 
-describe('cmc validate - specific path', () => {
-  it('validates config at specific path', async () => {
-    const result = await run('validate/valid-minimal', ['validate', 'cmc.toml']);
+describe("cmc validate - specific path", () => {
+  it("validates config at specific path", async () => {
+    const result = await run("validate/valid-minimal", [
+      "validate",
+      "cmc.toml",
+    ]);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('is valid');
+    expect(result.stdout).toContain("is valid");
   });
 });

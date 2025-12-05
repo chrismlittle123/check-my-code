@@ -8,17 +8,17 @@
  * Supports version pinning: @v1.0.0, @latest, @main, or any git ref.
  */
 
-import { execSync, spawn } from 'child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'fs';
-import { join } from 'path';
-import { homedir } from 'os';
-import { createHash } from 'crypto';
+import { execSync, spawn } from "child_process";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "fs";
+import { join } from "path";
+import { homedir } from "os";
+import { createHash } from "crypto";
 
 // Cache directory for cloned repositories
-const CACHE_DIR = join(homedir(), '.cmc', 'cache');
+const CACHE_DIR = join(homedir(), ".cmc", "cache");
 
 export interface RemoteRef {
-  host: 'github';
+  host: "github";
   owner: string;
   repo: string;
   path: string;
@@ -28,7 +28,7 @@ export interface RemoteRef {
 export class RemoteFetchError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'RemoteFetchError';
+    this.name = "RemoteFetchError";
   }
 }
 
@@ -51,7 +51,7 @@ export function parseRemoteRef(ref: string): RemoteRef {
         `Expected format: github:owner/repo/path@version\n` +
         `Examples:\n` +
         `  github:owner/repo/rulesets/typescript@v1.0.0\n` +
-        `  github:owner/repo/promptss@latest`
+        `  github:owner/repo/promptss@latest`,
     );
   }
 
@@ -59,15 +59,16 @@ export function parseRemoteRef(ref: string): RemoteRef {
 
   if (!host || !owner || !repo || !version) {
     throw new RemoteFetchError(
-      `Invalid remote reference: ${ref}\n` + `Expected format: github:owner/repo/path@version`
+      `Invalid remote reference: ${ref}\n` +
+        `Expected format: github:owner/repo/path@version`,
     );
   }
 
   return {
-    host: host as 'github',
+    host: host as "github",
     owner,
     repo,
-    path: path ?? '',
+    path: path ?? "",
     version,
   };
 }
@@ -89,9 +90,9 @@ function buildCloneUrls(ref: RemoteRef): string[] {
  * Generate cache key for a remote reference
  */
 function getCacheKey(ref: RemoteRef): string {
-  const hash = createHash('sha256')
+  const hash = createHash("sha256")
     .update(`${ref.host}:${ref.owner}/${ref.repo}@${ref.version}`)
-    .digest('hex')
+    .digest("hex")
     .slice(0, 12);
   return `${ref.owner}-${ref.repo}-${ref.version}-${hash}`;
 }
@@ -108,7 +109,7 @@ function getCachePath(ref: RemoteRef): string {
  */
 function isGitAvailable(): boolean {
   try {
-    execSync('git --version', { stdio: 'ignore' });
+    execSync("git --version", { stdio: "ignore" });
     return true;
   } catch {
     return false;
@@ -120,7 +121,7 @@ function isGitAvailable(): boolean {
  */
 async function cloneOrFetch(ref: RemoteRef): Promise<string> {
   if (!isGitAvailable()) {
-    throw new RemoteFetchError('git is not installed or not in PATH');
+    throw new RemoteFetchError("git is not installed or not in PATH");
   }
 
   const cachePath = getCachePath(ref);
@@ -167,7 +168,10 @@ async function cloneOrFetch(ref: RemoteRef): Promise<string> {
     }
   }
 
-  throw lastError ?? new RemoteFetchError(`Failed to clone ${ref.owner}/${ref.repo}`);
+  throw (
+    lastError ??
+    new RemoteFetchError(`Failed to clone ${ref.owner}/${ref.repo}`)
+  );
 }
 
 /**
@@ -176,23 +180,23 @@ async function cloneOrFetch(ref: RemoteRef): Promise<string> {
 function gitClone(url: string, dest: string, version: string): Promise<void> {
   return new Promise((resolve, reject) => {
     // Clone with depth 1 for efficiency, but we need tags for version resolution
-    const args = ['clone', '--depth', '1'];
+    const args = ["clone", "--depth", "1"];
 
     // If version is not 'latest', clone specific branch/tag
-    if (version !== 'latest') {
-      args.push('--branch', version);
+    if (version !== "latest") {
+      args.push("--branch", version);
     }
 
     args.push(url, dest);
 
-    const proc = spawn('git', args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
+    const proc = spawn("git", args, {
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
-    let stderr = '';
-    proc.stderr.on('data', (data) => (stderr += data.toString()));
+    let stderr = "";
+    proc.stderr.on("data", (data) => (stderr += data.toString()));
 
-    proc.on('close', (code) => {
+    proc.on("close", (code) => {
       if (code === 0) {
         resolve();
       } else {
@@ -200,7 +204,7 @@ function gitClone(url: string, dest: string, version: string): Promise<void> {
       }
     });
 
-    proc.on('error', (err) => {
+    proc.on("error", (err) => {
       reject(new RemoteFetchError(`Git clone error: ${err.message}`));
     });
   });
@@ -211,20 +215,20 @@ function gitClone(url: string, dest: string, version: string): Promise<void> {
  */
 function gitFetch(repoPath: string, version: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const args = ['fetch', '--depth', '1', 'origin'];
-    if (version !== 'latest') {
+    const args = ["fetch", "--depth", "1", "origin"];
+    if (version !== "latest") {
       args.push(version);
     }
 
-    const proc = spawn('git', args, {
+    const proc = spawn("git", args, {
       cwd: repoPath,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
-    let stderr = '';
-    proc.stderr.on('data', (data) => (stderr += data.toString()));
+    let stderr = "";
+    proc.stderr.on("data", (data) => (stderr += data.toString()));
 
-    proc.on('close', (code) => {
+    proc.on("close", (code) => {
       if (code === 0) {
         resolve();
       } else {
@@ -232,7 +236,7 @@ function gitFetch(repoPath: string, version: string): Promise<void> {
       }
     });
 
-    proc.on('error', (err) => {
+    proc.on("error", (err) => {
       reject(new RemoteFetchError(`Git fetch error: ${err.message}`));
     });
   });
@@ -243,17 +247,17 @@ function gitFetch(repoPath: string, version: string): Promise<void> {
  */
 function gitCheckout(repoPath: string, version: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const ref = version === 'latest' ? 'origin/HEAD' : version;
+    const ref = version === "latest" ? "origin/HEAD" : version;
 
-    const proc = spawn('git', ['checkout', ref], {
+    const proc = spawn("git", ["checkout", ref], {
       cwd: repoPath,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
-    let stderr = '';
-    proc.stderr.on('data', (data) => (stderr += data.toString()));
+    let stderr = "";
+    proc.stderr.on("data", (data) => (stderr += data.toString()));
 
-    proc.on('close', (code) => {
+    proc.on("close", (code) => {
       if (code === 0) {
         resolve();
       } else {
@@ -261,7 +265,7 @@ function gitCheckout(repoPath: string, version: string): Promise<void> {
       }
     });
 
-    proc.on('error', (err) => {
+    proc.on("error", (err) => {
       reject(new RemoteFetchError(`Git checkout error: ${err.message}`));
     });
   });
@@ -274,7 +278,10 @@ function gitCheckout(repoPath: string, version: string): Promise<void> {
  * @param filePath - Path to file within the repo path (e.g., "typescript-strict.md")
  * @returns File contents as string
  */
-export async function fetchRemoteFile(remoteRef: string, filePath: string): Promise<string> {
+export async function fetchRemoteFile(
+  remoteRef: string,
+  filePath: string,
+): Promise<string> {
   const ref = parseRemoteRef(remoteRef);
   const repoPath = await cloneOrFetch(ref);
 
@@ -283,11 +290,11 @@ export async function fetchRemoteFile(remoteRef: string, filePath: string): Prom
   if (!existsSync(fullPath)) {
     throw new RemoteFetchError(
       `File not found: ${filePath}\n` +
-        `Looking in: ${ref.host}:${ref.owner}/${ref.repo}/${ref.path}`
+        `Looking in: ${ref.host}:${ref.owner}/${ref.repo}/${ref.path}`,
     );
   }
 
-  return readFileSync(fullPath, 'utf-8');
+  return readFileSync(fullPath, "utf-8");
 }
 
 /**
@@ -304,11 +311,12 @@ export async function fetchRemoteDir(remoteRef: string): Promise<string[]> {
 
   if (!existsSync(dirPath)) {
     throw new RemoteFetchError(
-      `Directory not found: ${ref.path}\n` + `Looking in: ${ref.host}:${ref.owner}/${ref.repo}`
+      `Directory not found: ${ref.path}\n` +
+        `Looking in: ${ref.host}:${ref.owner}/${ref.repo}`,
     );
   }
 
-  const { readdirSync } = await import('fs');
+  const { readdirSync } = await import("fs");
   return readdirSync(dirPath);
 }
 

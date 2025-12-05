@@ -1,23 +1,27 @@
-import { Command } from 'commander';
-import { existsSync, mkdirSync } from 'fs';
-import { readFile, appendFile } from 'fs/promises';
-import { join, dirname } from 'path';
-import { loadConfig, findProjectRoot, ConfigError } from '../../config/loader.js';
-import { fetchRemoteFile, RemoteFetchError } from '../../remote/fetcher.js';
+import { Command } from "commander";
+import { existsSync, mkdirSync } from "fs";
+import { readFile, appendFile } from "fs/promises";
+import { join, dirname } from "path";
+import {
+  loadConfig,
+  findProjectRoot,
+  ConfigError,
+} from "../../config/loader.js";
+import { fetchRemoteFile, RemoteFetchError } from "../../remote/fetcher.js";
 import {
   ExitCode,
   AI_TARGET_FILES,
   DEFAULT_AI_CONTEXT_SOURCE,
   type AiTarget,
   type Config,
-} from '../../types.js';
+} from "../../types.js";
 
-const VALID_TARGETS: AiTarget[] = ['claude', 'cursor', 'copilot'];
+const VALID_TARGETS: AiTarget[] = ["claude", "cursor", "copilot"];
 
 class TemplateError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'TemplateError';
+    this.name = "TemplateError";
   }
 }
 
@@ -32,30 +36,33 @@ function isValidTarget(target: string): target is AiTarget {
 
 function validateOptions(options: ContextOptions): void {
   if (!options.stdout && !options.target) {
-    console.error('Error: Either --target or --stdout must be specified.');
-    console.error('Usage: cmc context --target <claude|cursor|copilot>');
-    console.error('       cmc context --stdout');
+    console.error("Error: Either --target or --stdout must be specified.");
+    console.error("Usage: cmc context --target <claude|cursor|copilot>");
+    console.error("       cmc context --stdout");
     process.exit(ExitCode.CONFIG_ERROR);
   }
 
   if (options.target && !isValidTarget(options.target)) {
     console.error(`Error: Invalid target "${options.target}".`);
-    console.error('Valid targets: claude, cursor, copilot');
+    console.error("Valid targets: claude, cursor, copilot");
     process.exit(ExitCode.CONFIG_ERROR);
   }
 }
 
-function validateAiContextConfig(config: Config): { templates: string[]; source: string } {
-  if (!config['prompts']?.templates?.length) {
-    console.error('Error: No prompts templates configured in cmc.toml.');
-    console.error('\nAdd to your cmc.toml:');
-    console.error('  [prompts]');
+function validateAiContextConfig(config: Config): {
+  templates: string[];
+  source: string;
+} {
+  if (!config["prompts"]?.templates?.length) {
+    console.error("Error: No prompts templates configured in cmc.toml.");
+    console.error("\nAdd to your cmc.toml:");
+    console.error("  [prompts]");
     console.error('  templates = ["typescript/5.5"]');
     process.exit(ExitCode.CONFIG_ERROR);
   }
   return {
-    templates: config['prompts'].templates,
-    source: config['prompts'].source ?? DEFAULT_AI_CONTEXT_SOURCE,
+    templates: config["prompts"].templates,
+    source: config["prompts"].source ?? DEFAULT_AI_CONTEXT_SOURCE,
   };
 }
 
@@ -81,13 +88,15 @@ async function loadManifest(source: string): Promise<PromptsManifest> {
   }
 
   try {
-    const content = await fetchRemoteFile(source, 'prompts.json');
+    const content = await fetchRemoteFile(source, "prompts.json");
     manifestCache = JSON.parse(content) as PromptsManifest;
     return manifestCache;
   } catch (error) {
     if (error instanceof RemoteFetchError) {
       throw new TemplateError(
-        `Failed to load prompts manifest.\n` + `Source: ${source}\n` + `Error: ${error.message}`
+        `Failed to load prompts manifest.\n` +
+          `Source: ${source}\n` +
+          `Error: ${error.message}`,
       );
     }
     throw error;
@@ -97,33 +106,36 @@ async function loadManifest(source: string): Promise<PromptsManifest> {
 function resolveTemplatePath(
   manifest: PromptsManifest,
   templateName: string,
-  requestedVersion?: string
+  requestedVersion?: string,
 ): string {
   const prompt = manifest.prompts[templateName];
   if (!prompt) {
-    const available = Object.keys(manifest.prompts).join(', ');
+    const available = Object.keys(manifest.prompts).join(", ");
     throw new TemplateError(
-      `Template "${templateName}" not found.\n` + `Available templates: ${available}`
+      `Template "${templateName}" not found.\n` +
+        `Available templates: ${available}`,
     );
   }
 
   // Resolve version: use requested version, or 'latest', or first available
-  const version = requestedVersion ?? 'latest';
+  const version = requestedVersion ?? "latest";
   const versionEntry = prompt.versions[version];
 
   if (!versionEntry) {
-    const availableVersions = Object.keys(prompt.versions).join(', ');
+    const availableVersions = Object.keys(prompt.versions).join(", ");
     throw new TemplateError(
       `Version "${version}" not found for template "${templateName}".\n` +
-        `Available versions: ${availableVersions}`
+        `Available versions: ${availableVersions}`,
     );
   }
 
   // Handle 'latest' which points to another version
-  if (typeof versionEntry === 'string') {
+  if (typeof versionEntry === "string") {
     const resolvedEntry = prompt.versions[versionEntry];
-    if (!resolvedEntry || typeof resolvedEntry === 'string') {
-      throw new TemplateError(`Invalid version reference for "${templateName}@${version}"`);
+    if (!resolvedEntry || typeof resolvedEntry === "string") {
+      throw new TemplateError(
+        `Invalid version reference for "${templateName}@${version}"`,
+      );
     }
     return resolvedEntry.file;
   }
@@ -131,10 +143,13 @@ function resolveTemplatePath(
   return versionEntry.file;
 }
 
-async function loadTemplate(templateName: string, source: string): Promise<string> {
+async function loadTemplate(
+  templateName: string,
+  source: string,
+): Promise<string> {
   try {
     // Parse template name for optional version: "typescript/strict@1.0.0"
-    const parts = templateName.split('@');
+    const parts = templateName.split("@");
     const name = parts[0] ?? templateName;
     const version = parts[1];
 
@@ -152,27 +167,30 @@ async function loadTemplate(templateName: string, source: string): Promise<strin
       throw new TemplateError(
         `Template "${templateName}" not found.\n` +
           `Source: ${source}\n` +
-          `Error: ${error.message}`
+          `Error: ${error.message}`,
       );
     }
     throw error;
   }
 }
 
-async function loadAllTemplates(templates: string[], source: string): Promise<string> {
+async function loadAllTemplates(
+  templates: string[],
+  source: string,
+): Promise<string> {
   // Load templates sequentially to avoid race conditions in git cache
   const contents: string[] = [];
   for (const template of templates) {
     // eslint-disable-next-line no-await-in-loop
     contents.push(await loadTemplate(template, source));
   }
-  return contents.join('\n\n');
+  return contents.join("\n\n");
 }
 
 async function appendToTargetFile(
   projectRoot: string,
   target: AiTarget,
-  output: string
+  output: string,
 ): Promise<void> {
   const targetFile = AI_TARGET_FILES[target];
   const targetPath = join(projectRoot, targetFile);
@@ -182,15 +200,15 @@ async function appendToTargetFile(
     mkdirSync(targetDir, { recursive: true });
   }
 
-  let prefix = '';
+  let prefix = "";
   if (existsSync(targetPath)) {
-    const existingContent = await readFile(targetPath, 'utf-8');
-    if (existingContent.length > 0 && !existingContent.endsWith('\n\n')) {
-      prefix = existingContent.endsWith('\n') ? '\n' : '\n\n';
+    const existingContent = await readFile(targetPath, "utf-8");
+    if (existingContent.length > 0 && !existingContent.endsWith("\n\n")) {
+      prefix = existingContent.endsWith("\n") ? "\n" : "\n\n";
     }
   }
 
-  await appendFile(targetPath, `${prefix}${output}\n`, 'utf-8');
+  await appendFile(targetPath, `${prefix}${output}\n`, "utf-8");
   console.log(`✓ Appended context to ${targetFile}`);
 }
 
@@ -207,16 +225,20 @@ function handleError(error: unknown): never {
     console.error(`Error: ${error.message}`);
     process.exit(ExitCode.RUNTIME_ERROR);
   }
-  console.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  console.error(
+    `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+  );
   process.exit(ExitCode.RUNTIME_ERROR);
 }
 
-export const contextCommand = new Command('context')
-  .description('Append coding standards context to AI agent configuration files')
-  .option('--target <tool>', 'Target AI tool: claude, cursor, or copilot')
-  .option('--stdout', 'Output to stdout instead of appending to file', false)
+export const contextCommand = new Command("context")
+  .description(
+    "Append coding standards context to AI agent configuration files",
+  )
+  .option("--target <tool>", "Target AI tool: claude, cursor, or copilot")
+  .option("--stdout", "Output to stdout instead of appending to file", false)
   .addHelpText(
-    'after',
+    "after",
     `
 Examples:
   $ cmc context --target claude   Append to CLAUDE.md
@@ -226,7 +248,7 @@ Examples:
 
 Requires prompts templates in cmc.toml:
   [prompts]
-  templates = ["typescript/5.5"]`
+  templates = ["typescript/5.5"]`,
   )
   .action(async (options: ContextOptions) => {
     try {

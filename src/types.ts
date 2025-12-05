@@ -31,24 +31,24 @@ export interface AiContextConfig {
 
 // Default community repository for AI context templates
 export const DEFAULT_AI_CONTEXT_SOURCE =
-  'github:chrismlittle123/check-my-code-community/prompts@latest';
+  "github:chrismlittle123/check-my-code-community/prompts@latest";
 
 // Supported AI tool targets for context output
-export type AiTarget = 'claude' | 'cursor' | 'copilot';
+export type AiTarget = "claude" | "cursor" | "copilot";
 
 // Map of AI targets to their config file paths
 export const AI_TARGET_FILES: Record<AiTarget, string> = {
-  claude: 'CLAUDE.md',
-  cursor: '.cursorrules',
-  copilot: '.github/copilot-instructions.md',
+  claude: "CLAUDE.md",
+  cursor: ".cursorrules",
+  copilot: ".github/copilot-instructions.md",
 };
 
 // ESLint rule values can be: "off", "warn", "error", or array like ["error", "always"]
-export type ESLintRuleValue = 'off' | 'warn' | 'error' | [string, ...unknown[]];
+export type ESLintRuleValue = "off" | "warn" | "error" | [string, ...unknown[]];
 
 // Ruff configuration matching ruff.toml structure
 export interface RuffConfig {
-  'line-length'?: number;
+  "line-length"?: number;
   lint?: {
     select?: string[];
     ignore?: string[];
@@ -88,7 +88,7 @@ export interface Violation {
   column: number | null;
   rule: string;
   message: string;
-  linter: 'eslint' | 'ruff' | 'tsc';
+  linter: "eslint" | "ruff" | "tsc";
 }
 
 export interface CheckResult {

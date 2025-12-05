@@ -1,13 +1,13 @@
-import { spawn } from 'child_process';
-import { existsSync } from 'fs';
-import { join, relative } from 'path';
-import type { Violation } from './types.js';
+import { spawn } from "child_process";
+import { existsSync } from "fs";
+import { join, relative } from "path";
+import type { Violation } from "./types.js";
 
 // Custom error class for linter runtime errors (exit code 3)
 export class LinterError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'LinterError';
+    this.name = "LinterError";
   }
 }
 
@@ -26,11 +26,13 @@ export interface LinterOptions {
 export async function runLinters(
   projectRoot: string,
   files: string[],
-  options?: LinterOptions
+  options?: LinterOptions,
 ): Promise<Violation[]> {
   const violations: Violation[] = [];
 
-  const pythonFiles = files.filter((f) => f.endsWith('.py') || f.endsWith('.pyi'));
+  const pythonFiles = files.filter(
+    (f) => f.endsWith(".py") || f.endsWith(".pyi"),
+  );
   const tsFiles = files.filter((f) => /\.(ts|tsx)$/.test(f));
   const jsFiles = files.filter((f) => /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(f));
 
@@ -53,18 +55,21 @@ export async function runLinters(
   return violations;
 }
 
-async function runRuff(projectRoot: string, files: string[]): Promise<Violation[]> {
-  const hasRuff = await commandExists('ruff');
+async function runRuff(
+  projectRoot: string,
+  files: string[],
+): Promise<Violation[]> {
+  const hasRuff = await commandExists("ruff");
   if (!hasRuff) {
-    console.error('Warning: Ruff not found, skipping Python file checks');
+    console.error("Warning: Ruff not found, skipping Python file checks");
     return [];
   }
 
   const absoluteFiles = files.map((f) => join(projectRoot, f));
-  const args = ['check', '--output-format=json', ...absoluteFiles];
+  const args = ["check", "--output-format=json", ...absoluteFiles];
 
   try {
-    const output = await runCommand('ruff', args, projectRoot);
+    const output = await runCommand("ruff", args, projectRoot);
     return parseRuffOutput(output, projectRoot);
   } catch (error) {
     if (error instanceof CommandError && error.stdout) {
@@ -74,27 +79,32 @@ async function runRuff(projectRoot: string, files: string[]): Promise<Violation[
   }
 }
 
-async function runESLint(projectRoot: string, files: string[]): Promise<Violation[]> {
+async function runESLint(
+  projectRoot: string,
+  files: string[],
+): Promise<Violation[]> {
   // Look for eslint in the project's node_modules or globally
-  const localEslintPath = join(projectRoot, 'node_modules', '.bin', 'eslint');
+  const localEslintPath = join(projectRoot, "node_modules", ".bin", "eslint");
   const hasLocalESLint = existsSync(localEslintPath);
-  const hasGlobalESLint = await commandExists('eslint');
+  const hasGlobalESLint = await commandExists("eslint");
 
   if (!hasLocalESLint && !hasGlobalESLint) {
-    console.error('Warning: ESLint not found, skipping JavaScript/TypeScript file checks');
+    console.error(
+      "Warning: ESLint not found, skipping JavaScript/TypeScript file checks",
+    );
     return [];
   }
 
-  const eslintBin = hasLocalESLint ? localEslintPath : 'eslint';
+  const eslintBin = hasLocalESLint ? localEslintPath : "eslint";
   const absoluteFiles = files.map((f) => join(projectRoot, f));
 
   // Use --no-ignore to check files even if they're in ignored paths
   // Use --no-warn-ignored to suppress warnings about ignored files
   const args = [
-    '--format=json',
-    '--no-error-on-unmatched-pattern',
-    '--no-ignore',
-    '--no-warn-ignored',
+    "--format=json",
+    "--no-error-on-unmatched-pattern",
+    "--no-ignore",
+    "--no-warn-ignored",
     ...absoluteFiles,
   ];
 
@@ -126,7 +136,7 @@ function parseRuffOutput(output: string, projectRoot: string): Violation[] {
       column: r.location?.column ?? null,
       rule: r.code,
       message: r.message,
-      linter: 'ruff' as const,
+      linter: "ruff" as const,
     }));
   } catch {
     return [];
@@ -154,9 +164,9 @@ function parseESLintOutput(output: string, projectRoot: string): Violation[] {
           file: relative(projectRoot, file.filePath),
           line: msg.line ?? null,
           column: msg.column ?? null,
-          rule: msg.ruleId ?? 'eslint',
+          rule: msg.ruleId ?? "eslint",
           message: msg.message,
-          linter: 'eslint' as const,
+          linter: "eslint" as const,
         });
       }
     }
@@ -172,24 +182,24 @@ function parseESLintOutput(output: string, projectRoot: string): Violation[] {
  */
 async function runTsc(projectRoot: string): Promise<Violation[]> {
   // Look for tsc in the project's node_modules or globally
-  const localTscPath = join(projectRoot, 'node_modules', '.bin', 'tsc');
+  const localTscPath = join(projectRoot, "node_modules", ".bin", "tsc");
   const hasLocalTsc = existsSync(localTscPath);
-  const hasGlobalTsc = await commandExists('tsc');
+  const hasGlobalTsc = await commandExists("tsc");
 
   if (!hasLocalTsc && !hasGlobalTsc) {
-    console.error('Warning: TypeScript (tsc) not found, skipping type checks');
+    console.error("Warning: TypeScript (tsc) not found, skipping type checks");
     return [];
   }
 
   // Check for tsconfig.json
-  const projectTsconfigPath = join(projectRoot, 'tsconfig.json');
+  const projectTsconfigPath = join(projectRoot, "tsconfig.json");
   if (!existsSync(projectTsconfigPath)) {
-    console.error('Warning: No tsconfig.json found, skipping type checks');
+    console.error("Warning: No tsconfig.json found, skipping type checks");
     return [];
   }
 
-  const tscBin = hasLocalTsc ? localTscPath : 'tsc';
-  const args = ['--noEmit', '--pretty', 'false'];
+  const tscBin = hasLocalTsc ? localTscPath : "tsc";
+  const args = ["--noEmit", "--pretty", "false"];
 
   try {
     const output = await runCommandWithStderr(tscBin, args, projectRoot);
@@ -211,7 +221,7 @@ function parseTscOutput(output: string, projectRoot: string): Violation[] {
   if (!output.trim()) return [];
 
   const violations: Violation[] = [];
-  const lines = output.split('\n');
+  const lines = output.split("\n");
 
   // Match: file(line,col): error TSxxxx: message
   // or: file(line,col): error: message (for some errors)
@@ -226,9 +236,9 @@ function parseTscOutput(output: string, projectRoot: string): Violation[] {
           file: relative(projectRoot, filePath),
           line: parseInt(lineNum, 10),
           column: parseInt(colNum, 10),
-          rule: errorCode ?? 'tsc',
+          rule: errorCode ?? "tsc",
           message: message.trim(),
-          linter: 'tsc' as const,
+          linter: "tsc" as const,
         });
       }
     }
@@ -247,26 +257,38 @@ class CommandErrorWithStderr extends Error {
   }
 }
 
-function runCommandWithStderr(cmd: string, args: string[], cwd: string): Promise<string> {
+function runCommandWithStderr(
+  cmd: string,
+  args: string[],
+  cwd: string,
+): Promise<string> {
   return new Promise((resolve, reject) => {
-    let stdout = '';
-    let stderr = '';
+    let stdout = "";
+    let stderr = "";
 
     const proc = spawn(cmd, args, { cwd });
 
-    proc.stdout?.on('data', (data: Buffer) => {
+    proc.stdout?.on("data", (data: Buffer) => {
       stdout += data.toString();
     });
-    proc.stderr?.on('data', (data: Buffer) => {
+    proc.stderr?.on("data", (data: Buffer) => {
       stderr += data.toString();
     });
 
-    proc.on('error', (err) => reject(new Error(`Failed to run ${cmd}: ${err.message}`)));
-    proc.on('close', (code) => {
+    proc.on("error", (err) =>
+      reject(new Error(`Failed to run ${cmd}: ${err.message}`)),
+    );
+    proc.on("close", (code) => {
       if (code === 0) {
         resolve(stdout);
       } else {
-        reject(new CommandErrorWithStderr(`${cmd} exited with code ${code}`, stdout, stderr));
+        reject(
+          new CommandErrorWithStderr(
+            `${cmd} exited with code ${code}`,
+            stdout,
+            stderr,
+          ),
+        );
       }
     });
   });
@@ -274,9 +296,9 @@ function runCommandWithStderr(cmd: string, args: string[], cwd: string): Promise
 
 async function commandExists(cmd: string): Promise<boolean> {
   return new Promise((resolve) => {
-    const proc = spawn(cmd, ['--version'], { stdio: 'ignore' });
-    proc.on('error', () => resolve(false));
-    proc.on('close', (code) => resolve(code === 0));
+    const proc = spawn(cmd, ["--version"], { stdio: "ignore" });
+    proc.on("error", () => resolve(false));
+    proc.on("close", (code) => resolve(code === 0));
   });
 }
 
@@ -290,20 +312,22 @@ class CommandError extends Error {
 
 function runCommand(cmd: string, args: string[], cwd: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    let stdout = '';
-    let _stderr = '';
+    let stdout = "";
+    let _stderr = "";
 
     const proc = spawn(cmd, args, { cwd });
 
-    proc.stdout?.on('data', (data: Buffer) => {
+    proc.stdout?.on("data", (data: Buffer) => {
       stdout += data.toString();
     });
-    proc.stderr?.on('data', (data: Buffer) => {
+    proc.stderr?.on("data", (data: Buffer) => {
       _stderr += data.toString();
     });
 
-    proc.on('error', (err) => reject(new Error(`Failed to run ${cmd}: ${err.message}`)));
-    proc.on('close', (code) => {
+    proc.on("error", (err) =>
+      reject(new Error(`Failed to run ${cmd}: ${err.message}`)),
+    );
+    proc.on("close", (code) => {
       if (code === 0) {
         resolve(stdout);
       } else {
@@ -317,8 +341,13 @@ function runCommand(cmd: string, args: string[], cwd: string): Promise<string> {
  * Run linters with --fix flag to auto-fix violations.
  * Returns the number of fixes applied and any remaining violations.
  */
-export async function runLintersFix(projectRoot: string, files: string[]): Promise<FixResult> {
-  const pythonFiles = files.filter((f) => f.endsWith('.py') || f.endsWith('.pyi'));
+export async function runLintersFix(
+  projectRoot: string,
+  files: string[],
+): Promise<FixResult> {
+  const pythonFiles = files.filter(
+    (f) => f.endsWith(".py") || f.endsWith(".pyi"),
+  );
   const jsFiles = files.filter((f) => /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(f));
 
   const filesModified: string[] = [];
@@ -349,9 +378,9 @@ export async function runLintersFix(projectRoot: string, files: string[]): Promi
 
 async function runRuffFix(
   projectRoot: string,
-  files: string[]
+  files: string[],
 ): Promise<{ fixedCount: number; filesModified: string[] }> {
-  const hasRuff = await commandExists('ruff');
+  const hasRuff = await commandExists("ruff");
   if (!hasRuff) {
     return { fixedCount: 0, filesModified: [] };
   }
@@ -362,9 +391,9 @@ async function runRuffFix(
 
   try {
     const beforeOutput = await runCommand(
-      'ruff',
-      ['check', '--output-format=json', ...absoluteFiles],
-      projectRoot
+      "ruff",
+      ["check", "--output-format=json", ...absoluteFiles],
+      projectRoot,
     );
     const beforeResults = JSON.parse(beforeOutput) as unknown[];
     beforeCount = beforeResults.length;
@@ -381,7 +410,7 @@ async function runRuffFix(
 
   // Run fix
   try {
-    await runCommand('ruff', ['check', '--fix', ...absoluteFiles], projectRoot);
+    await runCommand("ruff", ["check", "--fix", ...absoluteFiles], projectRoot);
   } catch {
     // Ruff exits with non-zero if there are unfixable violations, which is expected
   }
@@ -390,9 +419,9 @@ async function runRuffFix(
   let afterCount = 0;
   try {
     const afterOutput = await runCommand(
-      'ruff',
-      ['check', '--output-format=json', ...absoluteFiles],
-      projectRoot
+      "ruff",
+      ["check", "--output-format=json", ...absoluteFiles],
+      projectRoot,
     );
     const afterResults = JSON.parse(afterOutput) as unknown[];
     afterCount = afterResults.length;
@@ -417,17 +446,17 @@ async function runRuffFix(
 
 async function runESLintFix(
   projectRoot: string,
-  files: string[]
+  files: string[],
 ): Promise<{ fixedCount: number; filesModified: string[] }> {
-  const localEslintPath = join(projectRoot, 'node_modules', '.bin', 'eslint');
+  const localEslintPath = join(projectRoot, "node_modules", ".bin", "eslint");
   const hasLocalESLint = existsSync(localEslintPath);
-  const hasGlobalESLint = await commandExists('eslint');
+  const hasGlobalESLint = await commandExists("eslint");
 
   if (!hasLocalESLint && !hasGlobalESLint) {
     return { fixedCount: 0, filesModified: [] };
   }
 
-  const eslintBin = hasLocalESLint ? localEslintPath : 'eslint';
+  const eslintBin = hasLocalESLint ? localEslintPath : "eslint";
   const absoluteFiles = files.map((f) => join(projectRoot, f));
 
   // Get violations count before fix
@@ -436,21 +465,31 @@ async function runESLintFix(
     const beforeOutput = await runCommand(
       eslintBin,
       [
-        '--format=json',
-        '--no-error-on-unmatched-pattern',
-        '--no-ignore',
-        '--no-warn-ignored',
+        "--format=json",
+        "--no-error-on-unmatched-pattern",
+        "--no-ignore",
+        "--no-warn-ignored",
         ...absoluteFiles,
       ],
-      projectRoot
+      projectRoot,
     );
-    const beforeResults = JSON.parse(beforeOutput) as { messages?: unknown[] }[];
-    beforeCount = beforeResults.reduce((sum, r) => sum + (r.messages?.length ?? 0), 0);
+    const beforeResults = JSON.parse(beforeOutput) as {
+      messages?: unknown[];
+    }[];
+    beforeCount = beforeResults.reduce(
+      (sum, r) => sum + (r.messages?.length ?? 0),
+      0,
+    );
   } catch (error) {
     if (error instanceof CommandError && error.stdout) {
       try {
-        const beforeResults = JSON.parse(error.stdout) as { messages?: unknown[] }[];
-        beforeCount = beforeResults.reduce((sum, r) => sum + (r.messages?.length ?? 0), 0);
+        const beforeResults = JSON.parse(error.stdout) as {
+          messages?: unknown[];
+        }[];
+        beforeCount = beforeResults.reduce(
+          (sum, r) => sum + (r.messages?.length ?? 0),
+          0,
+        );
       } catch {
         // Ignore parse errors
       }
@@ -462,13 +501,13 @@ async function runESLintFix(
     await runCommand(
       eslintBin,
       [
-        '--fix',
-        '--no-error-on-unmatched-pattern',
-        '--no-ignore',
-        '--no-warn-ignored',
+        "--fix",
+        "--no-error-on-unmatched-pattern",
+        "--no-ignore",
+        "--no-warn-ignored",
         ...absoluteFiles,
       ],
-      projectRoot
+      projectRoot,
     );
   } catch {
     // ESLint exits with non-zero if there are unfixable violations
@@ -480,21 +519,29 @@ async function runESLintFix(
     const afterOutput = await runCommand(
       eslintBin,
       [
-        '--format=json',
-        '--no-error-on-unmatched-pattern',
-        '--no-ignore',
-        '--no-warn-ignored',
+        "--format=json",
+        "--no-error-on-unmatched-pattern",
+        "--no-ignore",
+        "--no-warn-ignored",
         ...absoluteFiles,
       ],
-      projectRoot
+      projectRoot,
     );
     const afterResults = JSON.parse(afterOutput) as { messages?: unknown[] }[];
-    afterCount = afterResults.reduce((sum, r) => sum + (r.messages?.length ?? 0), 0);
+    afterCount = afterResults.reduce(
+      (sum, r) => sum + (r.messages?.length ?? 0),
+      0,
+    );
   } catch (error) {
     if (error instanceof CommandError && error.stdout) {
       try {
-        const afterResults = JSON.parse(error.stdout) as { messages?: unknown[] }[];
-        afterCount = afterResults.reduce((sum, r) => sum + (r.messages?.length ?? 0), 0);
+        const afterResults = JSON.parse(error.stdout) as {
+          messages?: unknown[];
+        }[];
+        afterCount = afterResults.reduce(
+          (sum, r) => sum + (r.messages?.length ?? 0),
+          0,
+        );
       } catch {
         // Ignore parse errors
       }

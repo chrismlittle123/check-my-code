@@ -1,10 +1,10 @@
-import { Command } from 'commander';
-import { startServer } from '../../mcp/server.js';
+import { Command } from "commander";
+import { startServer } from "../../mcp/server.js";
 
-export const mcpServerCommand = new Command('mcp-server')
-  .description('Start MCP server for AI agent integration')
+export const mcpServerCommand = new Command("mcp-server")
+  .description("Start MCP server for AI agent integration")
   .addHelpText(
-    'after',
+    "after",
     `
 The MCP server exposes linting functionality to AI agents like Claude Code, Cursor, and Codex.
 
@@ -26,7 +26,7 @@ Available tools:
   - check_project  Lint entire project
   - fix_files      Auto-fix violations
   - get_guidelines Fetch coding standards
-  - get_status     Get session state`
+  - get_status     Get session state`,
   )
   .action(async () => {
     await startServer();

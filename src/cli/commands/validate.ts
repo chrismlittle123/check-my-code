@@ -1,10 +1,10 @@
-import { Command } from 'commander';
-import { readFile } from 'fs/promises';
-import { existsSync } from 'fs';
-import { dirname, join, resolve } from 'path';
-import { fileURLToPath } from 'url';
-import { findProjectRoot, stripSymbolKeys } from '../../config/loader.js';
-import { ExitCode } from '../../types.js';
+import { Command } from "commander";
+import { readFile } from "fs/promises";
+import { existsSync } from "fs";
+import { dirname, join, resolve } from "path";
+import { fileURLToPath } from "url";
+import { findProjectRoot, stripSymbolKeys } from "../../config/loader.js";
+import { ExitCode } from "../../types.js";
 
 interface AjvErrorObject {
   instancePath: string;
@@ -25,35 +25,46 @@ interface ValidateResult {
   configPath: string;
 }
 
-export const validateCommand = new Command('validate')
-  .description('Validate cmc.toml against the JSON schema')
-  .argument('[path]', 'Path to cmc.toml (default: auto-discover from current directory)')
-  .option('--json', 'Output results as JSON', false)
-  .option('-v, --verbose', 'Show detailed error information', false)
+export const validateCommand = new Command("validate")
+  .description("Validate cmc.toml against the JSON schema")
+  .argument(
+    "[path]",
+    "Path to cmc.toml (default: auto-discover from current directory)",
+  )
+  .option("--json", "Output results as JSON", false)
+  .option("-v, --verbose", "Show detailed error information", false)
   .addHelpText(
-    'after',
+    "after",
     `
 Examples:
   $ cmc validate                Validate cmc.toml in current project
   $ cmc validate ./cmc.toml     Validate specific file
   $ cmc validate --json         Output as JSON for CI/tooling
-  $ cmc validate --verbose      Show detailed validation errors`
+  $ cmc validate --verbose      Show detailed validation errors`,
   )
-  .action(async (path: string | undefined, options: { json?: boolean; verbose?: boolean }) => {
-    try {
-      const result = await runValidation(path);
-      outputResults(result, options.json ?? false, options.verbose ?? false);
-      process.exit(result.valid ? ExitCode.SUCCESS : ExitCode.CONFIG_ERROR);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      if (options.json) {
-        console.log(JSON.stringify({ valid: false, error: message }, null, 2));
-      } else {
-        console.error(`Error: ${message}`);
+  .action(
+    async (
+      path: string | undefined,
+      options: { json?: boolean; verbose?: boolean },
+    ) => {
+      try {
+        const result = await runValidation(path);
+        outputResults(result, options.json ?? false, options.verbose ?? false);
+        process.exit(result.valid ? ExitCode.SUCCESS : ExitCode.CONFIG_ERROR);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        if (options.json) {
+          console.log(
+            JSON.stringify({ valid: false, error: message }, null, 2),
+          );
+        } else {
+          console.error(`Error: ${message}`);
+        }
+        process.exit(ExitCode.RUNTIME_ERROR);
       }
-      process.exit(ExitCode.RUNTIME_ERROR);
-    }
-  });
+    },
+  );
 
 async function runValidation(path?: string): Promise<ValidateResult> {
   // Determine config path
@@ -62,7 +73,7 @@ async function runValidation(path?: string): Promise<ValidateResult> {
     configPath = resolve(path);
   } else {
     const projectRoot = findProjectRoot();
-    configPath = join(projectRoot, 'cmc.toml');
+    configPath = join(projectRoot, "cmc.toml");
   }
 
   // Check if file exists
@@ -72,22 +83,28 @@ async function runValidation(path?: string): Promise<ValidateResult> {
 
   // Load schema from package
   const __dirname = dirname(fileURLToPath(import.meta.url));
-  const schemaPath = join(__dirname, '../../../schemas/cmc.schema.json');
-  const schemaContent = await readFile(schemaPath, 'utf-8');
+  const schemaPath = join(__dirname, "../../../schemas/cmc.schema.json");
+  const schemaContent = await readFile(schemaPath, "utf-8");
   const schema = JSON.parse(schemaContent);
 
   // Load and parse TOML config
-  const configContent = await readFile(configPath, 'utf-8');
-  const TOML = await import('@iarna/toml');
+  const configContent = await readFile(configPath, "utf-8");
+  const TOML = await import("@iarna/toml");
 
   let parsed: unknown;
   try {
     parsed = TOML.parse(configContent);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Parse error';
+    const message = error instanceof Error ? error.message : "Parse error";
     return {
       valid: false,
-      errors: [{ path: '', message: `Invalid TOML syntax: ${message}`, keyword: 'syntax' }],
+      errors: [
+        {
+          path: "",
+          message: `Invalid TOML syntax: ${message}`,
+          keyword: "syntax",
+        },
+      ],
       configPath,
     };
   }
@@ -96,7 +113,7 @@ async function runValidation(path?: string): Promise<ValidateResult> {
   parsed = stripSymbolKeys(parsed);
 
   // Validate against JSON schema using Ajv 2020-12 (for JSON Schema draft 2020-12)
-  const ajvModule = await import('ajv/dist/2020.js');
+  const ajvModule = await import("ajv/dist/2020.js");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const Ajv2020 = ajvModule.default as any;
   const ajv = new Ajv2020({ allErrors: true, verbose: true, strict: false });
@@ -109,9 +126,10 @@ async function runValidation(path?: string): Promise<ValidateResult> {
 
   // Convert Ajv errors to our format
   const errors = (
-    ((validate as { errors?: AjvErrorObject[] }).errors ?? []) as AjvErrorObject[]
+    ((validate as { errors?: AjvErrorObject[] }).errors ??
+      []) as AjvErrorObject[]
   ).map((err) => ({
-    path: err.instancePath || '/',
+    path: err.instancePath || "/",
     message: formatAjvError(err),
     keyword: err.keyword,
   }));
@@ -121,26 +139,30 @@ async function runValidation(path?: string): Promise<ValidateResult> {
 
 function formatAjvError(error: AjvErrorObject): string {
   switch (error.keyword) {
-    case 'required':
+    case "required":
       return `missing required property '${error.params.missingProperty}'`;
-    case 'type':
+    case "type":
       return `must be ${error.params.type}`;
-    case 'minLength':
+    case "minLength":
       return `must have at least ${error.params.limit} character(s)`;
-    case 'minItems':
+    case "minItems":
       return `must have at least ${error.params.limit} item(s)`;
-    case 'pattern':
+    case "pattern":
       return `must match pattern: ${error.params.pattern}`;
-    case 'enum':
-      return `must be one of: ${(error.params.allowedValues as string[]).join(', ')}`;
-    case 'additionalProperties':
+    case "enum":
+      return `must be one of: ${(error.params.allowedValues as string[]).join(", ")}`;
+    case "additionalProperties":
       return `has unknown property '${error.params.additionalProperty}'`;
     default:
-      return error.message ?? 'validation failed';
+      return error.message ?? "validation failed";
   }
 }
 
-function outputResults(result: ValidateResult, json: boolean, verbose: boolean): void {
+function outputResults(
+  result: ValidateResult,
+  json: boolean,
+  verbose: boolean,
+): void {
   if (json) {
     console.log(
       JSON.stringify(
@@ -150,8 +172,8 @@ function outputResults(result: ValidateResult, json: boolean, verbose: boolean):
           errors: result.errors,
         },
         null,
-        2
-      )
+        2,
+      ),
     );
     return;
   }
@@ -165,17 +187,17 @@ function outputResults(result: ValidateResult, json: boolean, verbose: boolean):
 
   for (const error of result.errors) {
     if (verbose) {
-      const pathDisplay = error.path || '(root)';
+      const pathDisplay = error.path || "(root)";
       console.log(`  Path: ${pathDisplay}`);
       console.log(`  Error: ${error.message}`);
       console.log(`  Keyword: ${error.keyword}`);
       console.log();
     } else {
-      const pathDisplay = error.path ? `${error.path}: ` : '';
+      const pathDisplay = error.path ? `${error.path}: ` : "";
       console.log(`  - ${pathDisplay}${error.message}`);
     }
   }
 
-  const s = result.errors.length === 1 ? '' : 's';
+  const s = result.errors.length === 1 ? "" : "s";
   console.log(`\n${result.errors.length} validation error${s} found`);
 }

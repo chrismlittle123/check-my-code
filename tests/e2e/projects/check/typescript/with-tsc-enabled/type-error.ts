@@ -5,6 +5,6 @@ function add(a: number, b: number): number {
 }
 
 // Type error: passing string to number parameter
-const result = add('hello', 42);
+const result = add("hello", 42);
 
 export { result };

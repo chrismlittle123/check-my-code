@@ -6,6 +6,6 @@ function add(a: number, b: number): number {
 }
 
 // Type error that tsc would catch, but ESLint won't
-const result = add('hello', 42);
+const result = add("hello", 42);
 
 export { result };

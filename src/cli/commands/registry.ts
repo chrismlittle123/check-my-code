@@ -3,11 +3,17 @@
  * Provides subcommands: validate, list, check, sync, bump
  */
 
-import { Command } from 'commander';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { glob } from 'glob';
-import { ExitCode } from '../../types.js';
+import { Command } from "commander";
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  copyFileSync,
+} from "fs";
+import { join, dirname } from "path";
+import { glob } from "glob";
+import { ExitCode } from "../../types.js";
 
 // Types for registry entries
 interface VersionEntry {
@@ -15,7 +21,7 @@ interface VersionEntry {
 }
 
 interface PromptEntry {
-  tier: 'prototype' | 'internal' | 'production';
+  tier: "prototype" | "internal" | "production";
   description: string;
   format: string;
   language_version: string;
@@ -24,7 +30,7 @@ interface PromptEntry {
 }
 
 interface RulesetEntry {
-  tier: 'prototype' | 'internal' | 'production';
+  tier: "prototype" | "internal" | "production";
   description: string;
   tool: string;
   format: string;
@@ -44,7 +50,7 @@ interface RulesetsRegistry {
   rulesets: Record<string, RulesetEntry>;
 }
 
-type RegistryType = 'prompts' | 'rulesets';
+type RegistryType = "prompts" | "rulesets";
 
 // Registry paths
 function getRegistryPath(projectRoot: string, type: RegistryType): string {
@@ -52,14 +58,14 @@ function getRegistryPath(projectRoot: string, type: RegistryType): string {
 }
 
 function getSchemaPath(projectRoot: string, type: RegistryType): string {
-  return join(projectRoot, 'schemas', `${type}.schema.json`);
+  return join(projectRoot, "schemas", `${type}.schema.json`);
 }
 
 // Load registry JSON
 function loadRegistry<T>(path: string): T | null {
   if (!existsSync(path)) return null;
   try {
-    return JSON.parse(readFileSync(path, 'utf-8')) as T;
+    return JSON.parse(readFileSync(path, "utf-8")) as T;
   } catch {
     return null;
   }
@@ -69,14 +75,16 @@ function loadRegistry<T>(path: string): T | null {
 function loadSchema(path: string): object | null {
   if (!existsSync(path)) return null;
   try {
-    return JSON.parse(readFileSync(path, 'utf-8')) as object;
+    return JSON.parse(readFileSync(path, "utf-8")) as object;
   } catch {
     return null;
   }
 }
 
 // Parse semantic version
-function parseVersion(version: string): { major: number; minor: number; patch: number } | null {
+function parseVersion(
+  version: string,
+): { major: number; minor: number; patch: number } | null {
   const versionRegex = /^(\d+)\.(\d+)\.(\d+)$/;
   const match = versionRegex.exec(version);
   if (!match?.[1] || !match[2] || !match[3]) return null;
@@ -88,16 +96,19 @@ function parseVersion(version: string): { major: number; minor: number; patch: n
 }
 
 // Increment version
-function incrementVersion(version: string, type: 'major' | 'minor' | 'patch'): string {
+function incrementVersion(
+  version: string,
+  type: "major" | "minor" | "patch",
+): string {
   const parsed = parseVersion(version);
-  if (!parsed) return '1.0.0';
+  if (!parsed) return "1.0.0";
 
   switch (type) {
-    case 'major':
+    case "major":
       return `${parsed.major + 1}.0.0`;
-    case 'minor':
+    case "minor":
       return `${parsed.major}.${parsed.minor + 1}.0`;
-    case 'patch':
+    case "patch":
       return `${parsed.major}.${parsed.minor}.${parsed.patch + 1}`;
   }
 }
@@ -135,22 +146,24 @@ function validateEntryConsistency(
   entries: RegistryEntries,
   projectRoot: string,
   type: RegistryType,
-  result: ValidationResult
+  result: ValidationResult,
 ): void {
   for (const [key, entry] of Object.entries(entries)) {
-    const tierFromKey = key.split('/')[0];
+    const tierFromKey = key.split("/")[0];
     if (tierFromKey !== entry.tier) {
       result.errors.push(
-        `${key}: key tier '${tierFromKey}' doesn't match entry tier '${entry.tier}'`
+        `${key}: key tier '${tierFromKey}' doesn't match entry tier '${entry.tier}'`,
       );
       result.valid = false;
     }
 
     for (const [version, versionData] of Object.entries(entry.versions)) {
-      if (version === 'latest') {
+      if (version === "latest") {
         const latestVersion = versionData as string;
         if (!entry.versions[latestVersion]) {
-          result.errors.push(`${key}: 'latest' points to non-existent version '${latestVersion}'`);
+          result.errors.push(
+            `${key}: 'latest' points to non-existent version '${latestVersion}'`,
+          );
           result.valid = false;
         }
         continue;
@@ -160,7 +173,9 @@ function validateEntryConsistency(
       if (fileEntry.file) {
         const filePath = join(projectRoot, type, fileEntry.file);
         if (!existsSync(filePath)) {
-          result.errors.push(`${key}@${version}: file not found: ${type}/${fileEntry.file}`);
+          result.errors.push(
+            `${key}@${version}: file not found: ${type}/${fileEntry.file}`,
+          );
           result.valid = false;
         }
       }
@@ -173,10 +188,10 @@ function collectRegisteredFiles(entries: RegistryEntries): Set<string> {
   for (const entry of Object.values(entries)) {
     for (const [version, versionData] of Object.entries(entry.versions)) {
       if (
-        version !== 'latest' &&
+        version !== "latest" &&
         versionData !== null &&
-        typeof versionData === 'object' &&
-        'file' in versionData
+        typeof versionData === "object" &&
+        "file" in versionData
       ) {
         registeredFiles.add((versionData as VersionEntry).file);
       }
@@ -188,7 +203,7 @@ function collectRegisteredFiles(entries: RegistryEntries): Set<string> {
 function checkFilesExist(
   registryPath: string,
   schemaPath: string,
-  result: ValidationResult
+  result: ValidationResult,
 ): boolean {
   if (!existsSync(registryPath)) {
     result.errors.push(`Registry file not found: ${registryPath}`);
@@ -206,9 +221,11 @@ function checkFilesExist(
 function loadAndValidateFiles(
   registryPath: string,
   schemaPath: string,
-  result: ValidationResult
+  result: ValidationResult,
 ): { registry: PromptsRegistry | RulesetsRegistry; schema: object } | null {
-  const registry = loadRegistry<PromptsRegistry | RulesetsRegistry>(registryPath);
+  const registry = loadRegistry<PromptsRegistry | RulesetsRegistry>(
+    registryPath,
+  );
   const schema = loadSchema(schemaPath);
 
   if (!registry) {
@@ -227,9 +244,9 @@ function loadAndValidateFiles(
 async function validateAgainstSchema(
   registry: PromptsRegistry | RulesetsRegistry,
   schema: object,
-  result: ValidationResult
+  result: ValidationResult,
 ): Promise<void> {
-  const ajvModule = await import('ajv');
+  const ajvModule = await import("ajv");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const Ajv = ajvModule.default as any;
   const ajv = new Ajv({ allErrors: true });
@@ -238,7 +255,7 @@ async function validateAgainstSchema(
 
   if (!schemaValid && validate.errors) {
     for (const err of validate.errors) {
-      result.errors.push(`${err.instancePath ?? 'root'}: ${err.message}`);
+      result.errors.push(`${err.instancePath ?? "root"}: ${err.message}`);
     }
     result.valid = false;
   }
@@ -248,12 +265,12 @@ async function checkOrphanedFiles(
   projectRoot: string,
   type: RegistryType,
   entries: RegistryEntries,
-  result: ValidationResult
+  result: ValidationResult,
 ): Promise<void> {
-  const filePattern = type === 'prompts' ? '**/[0-9]*.md' : '**/[0-9]*.toml';
+  const filePattern = type === "prompts" ? "**/[0-9]*.md" : "**/[0-9]*.toml";
   const actualFiles = await glob(filePattern, {
     cwd: join(projectRoot, type),
-    ignore: ['**/node_modules/**'],
+    ignore: ["**/node_modules/**"],
   });
 
   const registeredFiles = collectRegisteredFiles(entries);
@@ -267,7 +284,7 @@ async function checkOrphanedFiles(
 
 async function validateRegistry(
   projectRoot: string,
-  type: RegistryType
+  type: RegistryType,
 ): Promise<ValidationResult> {
   const result: ValidationResult = { valid: true, errors: [], warnings: [] };
   const registryPath = getRegistryPath(projectRoot, type);
@@ -285,7 +302,7 @@ async function validateRegistry(
   await validateAgainstSchema(loaded.registry, loaded.schema, result);
 
   const entries =
-    type === 'prompts'
+    type === "prompts"
       ? (loaded.registry as PromptsRegistry).prompts
       : (loaded.registry as RulesetsRegistry).rulesets;
 
@@ -295,9 +312,12 @@ async function validateRegistry(
   return result;
 }
 
-async function runValidate(projectRoot: string, options: { json?: boolean }): Promise<void> {
-  const promptsResult = await validateRegistry(projectRoot, 'prompts');
-  const rulesetsResult = await validateRegistry(projectRoot, 'rulesets');
+async function runValidate(
+  projectRoot: string,
+  options: { json?: boolean },
+): Promise<void> {
+  const promptsResult = await validateRegistry(projectRoot, "prompts");
+  const rulesetsResult = await validateRegistry(projectRoot, "rulesets");
 
   const allValid = promptsResult.valid && rulesetsResult.valid;
 
@@ -310,15 +330,15 @@ async function runValidate(projectRoot: string, options: { json?: boolean }): Pr
           rulesets: rulesetsResult,
         },
         null,
-        2
-      )
+        2,
+      ),
     );
   } else {
-    console.log('\n--- Prompts Registry ---\n');
+    console.log("\n--- Prompts Registry ---\n");
     if (promptsResult.valid) {
-      success('prompts.json passes validation');
+      success("prompts.json passes validation");
     } else {
-      error('prompts.json validation failed:');
+      error("prompts.json validation failed:");
       for (const err of promptsResult.errors) {
         console.log(`  - ${err}`);
       }
@@ -327,11 +347,11 @@ async function runValidate(projectRoot: string, options: { json?: boolean }): Pr
       warning(warn);
     }
 
-    console.log('\n--- Rulesets Registry ---\n');
+    console.log("\n--- Rulesets Registry ---\n");
     if (rulesetsResult.valid) {
-      success('rulesets.json passes validation');
+      success("rulesets.json passes validation");
     } else {
-      error('rulesets.json validation failed:');
+      error("rulesets.json validation failed:");
       for (const err of rulesetsResult.errors) {
         console.log(`  - ${err}`);
       }
@@ -340,7 +360,7 @@ async function runValidate(projectRoot: string, options: { json?: boolean }): Pr
       warning(warn);
     }
 
-    console.log('');
+    console.log("");
   }
 
   process.exit(allValid ? ExitCode.SUCCESS : ExitCode.VIOLATIONS);
@@ -358,15 +378,15 @@ interface ListOptions {
 }
 
 function runList(projectRoot: string, options: ListOptions): void {
-  const promptsPath = getRegistryPath(projectRoot, 'prompts');
-  const rulesetsPath = getRegistryPath(projectRoot, 'rulesets');
+  const promptsPath = getRegistryPath(projectRoot, "prompts");
+  const rulesetsPath = getRegistryPath(projectRoot, "rulesets");
 
   const prompts = loadRegistry<PromptsRegistry>(promptsPath);
   const rulesets = loadRegistry<RulesetsRegistry>(rulesetsPath);
 
   const results: {
     key: string;
-    type: 'prompt' | 'ruleset';
+    type: "prompt" | "ruleset";
     tier: string;
     description: string;
     latest: string;
@@ -378,13 +398,13 @@ function runList(projectRoot: string, options: ListOptions): void {
     for (const [key, entry] of Object.entries(prompts.prompts)) {
       if (options.tier && entry.tier !== options.tier) continue;
       if (options.language) {
-        const lang = key.split('/')[1];
+        const lang = key.split("/")[1];
         if (lang !== options.language) continue;
       }
 
       results.push({
         key,
-        type: 'prompt',
+        type: "prompt",
         tier: entry.tier,
         description: entry.description,
         latest: entry.versions.latest as string,
@@ -397,14 +417,14 @@ function runList(projectRoot: string, options: ListOptions): void {
     for (const [key, entry] of Object.entries(rulesets.rulesets)) {
       if (options.tier && entry.tier !== options.tier) continue;
       if (options.language) {
-        const lang = key.split('/')[1];
+        const lang = key.split("/")[1];
         if (lang !== options.language) continue;
       }
       if (options.tool && entry.tool !== options.tool) continue;
 
       results.push({
         key,
-        type: 'ruleset',
+        type: "ruleset",
         tier: entry.tier,
         description: entry.description,
         latest: entry.versions.latest as string,
@@ -417,13 +437,13 @@ function runList(projectRoot: string, options: ListOptions): void {
     console.log(JSON.stringify(results, null, 2));
   } else {
     if (results.length === 0) {
-      console.log('No entries found matching the criteria.');
+      console.log("No entries found matching the criteria.");
       return;
     }
 
-    console.log('\nAvailable standards:\n');
+    console.log("\nAvailable standards:\n");
     for (const item of results) {
-      const toolStr = item.tool ? ` [${item.tool}]` : '';
+      const toolStr = item.tool ? ` [${item.tool}]` : "";
       console.log(`  ${item.key}@${item.latest} (${item.tier})${toolStr}`);
       console.log(`    ${item.description}\n`);
     }
@@ -434,19 +454,26 @@ function runList(projectRoot: string, options: ListOptions): void {
 // CHECK SUBCOMMAND
 // ============================================================================
 
-function runCheck(projectRoot: string, key: string, options: { json?: boolean }): void {
-  const promptsPath = getRegistryPath(projectRoot, 'prompts');
-  const rulesetsPath = getRegistryPath(projectRoot, 'rulesets');
+function runCheck(
+  projectRoot: string,
+  key: string,
+  options: { json?: boolean },
+): void {
+  const promptsPath = getRegistryPath(projectRoot, "prompts");
+  const rulesetsPath = getRegistryPath(projectRoot, "rulesets");
 
   const prompts = loadRegistry<PromptsRegistry>(promptsPath);
   const rulesets = loadRegistry<RulesetsRegistry>(rulesetsPath);
 
-  let found: { type: 'prompt' | 'ruleset'; entry: PromptEntry | RulesetEntry } | null = null;
+  let found: {
+    type: "prompt" | "ruleset";
+    entry: PromptEntry | RulesetEntry;
+  } | null = null;
 
   if (prompts?.prompts[key]) {
-    found = { type: 'prompt', entry: prompts.prompts[key] };
+    found = { type: "prompt", entry: prompts.prompts[key] };
   } else if (rulesets?.rulesets[key]) {
-    found = { type: 'ruleset', entry: rulesets.rulesets[key] };
+    found = { type: "ruleset", entry: rulesets.rulesets[key] };
   }
 
   if (options.json) {
@@ -458,8 +485,8 @@ function runCheck(projectRoot: string, key: string, options: { json?: boolean })
           ...(found && { type: found.type, entry: found.entry }),
         },
         null,
-        2
-      )
+        2,
+      ),
     );
   } else {
     if (found) {
@@ -469,8 +496,8 @@ function runCheck(projectRoot: string, key: string, options: { json?: boolean })
       console.log(`  Latest: ${found.entry.versions.latest}`);
       console.log(
         `  Versions: ${Object.keys(found.entry.versions)
-          .filter((v) => v !== 'latest')
-          .join(', ')}`
+          .filter((v) => v !== "latest")
+          .join(", ")}`,
       );
     } else {
       error(`Not found: ${key}`);
@@ -498,14 +525,14 @@ interface SyncChange {
 function findOrphanedFiles(
   actualFiles: string[],
   registeredFiles: Set<string>,
-  registryType: RegistryType
+  registryType: RegistryType,
 ): SyncChange[] {
   const changes: SyncChange[] = [];
   for (const file of actualFiles) {
     if (!registeredFiles.has(file)) {
       changes.push({
         type: registryType,
-        action: 'add',
+        action: "add",
         key: inferKeyFromPath(file, registryType),
         file,
       });
@@ -517,23 +544,23 @@ function findOrphanedFiles(
 function findStaleEntries(
   entries: RegistryEntries,
   projectRoot: string,
-  registryType: RegistryType
+  registryType: RegistryType,
 ): SyncChange[] {
   const changes: SyncChange[] = [];
   for (const [key, entry] of Object.entries(entries)) {
     for (const [version, versionData] of Object.entries(entry.versions)) {
       if (
-        version !== 'latest' &&
+        version !== "latest" &&
         versionData !== null &&
-        typeof versionData === 'object' &&
-        'file' in versionData
+        typeof versionData === "object" &&
+        "file" in versionData
       ) {
         const fileEntry = versionData as VersionEntry;
         const filePath = join(projectRoot, registryType, fileEntry.file);
         if (!existsSync(filePath)) {
           changes.push({
             type: registryType,
-            action: 'remove',
+            action: "remove",
             key: `${key}@${version}`,
             file: fileEntry.file,
           });
@@ -545,42 +572,50 @@ function findStaleEntries(
 }
 
 function getActionIcon(action: string): string {
-  if (action === 'add') return '+';
-  if (action === 'remove') return '-';
-  return '!';
+  if (action === "add") return "+";
+  if (action === "remove") return "-";
+  return "!";
 }
 
-async function runSync(projectRoot: string, options: SyncOptions): Promise<void> {
+async function runSync(
+  projectRoot: string,
+  options: SyncOptions,
+): Promise<void> {
   const changes: SyncChange[] = [];
 
-  for (const registryType of ['prompts', 'rulesets'] as RegistryType[]) {
+  for (const registryType of ["prompts", "rulesets"] as RegistryType[]) {
     const registryPath = getRegistryPath(projectRoot, registryType);
-    const registry = loadRegistry<PromptsRegistry | RulesetsRegistry>(registryPath);
+    const registry = loadRegistry<PromptsRegistry | RulesetsRegistry>(
+      registryPath,
+    );
 
     if (!registry) {
       changes.push({
         type: registryType,
-        action: 'error',
-        key: 'registry',
-        file: 'Could not load registry',
+        action: "error",
+        key: "registry",
+        file: "Could not load registry",
       });
       continue;
     }
 
     const entries =
-      registryType === 'prompts'
+      registryType === "prompts"
         ? (registry as PromptsRegistry).prompts
         : (registry as RulesetsRegistry).rulesets;
 
-    const filePattern = registryType === 'prompts' ? '**/[0-9]*.md' : '**/[0-9]*.toml';
+    const filePattern =
+      registryType === "prompts" ? "**/[0-9]*.md" : "**/[0-9]*.toml";
     // eslint-disable-next-line no-await-in-loop
     const actualFiles = await glob(filePattern, {
       cwd: join(projectRoot, registryType),
-      ignore: ['**/node_modules/**'],
+      ignore: ["**/node_modules/**"],
     });
 
     const registeredFiles = collectRegisteredFiles(entries);
-    changes.push(...findOrphanedFiles(actualFiles, registeredFiles, registryType));
+    changes.push(
+      ...findOrphanedFiles(actualFiles, registeredFiles, registryType),
+    );
     changes.push(...findStaleEntries(entries, projectRoot, registryType));
   }
 
@@ -590,18 +625,18 @@ async function runSync(projectRoot: string, options: SyncOptions): Promise<void>
   }
 
   if (changes.length === 0) {
-    success('Registries are in sync with filesystem');
+    success("Registries are in sync with filesystem");
     return;
   }
 
   const header = options.dryRun
-    ? '\nDry run - changes that would be made:\n'
-    : '\nSyncing registries:\n';
+    ? "\nDry run - changes that would be made:\n"
+    : "\nSyncing registries:\n";
   console.log(header);
 
   for (const change of changes) {
     console.log(
-      `  ${getActionIcon(change.action)} [${change.type}] ${change.action}: ${change.key}`
+      `  ${getActionIcon(change.action)} [${change.type}] ${change.action}: ${change.key}`,
     );
     if (change.file) {
       console.log(`    File: ${change.file}`);
@@ -609,18 +644,20 @@ async function runSync(projectRoot: string, options: SyncOptions): Promise<void>
   }
 
   if (!options.dryRun) {
-    warning('\nAuto-sync not yet implemented. Please update registries manually.');
+    warning(
+      "\nAuto-sync not yet implemented. Please update registries manually.",
+    );
   }
 }
 
 function inferKeyFromPath(filePath: string, type: RegistryType): string {
   // e.g., "internal/python/3.12/1.0.0.md" -> "internal/python/3.12"
   // e.g., "internal/typescript/5.5/eslint/1.0.0.toml" -> "internal/typescript/5.5"
-  const parts = filePath.split('/');
-  if (type === 'prompts' && parts.length >= 4) {
+  const parts = filePath.split("/");
+  if (type === "prompts" && parts.length >= 4) {
     return `${parts[0]}/${parts[1]}/${parts[2]}`;
   }
-  if (type === 'rulesets' && parts.length >= 5) {
+  if (type === "rulesets" && parts.length >= 5) {
     return `${parts[0]}/${parts[1]}/${parts[2]}`;
   }
   return filePath;
@@ -631,7 +668,7 @@ function inferKeyFromPath(filePath: string, type: RegistryType): string {
 // ============================================================================
 
 interface BumpOptions {
-  type: 'major' | 'minor' | 'patch';
+  type: "major" | "minor" | "patch";
   dryRun?: boolean;
   json?: boolean;
 }
@@ -644,15 +681,15 @@ interface FoundEntry {
 }
 
 function findEntry(projectRoot: string, key: string): FoundEntry | null {
-  const promptsPath = getRegistryPath(projectRoot, 'prompts');
-  const rulesetsPath = getRegistryPath(projectRoot, 'rulesets');
+  const promptsPath = getRegistryPath(projectRoot, "prompts");
+  const rulesetsPath = getRegistryPath(projectRoot, "rulesets");
 
   const prompts = loadRegistry<PromptsRegistry>(promptsPath);
   const rulesets = loadRegistry<RulesetsRegistry>(rulesetsPath);
 
   if (prompts?.prompts[key]) {
     return {
-      registryType: 'prompts',
+      registryType: "prompts",
       registryPath: promptsPath,
       registry: prompts,
       entry: prompts.prompts[key],
@@ -660,7 +697,7 @@ function findEntry(projectRoot: string, key: string): FoundEntry | null {
   }
   if (rulesets?.rulesets[key]) {
     return {
-      registryType: 'rulesets',
+      registryType: "rulesets",
       registryPath: rulesetsPath,
       registry: rulesets,
       entry: rulesets.rulesets[key],
@@ -677,7 +714,7 @@ function outputBumpResult(
     currentFile: string;
     newFile: string;
   },
-  options: BumpOptions
+  options: BumpOptions,
 ): void {
   if (options.json) {
     console.log(JSON.stringify({ dryRun: options.dryRun, ...result }, null, 2));
@@ -695,9 +732,13 @@ function performBump(
   found: FoundEntry,
   currentVersionEntry: VersionEntry,
   newVersion: string,
-  newFileName: string
+  newFileName: string,
 ): void {
-  const currentFilePath = join(projectRoot, found.registryType, currentVersionEntry.file);
+  const currentFilePath = join(
+    projectRoot,
+    found.registryType,
+    currentVersionEntry.file,
+  );
   const newFilePath = join(projectRoot, found.registryType, newFileName);
 
   const newFileDir = dirname(newFilePath);
@@ -709,7 +750,10 @@ function performBump(
   found.entry.versions[newVersion] = { file: newFileName };
   found.entry.versions.latest = newVersion;
 
-  writeFileSync(found.registryPath, `${JSON.stringify(found.registry, null, 2)}\n`);
+  writeFileSync(
+    found.registryPath,
+    `${JSON.stringify(found.registry, null, 2)}\n`,
+  );
 }
 
 function runBump(projectRoot: string, key: string, options: BumpOptions): void {
@@ -724,17 +768,19 @@ function runBump(projectRoot: string, key: string, options: BumpOptions): void {
   const currentVersion = found.entry.versions.latest as string;
   const newVersion = incrementVersion(currentVersion, options.type);
 
-  const currentVersionEntry = found.entry.versions[currentVersion] as VersionEntry;
+  const currentVersionEntry = found.entry.versions[
+    currentVersion
+  ] as VersionEntry;
   if (!currentVersionEntry?.file) {
     error(`No file found for current version: ${key}@${currentVersion}`);
     process.exit(ExitCode.RUNTIME_ERROR);
     return;
   }
 
-  const fileExt = found.registryType === 'prompts' ? 'md' : 'toml';
+  const fileExt = found.registryType === "prompts" ? "md" : "toml";
   const newFileName = currentVersionEntry.file.replace(
     `${currentVersion}.${fileExt}`,
-    `${newVersion}.${fileExt}`
+    `${newVersion}.${fileExt}`,
   );
 
   const result = {
@@ -749,7 +795,7 @@ function runBump(projectRoot: string, key: string, options: BumpOptions): void {
 
   if (options.dryRun) {
     if (!options.json) {
-      info('\nDry run - no changes made');
+      info("\nDry run - no changes made");
     }
     return;
   }
@@ -759,9 +805,11 @@ function runBump(projectRoot: string, key: string, options: BumpOptions): void {
   if (!options.json) {
     success(`Created ${newFileName}`);
     success(`Updated ${found.registryType}.json`);
-    console.log('\nNext steps:');
-    console.log(`  1. Edit ${found.registryType}/${newFileName} with your changes`);
-    console.log('  2. Commit both the new file and the updated registry');
+    console.log("\nNext steps:");
+    console.log(
+      `  1. Edit ${found.registryType}/${newFileName} with your changes`,
+    );
+    console.log("  2. Commit both the new file and the updated registry");
   }
 }
 
@@ -769,67 +817,71 @@ function runBump(projectRoot: string, key: string, options: BumpOptions): void {
 // COMMAND DEFINITIONS
 // ============================================================================
 
-const validateSubcommand = new Command('validate')
-  .description('Validate registry JSON files against schemas and project structure')
-  .option('--json', 'Output results as JSON', false)
+const validateSubcommand = new Command("validate")
+  .description(
+    "Validate registry JSON files against schemas and project structure",
+  )
+  .option("--json", "Output results as JSON", false)
   .action(async (options) => {
     const projectRoot = process.cwd();
     await runValidate(projectRoot, options);
   });
 
-const listSubcommand = new Command('list')
-  .description('List all available prompts and rulesets')
-  .option('--tier <tier>', 'Filter by tier (prototype, internal, production)')
-  .option('--language <language>', 'Filter by language (python, typescript)')
-  .option('--tool <tool>', 'Filter by tool (eslint, ruff)')
-  .option('--json', 'Output results as JSON', false)
+const listSubcommand = new Command("list")
+  .description("List all available prompts and rulesets")
+  .option("--tier <tier>", "Filter by tier (prototype, internal, production)")
+  .option("--language <language>", "Filter by language (python, typescript)")
+  .option("--tool <tool>", "Filter by tool (eslint, ruff)")
+  .option("--json", "Output results as JSON", false)
   .action((options) => {
     const projectRoot = process.cwd();
     runList(projectRoot, options);
   });
 
-const checkSubcommand = new Command('check')
-  .description('Check if a specific prompt or ruleset exists')
-  .argument('<key>', 'Entry key (e.g., production/python/3.12)')
-  .option('--json', 'Output results as JSON', false)
+const checkSubcommand = new Command("check")
+  .description("Check if a specific prompt or ruleset exists")
+  .argument("<key>", "Entry key (e.g., production/python/3.12)")
+  .option("--json", "Output results as JSON", false)
   .action((key, options) => {
     const projectRoot = process.cwd();
     runCheck(projectRoot, key, options);
   });
 
-const syncSubcommand = new Command('sync')
-  .description('Check registry sync with filesystem (discover new files, find stale entries)')
-  .option('--dry-run', 'Show what would change without making changes', false)
-  .option('--json', 'Output results as JSON', false)
+const syncSubcommand = new Command("sync")
+  .description(
+    "Check registry sync with filesystem (discover new files, find stale entries)",
+  )
+  .option("--dry-run", "Show what would change without making changes", false)
+  .option("--json", "Output results as JSON", false)
   .action(async (options) => {
     const projectRoot = process.cwd();
     await runSync(projectRoot, options);
   });
 
-const bumpSubcommand = new Command('bump')
-  .description('Create a new version of a prompt or ruleset')
-  .argument('<key>', 'Entry key (e.g., production/python/3.12)')
-  .requiredOption('--type <type>', 'Version bump type (major, minor, patch)')
-  .option('--dry-run', 'Show what would change without making changes', false)
-  .option('--json', 'Output results as JSON', false)
+const bumpSubcommand = new Command("bump")
+  .description("Create a new version of a prompt or ruleset")
+  .argument("<key>", "Entry key (e.g., production/python/3.12)")
+  .requiredOption("--type <type>", "Version bump type (major, minor, patch)")
+  .option("--dry-run", "Show what would change without making changes", false)
+  .option("--json", "Output results as JSON", false)
   .action((key, options) => {
-    if (!['major', 'minor', 'patch'].includes(options.type)) {
-      error('--type must be one of: major, minor, patch');
+    if (!["major", "minor", "patch"].includes(options.type)) {
+      error("--type must be one of: major, minor, patch");
       process.exit(ExitCode.CONFIG_ERROR);
     }
     const projectRoot = process.cwd();
     runBump(projectRoot, key, options as BumpOptions);
   });
 
-export const registryCommand = new Command('registry')
-  .description('Manage prompts and rulesets registries')
+export const registryCommand = new Command("registry")
+  .description("Manage prompts and rulesets registries")
   .addCommand(validateSubcommand)
   .addCommand(listSubcommand)
   .addCommand(checkSubcommand)
   .addCommand(syncSubcommand)
   .addCommand(bumpSubcommand)
   .addHelpText(
-    'after',
+    "after",
     `
 Examples:
   $ cmc registry validate              Validate all registries
@@ -837,5 +889,5 @@ Examples:
   $ cmc registry list --tier=production  List production-tier standards
   $ cmc registry check production/python/3.12  Check if entry exists
   $ cmc registry sync --dry-run        Preview sync changes
-  $ cmc registry bump production/python/3.12 --type=patch  Bump version`
+  $ cmc registry bump production/python/3.12 --type=patch  Bump version`,
   );

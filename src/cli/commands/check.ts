@@ -1,31 +1,39 @@
-import { Command } from 'commander';
-import { glob } from 'glob';
-import { stat } from 'fs/promises';
-import { resolve, relative } from 'path';
-import { loadConfig, findProjectRoot, ConfigError } from '../../config/loader.js';
-import { runLinters, LinterError, type LinterOptions } from '../../linter.js';
-import { ExitCode, type CheckResult, type Config } from '../../types.js';
+import { Command } from "commander";
+import { glob } from "glob";
+import { stat } from "fs/promises";
+import { resolve, relative } from "path";
+import {
+  loadConfig,
+  findProjectRoot,
+  ConfigError,
+} from "../../config/loader.js";
+import { runLinters, LinterError, type LinterOptions } from "../../linter.js";
+import { ExitCode, type CheckResult, type Config } from "../../types.js";
 
-export const checkCommand = new Command('check')
-  .description('Run ESLint, Ruff, and TypeScript type checks on project files')
-  .argument('[path]', 'Path to check (default: current directory)')
-  .option('--json', 'Output results as JSON', false)
+export const checkCommand = new Command("check")
+  .description("Run ESLint, Ruff, and TypeScript type checks on project files")
+  .argument("[path]", "Path to check (default: current directory)")
+  .option("--json", "Output results as JSON", false)
   .addHelpText(
-    'after',
+    "after",
     `
 Examples:
   $ cmc check                Check entire project
   $ cmc check src/           Check specific directory
   $ cmc check src/main.ts    Check specific file
-  $ cmc check --json         Output as JSON for CI/tooling`
+  $ cmc check --json         Output as JSON for CI/tooling`,
   )
   .action(async (path: string | undefined, options: { json?: boolean }) => {
     try {
       const result = await runCheck(path);
       outputResults(result, options.json ?? false);
-      process.exit(result.violations.length > 0 ? ExitCode.VIOLATIONS : ExitCode.SUCCESS);
+      process.exit(
+        result.violations.length > 0 ? ExitCode.VIOLATIONS : ExitCode.SUCCESS,
+      );
     } catch (error) {
-      console.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
       if (error instanceof ConfigError) {
         process.exit(ExitCode.CONFIG_ERROR);
       } else if (error instanceof LinterError) {
@@ -68,7 +76,10 @@ function buildLinterOptions(config: Config): LinterOptions {
   return options;
 }
 
-async function discoverFiles(targetPath: string, projectRoot: string): Promise<string[]> {
+async function discoverFiles(
+  targetPath: string,
+  projectRoot: string,
+): Promise<string[]> {
   const stats = await stat(targetPath).catch(() => null);
 
   if (!stats) {
@@ -84,16 +95,16 @@ async function discoverFiles(targetPath: string, projectRoot: string): Promise<s
   const foundFiles = await glob(pattern, {
     nodir: true,
     ignore: [
-      '**/node_modules/**',
-      '**/.git/**',
-      '**/dist/**',
-      '**/build/**',
-      '**/__pycache__/**',
-      '**/.venv/**',
+      "**/node_modules/**",
+      "**/.git/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/__pycache__/**",
+      "**/.venv/**",
       // Linter config files should not be linted
-      '**/eslint.config.*',
-      '**/ruff.toml',
-      '**/pyproject.toml',
+      "**/eslint.config.*",
+      "**/ruff.toml",
+      "**/pyproject.toml",
     ],
   });
 
@@ -112,8 +123,8 @@ function outputResults(result: CheckResult, json: boolean): void {
           },
         },
         null,
-        2
-      )
+        2,
+      ),
     );
     return;
   }
@@ -124,10 +135,10 @@ function outputResults(result: CheckResult, json: boolean): void {
   }
 
   for (const v of result.violations) {
-    const location = v.line ? `:${v.line}` : '';
+    const location = v.line ? `:${v.line}` : "";
     console.log(`${v.file}${location} [${v.linter}/${v.rule}] ${v.message}`);
   }
 
-  const s = result.violations.length === 1 ? '' : 's';
+  const s = result.violations.length === 1 ? "" : "s";
   console.log(`\n✗ ${result.violations.length} violation${s} found`);
 }

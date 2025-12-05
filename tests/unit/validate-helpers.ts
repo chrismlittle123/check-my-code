@@ -3,11 +3,11 @@
  * Exports a function that can validate a config file without invoking the full CLI
  */
 
-import { readFile } from 'fs/promises';
-import { existsSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
-import { stripSymbolKeys } from '../../src/config/loader.js';
+import { readFile } from "fs/promises";
+import { existsSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+import { stripSymbolKeys } from "../../src/config/loader.js";
 
 interface AjvErrorObject {
   instancePath: string;
@@ -30,26 +30,28 @@ interface ValidateResult {
 
 function formatAjvError(error: AjvErrorObject): string {
   switch (error.keyword) {
-    case 'required':
+    case "required":
       return `missing required property '${error.params.missingProperty}'`;
-    case 'type':
+    case "type":
       return `must be ${error.params.type}`;
-    case 'minLength':
+    case "minLength":
       return `must have at least ${error.params.limit} character(s)`;
-    case 'minItems':
+    case "minItems":
       return `must have at least ${error.params.limit} item(s)`;
-    case 'pattern':
+    case "pattern":
       return `must match pattern: ${error.params.pattern}`;
-    case 'enum':
-      return `must be one of: ${(error.params.allowedValues as string[]).join(', ')}`;
-    case 'additionalProperties':
+    case "enum":
+      return `must be one of: ${(error.params.allowedValues as string[]).join(", ")}`;
+    case "additionalProperties":
       return `has unknown property '${error.params.additionalProperty}'`;
     default:
-      return error.message ?? 'validation failed';
+      return error.message ?? "validation failed";
   }
 }
 
-export async function validateConfig(configPath: string): Promise<ValidateResult> {
+export async function validateConfig(
+  configPath: string,
+): Promise<ValidateResult> {
   // Check if file exists
   if (!existsSync(configPath)) {
     throw new Error(`Config file not found: ${configPath}`);
@@ -57,22 +59,28 @@ export async function validateConfig(configPath: string): Promise<ValidateResult
 
   // Load schema from package
   const __dirname = dirname(fileURLToPath(import.meta.url));
-  const schemaPath = join(__dirname, '../../schemas/cmc.schema.json');
-  const schemaContent = await readFile(schemaPath, 'utf-8');
+  const schemaPath = join(__dirname, "../../schemas/cmc.schema.json");
+  const schemaContent = await readFile(schemaPath, "utf-8");
   const schema = JSON.parse(schemaContent);
 
   // Load and parse TOML config
-  const configContent = await readFile(configPath, 'utf-8');
-  const TOML = await import('@iarna/toml');
+  const configContent = await readFile(configPath, "utf-8");
+  const TOML = await import("@iarna/toml");
 
   let parsed: unknown;
   try {
     parsed = TOML.parse(configContent);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Parse error';
+    const message = error instanceof Error ? error.message : "Parse error";
     return {
       valid: false,
-      errors: [{ path: '', message: `Invalid TOML syntax: ${message}`, keyword: 'syntax' }],
+      errors: [
+        {
+          path: "",
+          message: `Invalid TOML syntax: ${message}`,
+          keyword: "syntax",
+        },
+      ],
       configPath,
     };
   }
@@ -81,7 +89,7 @@ export async function validateConfig(configPath: string): Promise<ValidateResult
   parsed = stripSymbolKeys(parsed);
 
   // Validate against JSON schema using Ajv 2020-12 (for JSON Schema draft 2020-12)
-  const ajvModule = await import('ajv/dist/2020.js');
+  const ajvModule = await import("ajv/dist/2020.js");
   const Ajv2020 = ajvModule.default;
   const ajv = new Ajv2020({ allErrors: true, verbose: true, strict: false });
   const validate = ajv.compile(schema);
@@ -93,9 +101,10 @@ export async function validateConfig(configPath: string): Promise<ValidateResult
 
   // Convert Ajv errors to our format
   const errors = (
-    ((validate as { errors?: AjvErrorObject[] }).errors ?? []) as AjvErrorObject[]
+    ((validate as { errors?: AjvErrorObject[] }).errors ??
+      []) as AjvErrorObject[]
   ).map((err) => ({
-    path: err.instancePath || '/',
+    path: err.instancePath || "/",
     message: formatAjvError(err),
     keyword: err.keyword,
   }));

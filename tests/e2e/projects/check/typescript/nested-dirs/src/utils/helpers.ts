@@ -1,3 +1,3 @@
 // File in src/utils/ with violation
-var helper = 'test';
+var helper = "test";
 export default helper;

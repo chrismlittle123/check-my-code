@@ -1,3 +1,3 @@
 // File in src/ - clean
-const message = 'hello';
+const message = "hello";
 export default message;

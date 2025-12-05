@@ -1,29 +1,29 @@
-import { readFile } from 'fs/promises';
-import { existsSync, readFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
-import { z } from 'zod';
-import type { Config } from '../types.js';
+import { readFile } from "fs/promises";
+import { existsSync, readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+import { z } from "zod";
+import type { Config } from "../types.js";
 
 // Custom error class for configuration errors (exit code 2)
 export class ConfigError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'ConfigError';
+    this.name = "ConfigError";
   }
 }
 
 // JSON Schema for cmc.toml validation
 // ESLint rule values: "off", "warn", "error", or array like ["error", "always"]
 const eslintRuleValueSchema = z.union([
-  z.enum(['off', 'warn', 'error']),
+  z.enum(["off", "warn", "error"]),
   z.tuple([z.string()]).rest(z.unknown()),
 ]);
 
 // Ruff configuration schema
 const ruffConfigSchema = z
   .object({
-    'line-length': z.number().int().positive().optional(),
+    "line-length": z.number().int().positive().optional(),
     lint: z
       .object({
         select: z.array(z.string()).optional(),
@@ -65,10 +65,12 @@ const remoteRefPattern = /^github:[^/]+\/[^/@]+(?:\/[^@]*)?@.+$/;
 
 // AI context configuration schema
 const aiContextSchema = z.object({
-  templates: z.array(z.string().min(1)).min(1, 'at least one template is required'),
+  templates: z
+    .array(z.string().min(1))
+    .min(1, "at least one template is required"),
   source: z
     .string()
-    .regex(remoteRefPattern, 'must be format: github:owner/repo/path@version')
+    .regex(remoteRefPattern, "must be format: github:owner/repo/path@version")
     .optional(),
 });
 
@@ -76,18 +78,18 @@ const aiContextSchema = z.object({
 const extendsSchema = z.object({
   eslint: z
     .string()
-    .regex(remoteRefPattern, 'must be format: github:owner/repo/path@version')
+    .regex(remoteRefPattern, "must be format: github:owner/repo/path@version")
     .optional(),
   ruff: z
     .string()
-    .regex(remoteRefPattern, 'must be format: github:owner/repo/path@version')
+    .regex(remoteRefPattern, "must be format: github:owner/repo/path@version")
     .optional(),
 });
 
 // Strip Symbol keys from an object (recursively)
 // @iarna/toml adds Symbol keys for metadata that interfere with Zod validation
 export function stripSymbolKeys(obj: unknown): unknown {
-  if (obj === null || typeof obj !== 'object') {
+  if (obj === null || typeof obj !== "object") {
     return obj;
   }
 
@@ -105,7 +107,7 @@ export function stripSymbolKeys(obj: unknown): unknown {
 // Full cmc.toml schema
 export const configSchema = z.object({
   project: z.object({
-    name: z.string().min(1, 'project name cannot be empty'),
+    name: z.string().min(1, "project name cannot be empty"),
   }),
   extends: extendsSchema.optional(),
   prompts: aiContextSchema.optional(),
@@ -123,22 +125,22 @@ export const configSchema = z.object({
 });
 
 export async function loadConfig(projectRoot: string): Promise<Config> {
-  const configPath = join(projectRoot, 'cmc.toml');
+  const configPath = join(projectRoot, "cmc.toml");
 
   if (!existsSync(configPath)) {
     throw new ConfigError(
-      `No cmc.toml found.\n\nCreate a cmc.toml file with:\n  [project]\n  name = "your-project"`
+      `No cmc.toml found.\n\nCreate a cmc.toml file with:\n  [project]\n  name = "your-project"`,
     );
   }
 
-  const content = await readFile(configPath, 'utf-8');
-  const TOML = await import('@iarna/toml');
+  const content = await readFile(configPath, "utf-8");
+  const TOML = await import("@iarna/toml");
 
   let parsed: unknown;
   try {
     parsed = TOML.parse(content);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Parse error';
+    const message = error instanceof Error ? error.message : "Parse error";
     throw new ConfigError(`Invalid TOML: ${message}`);
   }
 
@@ -151,10 +153,10 @@ export async function loadConfig(projectRoot: string): Promise<Config> {
     const errors = result.error.issues
       .map((issue) => {
         // Convert path elements to strings (handles Symbol keys from @iarna/toml)
-        const pathStr = issue.path.map((p) => String(p)).join('.');
+        const pathStr = issue.path.map((p) => String(p)).join(".");
         return `  - ${pathStr}: ${issue.message}`;
       })
-      .join('\n');
+      .join("\n");
     throw new ConfigError(`Invalid cmc.toml:\n${errors}`);
   }
 
@@ -165,14 +167,14 @@ export function findProjectRoot(): string {
   let dir = process.cwd();
 
   while (dir !== dirname(dir)) {
-    if (existsSync(join(dir, 'cmc.toml'))) {
+    if (existsSync(join(dir, "cmc.toml"))) {
       return dir;
     }
     dir = dirname(dir);
   }
 
   // Check root
-  if (existsSync(join(dir, 'cmc.toml'))) {
+  if (existsSync(join(dir, "cmc.toml"))) {
     return dir;
   }
 
@@ -194,22 +196,22 @@ interface AjvErrorObject {
 
 function formatAjvError(error: AjvErrorObject): string {
   switch (error.keyword) {
-    case 'required':
+    case "required":
       return `missing required property '${error.params.missingProperty}'`;
-    case 'type':
+    case "type":
       return `must be ${error.params.type}`;
-    case 'minLength':
+    case "minLength":
       return `must have at least ${error.params.limit} character(s)`;
-    case 'minItems':
+    case "minItems":
       return `must have at least ${error.params.limit} item(s)`;
-    case 'pattern':
+    case "pattern":
       return `must match pattern: ${error.params.pattern}`;
-    case 'enum':
-      return `must be one of: ${(error.params.allowedValues as string[]).join(', ')}`;
-    case 'additionalProperties':
+    case "enum":
+      return `must be one of: ${(error.params.allowedValues as string[]).join(", ")}`;
+    case "additionalProperties":
       return `has unknown property '${error.params.additionalProperty}'`;
     default:
-      return error.message ?? 'validation failed';
+      return error.message ?? "validation failed";
   }
 }
 
@@ -218,14 +220,16 @@ function formatAjvError(error: AjvErrorObject): string {
  * Uses the same JSON Schema validation as the CLI validate command.
  * Returns validation result with parsed config or errors.
  */
-export async function validateConfigContent(tomlContent: string): Promise<ValidationResult> {
-  const TOML = await import('@iarna/toml');
+export async function validateConfigContent(
+  tomlContent: string,
+): Promise<ValidationResult> {
+  const TOML = await import("@iarna/toml");
 
   let parsed: unknown;
   try {
     parsed = TOML.parse(tomlContent);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Parse error';
+    const message = error instanceof Error ? error.message : "Parse error";
     return {
       valid: false,
       errors: [`Invalid TOML syntax: ${message}`],
@@ -237,12 +241,12 @@ export async function validateConfigContent(tomlContent: string): Promise<Valida
 
   // Load JSON schema from package
   const __dirname = dirname(fileURLToPath(import.meta.url));
-  const schemaPath = join(__dirname, '../../schemas/cmc.schema.json');
-  const schemaContent = readFileSync(schemaPath, 'utf-8');
+  const schemaPath = join(__dirname, "../../schemas/cmc.schema.json");
+  const schemaContent = readFileSync(schemaPath, "utf-8");
   const schema = JSON.parse(schemaContent);
 
   // Validate against JSON schema using Ajv 2020-12 (for JSON Schema draft 2020-12)
-  const ajvModule = await import('ajv/dist/2020.js');
+  const ajvModule = await import("ajv/dist/2020.js");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const Ajv2020 = ajvModule.default as any;
   const ajv = new Ajv2020({ allErrors: true, verbose: true, strict: false });
@@ -258,9 +262,10 @@ export async function validateConfigContent(tomlContent: string): Promise<Valida
 
   // Convert Ajv errors to our format
   const errors = (
-    ((validate as { errors?: AjvErrorObject[] }).errors ?? []) as AjvErrorObject[]
+    ((validate as { errors?: AjvErrorObject[] }).errors ??
+      []) as AjvErrorObject[]
   ).map((err) => {
-    const path = err.instancePath || '/';
+    const path = err.instancePath || "/";
     return `${path}: ${formatAjvError(err)}`;
   });
 

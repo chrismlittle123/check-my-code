@@ -3,20 +3,20 @@
  * Exposes linting functionality to AI agents via MCP protocol.
  */
 
-import { z } from 'zod';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { glob } from 'glob';
-import { stat } from 'fs/promises';
-import { resolve, relative } from 'path';
-import { runLinters, runLintersFix, type LinterOptions } from '../linter.js';
+import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { glob } from "glob";
+import { stat } from "fs/promises";
+import { resolve, relative } from "path";
+import { runLinters, runLintersFix, type LinterOptions } from "../linter.js";
 import {
   loadConfig,
   findProjectRoot,
   ConfigError,
   validateConfigContent,
-} from '../config/loader.js';
-import { fetchRemoteFile, RemoteFetchError } from '../remote/fetcher.js';
-import { DEFAULT_AI_CONTEXT_SOURCE, type Config } from '../types.js';
+} from "../config/loader.js";
+import { fetchRemoteFile, RemoteFetchError } from "../remote/fetcher.js";
+import { DEFAULT_AI_CONTEXT_SOURCE, type Config } from "../types.js";
 import {
   getState,
   setProjectRoot,
@@ -24,16 +24,16 @@ import {
   recordFilesChecked,
   recordViolationsFound,
   recordFixesApplied,
-} from './state.js';
+} from "./state.js";
 
 // Error codes for structured error responses
 const ErrorCode = {
-  CONFIG_NOT_FOUND: 'CONFIG_NOT_FOUND',
-  CONFIG_INVALID: 'CONFIG_INVALID',
-  FILE_NOT_FOUND: 'FILE_NOT_FOUND',
-  TEMPLATE_NOT_FOUND: 'TEMPLATE_NOT_FOUND',
-  RUNTIME_ERROR: 'RUNTIME_ERROR',
-  VALIDATION_ERROR: 'VALIDATION_ERROR',
+  CONFIG_NOT_FOUND: "CONFIG_NOT_FOUND",
+  CONFIG_INVALID: "CONFIG_INVALID",
+  FILE_NOT_FOUND: "FILE_NOT_FOUND",
+  TEMPLATE_NOT_FOUND: "TEMPLATE_NOT_FOUND",
+  RUNTIME_ERROR: "RUNTIME_ERROR",
+  VALIDATION_ERROR: "VALIDATION_ERROR",
 } as const;
 
 interface SuccessResponse {
@@ -52,7 +52,11 @@ interface ErrorResponse {
 
 type ToolResponse = SuccessResponse | ErrorResponse;
 
-function makeError(code: string, message: string, recoverable = false): ErrorResponse {
+function makeError(
+  code: string,
+  message: string,
+  recoverable = false,
+): ErrorResponse {
   return {
     success: false,
     error: { code, message, recoverable },
@@ -65,14 +69,19 @@ function makeSuccess(data: Record<string, unknown>): SuccessResponse {
 
 function toTextContent(response: ToolResponse) {
   return {
-    content: [{ type: 'text' as const, text: JSON.stringify(response, null, 2) }],
+    content: [
+      { type: "text" as const, text: JSON.stringify(response, null, 2) },
+    ],
   };
 }
 
 /**
  * Discover files in a directory matching linter patterns
  */
-async function discoverFiles(targetPath: string, projectRoot: string): Promise<string[]> {
+async function discoverFiles(
+  targetPath: string,
+  projectRoot: string,
+): Promise<string[]> {
   const stats = await stat(targetPath).catch(() => null);
 
   if (!stats) {
@@ -87,15 +96,15 @@ async function discoverFiles(targetPath: string, projectRoot: string): Promise<s
   const foundFiles = await glob(pattern, {
     nodir: true,
     ignore: [
-      '**/node_modules/**',
-      '**/.git/**',
-      '**/dist/**',
-      '**/build/**',
-      '**/__pycache__/**',
-      '**/.venv/**',
-      '**/eslint.config.*',
-      '**/ruff.toml',
-      '**/pyproject.toml',
+      "**/node_modules/**",
+      "**/.git/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/__pycache__/**",
+      "**/.venv/**",
+      "**/eslint.config.*",
+      "**/ruff.toml",
+      "**/pyproject.toml",
     ],
   });
 
@@ -128,7 +137,10 @@ async function loadProjectConfig(): Promise<
 /**
  * Validate that files exist and return valid ones
  */
-async function validateFiles(files: string[], projectRoot: string): Promise<string[]> {
+async function validateFiles(
+  files: string[],
+  projectRoot: string,
+): Promise<string[]> {
   const validFiles: string[] = [];
   const checkPromises = files.map(async (file) => {
     const fullPath = resolve(projectRoot, file);
@@ -166,7 +178,7 @@ interface PromptsManifest {
  * Load prompts manifest from remote source
  */
 async function loadManifest(source: string): Promise<PromptsManifest> {
-  const content = await fetchRemoteFile(source, 'prompts.json');
+  const content = await fetchRemoteFile(source, "prompts.json");
   return JSON.parse(content) as PromptsManifest;
 }
 
@@ -176,37 +188,37 @@ async function loadManifest(source: string): Promise<PromptsManifest> {
 function resolveTemplatePath(
   manifest: PromptsManifest,
   templateName: string,
-  requestedVersion?: string
+  requestedVersion?: string,
 ): string | ErrorResponse {
   const prompt = manifest.prompts[templateName];
   if (!prompt) {
-    const available = Object.keys(manifest.prompts).join(', ');
+    const available = Object.keys(manifest.prompts).join(", ");
     return makeError(
       ErrorCode.TEMPLATE_NOT_FOUND,
       `Template "${templateName}" not found. Available: ${available}`,
-      false
+      false,
     );
   }
 
-  const version = requestedVersion ?? 'latest';
+  const version = requestedVersion ?? "latest";
   const versionEntry = prompt.versions[version];
 
   if (!versionEntry) {
-    const availableVersions = Object.keys(prompt.versions).join(', ');
+    const availableVersions = Object.keys(prompt.versions).join(", ");
     return makeError(
       ErrorCode.TEMPLATE_NOT_FOUND,
       `Version "${version}" not found for "${templateName}". Available: ${availableVersions}`,
-      false
+      false,
     );
   }
 
-  if (typeof versionEntry === 'string') {
+  if (typeof versionEntry === "string") {
     const resolvedEntry = prompt.versions[versionEntry];
-    if (!resolvedEntry || typeof resolvedEntry === 'string') {
+    if (!resolvedEntry || typeof resolvedEntry === "string") {
       return makeError(
         ErrorCode.TEMPLATE_NOT_FOUND,
         `Invalid version reference for "${templateName}@${version}"`,
-        false
+        false,
       );
     }
     return resolvedEntry.file;
@@ -218,8 +230,11 @@ function resolveTemplatePath(
 /**
  * Load a single template from remote source
  */
-async function loadTemplate(templateName: string, source: string): Promise<string | ErrorResponse> {
-  const parts = templateName.split('@');
+async function loadTemplate(
+  templateName: string,
+  source: string,
+): Promise<string | ErrorResponse> {
+  const parts = templateName.split("@");
   const name = parts[0] ?? templateName;
   const version = parts[1];
 
@@ -231,14 +246,14 @@ async function loadTemplate(templateName: string, source: string): Promise<strin
       return makeError(
         ErrorCode.TEMPLATE_NOT_FOUND,
         `Failed to load manifest: ${error.message}`,
-        false
+        false,
       );
     }
     throw error;
   }
 
   const filePath = resolveTemplatePath(manifest, name, version);
-  if (typeof filePath !== 'string') {
+  if (typeof filePath !== "string") {
     return filePath; // Error response
   }
 
@@ -249,7 +264,7 @@ async function loadTemplate(templateName: string, source: string): Promise<strin
       return makeError(
         ErrorCode.TEMPLATE_NOT_FOUND,
         `Template "${templateName}": ${error.message}`,
-        false
+        false,
       );
     }
     throw error;
@@ -261,7 +276,7 @@ async function loadTemplate(templateName: string, source: string): Promise<strin
  */
 async function loadAllTemplates(
   templates: string[],
-  source: string
+  source: string,
 ): Promise<{ contents: string[]; loaded: string[] } | ErrorResponse> {
   const contents: string[] = [];
   const loaded: string[] = [];
@@ -270,7 +285,7 @@ async function loadAllTemplates(
     // Sequential loading to avoid race conditions in git cache
     // eslint-disable-next-line no-await-in-loop
     const result = await loadTemplate(template, source);
-    if (typeof result !== 'string') {
+    if (typeof result !== "string") {
       return result; // Error response
     }
     contents.push(result);
@@ -295,7 +310,7 @@ function buildLinterOptions(config: Config): LinterOptions {
 // Tool handler for check_files
 async function handleCheckFiles({ files }: { files: string[] }) {
   const configResult = await loadProjectConfig();
-  if ('error' in configResult) {
+  if ("error" in configResult) {
     return toTextContent(configResult);
   }
 
@@ -304,7 +319,11 @@ async function handleCheckFiles({ files }: { files: string[] }) {
 
   if (validFiles.length === 0) {
     return toTextContent(
-      makeError(ErrorCode.FILE_NOT_FOUND, 'No valid files found to check', true)
+      makeError(
+        ErrorCode.FILE_NOT_FOUND,
+        "No valid files found to check",
+        true,
+      ),
     );
   }
 
@@ -319,14 +338,14 @@ async function handleCheckFiles({ files }: { files: string[] }) {
       violations,
       files_checked: validFiles.length,
       has_violations: violations.length > 0,
-    })
+    }),
   );
 }
 
 // Tool handler for check_project
 async function handleCheckProject({ path }: { path?: string }) {
   const configResult = await loadProjectConfig();
-  if ('error' in configResult) {
+  if ("error" in configResult) {
     return toTextContent(configResult);
   }
 
@@ -341,8 +360,8 @@ async function handleCheckProject({ path }: { path?: string }) {
         violations: [],
         files_checked: 0,
         has_violations: false,
-        message: 'No lintable files found',
-      })
+        message: "No lintable files found",
+      }),
     );
   }
 
@@ -357,14 +376,14 @@ async function handleCheckProject({ path }: { path?: string }) {
       violations,
       files_checked: files.length,
       has_violations: violations.length > 0,
-    })
+    }),
   );
 }
 
 // Tool handler for fix_files
 async function handleFixFiles({ files }: { files: string[] }) {
   const configResult = await loadProjectConfig();
-  if ('error' in configResult) {
+  if ("error" in configResult) {
     return toTextContent(configResult);
   }
 
@@ -372,7 +391,9 @@ async function handleFixFiles({ files }: { files: string[] }) {
   const validFiles = await validateFiles(files, projectRoot);
 
   if (validFiles.length === 0) {
-    return toTextContent(makeError(ErrorCode.FILE_NOT_FOUND, 'No valid files found to fix', true));
+    return toTextContent(
+      makeError(ErrorCode.FILE_NOT_FOUND, "No valid files found to fix", true),
+    );
   }
 
   const result = await runLintersFix(projectRoot, validFiles);
@@ -385,14 +406,18 @@ async function handleFixFiles({ files }: { files: string[] }) {
       fixed_count: result.fixedCount,
       remaining_violations: result.remainingViolations,
       files_modified: result.filesModified,
-    })
+    }),
   );
 }
 
 // Tool handler for get_guidelines
-async function handleGetGuidelines({ templates: requestedTemplates }: { templates?: string[] }) {
+async function handleGetGuidelines({
+  templates: requestedTemplates,
+}: {
+  templates?: string[];
+}) {
   const configResult = await loadProjectConfig();
-  if ('error' in configResult) {
+  if ("error" in configResult) {
     return toTextContent(configResult);
   }
 
@@ -404,9 +429,9 @@ async function handleGetGuidelines({ templates: requestedTemplates }: { template
       return toTextContent(
         makeError(
           ErrorCode.CONFIG_INVALID,
-          'No templates specified and none configured in cmc.toml [prompts] section',
-          true
-        )
+          "No templates specified and none configured in cmc.toml [prompts] section",
+          true,
+        ),
       );
     }
     templatesToLoad = config.prompts.templates;
@@ -415,15 +440,15 @@ async function handleGetGuidelines({ templates: requestedTemplates }: { template
   const source = config.prompts?.source ?? DEFAULT_AI_CONTEXT_SOURCE;
   const result = await loadAllTemplates(templatesToLoad, source);
 
-  if ('error' in result) {
+  if ("error" in result) {
     return toTextContent(result);
   }
 
   return toTextContent(
     makeSuccess({
-      content: result.contents.join('\n\n'),
+      content: result.contents.join("\n\n"),
       templates_loaded: result.loaded,
-    })
+    }),
   );
 }
 
@@ -433,14 +458,14 @@ async function handleGetStatus() {
 
   if (!state.projectRoot) {
     const configResult = await loadProjectConfig();
-    if ('error' in configResult) {
+    if ("error" in configResult) {
       return toTextContent(
         makeSuccess({
           project_root: null,
           config_found: false,
           session_stats: state.stats,
           error: configResult.error,
-        })
+        }),
       );
     }
   }
@@ -456,18 +481,22 @@ async function handleGetStatus() {
         violations_found: currentState.stats.violationsFound,
         fixes_applied: currentState.stats.fixesApplied,
       },
-    })
+    }),
   );
 }
 
 // Schema version for suggest_config responses
-const SCHEMA_VERSION = '1.0.0';
+const SCHEMA_VERSION = "1.0.0";
 
 // Tool handler for suggest_config
 async function handleSuggestConfig({ description }: { description: string }) {
   if (!description || description.trim().length === 0) {
     return toTextContent(
-      makeError(ErrorCode.VALIDATION_ERROR, 'Description cannot be empty', true)
+      makeError(
+        ErrorCode.VALIDATION_ERROR,
+        "Description cannot be empty",
+        true,
+      ),
     );
   }
 
@@ -530,22 +559,29 @@ Return ONLY the TOML content, no markdown code blocks or explanation.
     makeSuccess({
       prompt: schemaGuide,
       schema_version: SCHEMA_VERSION,
-      validation_endpoint: 'Use validate_config tool to validate the generated TOML',
-    })
+      validation_endpoint:
+        "Use validate_config tool to validate the generated TOML",
+    }),
   );
 }
 
 // Tool handler for validate_config
 async function handleValidateConfig({ config }: { config: string }) {
   if (!config || config.trim().length === 0) {
-    return toTextContent(makeError(ErrorCode.VALIDATION_ERROR, 'Config cannot be empty', true));
+    return toTextContent(
+      makeError(ErrorCode.VALIDATION_ERROR, "Config cannot be empty", true),
+    );
   }
 
   const result = await validateConfigContent(config);
 
   if (!result.valid) {
     return toTextContent(
-      makeError(ErrorCode.VALIDATION_ERROR, `Invalid config:\n${result.errors?.join('\n')}`, true)
+      makeError(
+        ErrorCode.VALIDATION_ERROR,
+        `Invalid config:\n${result.errors?.join("\n")}`,
+        true,
+      ),
     );
   }
 
@@ -555,83 +591,87 @@ async function handleValidateConfig({ config }: { config: string }) {
       config: config,
       parsed: result.config,
       schema_version: SCHEMA_VERSION,
-    })
+    }),
   );
 }
 
 export function registerTools(server: McpServer): void {
   server.tool(
-    'check_files',
-    'Lint specific files for violations. Returns violations found in the specified files.',
+    "check_files",
+    "Lint specific files for violations. Returns violations found in the specified files.",
     {
       files: z
         .array(z.string())
-        .describe('Array of file paths to check (relative to project root)'),
+        .describe("Array of file paths to check (relative to project root)"),
     },
-    handleCheckFiles
+    handleCheckFiles,
   );
 
   server.tool(
-    'check_project',
-    'Lint entire project or a subdirectory. Discovers all lintable files and checks them.',
+    "check_project",
+    "Lint entire project or a subdirectory. Discovers all lintable files and checks them.",
     {
       path: z
         .string()
         .optional()
-        .describe('Optional subdirectory to check (defaults to project root)'),
+        .describe("Optional subdirectory to check (defaults to project root)"),
     },
-    handleCheckProject
+    handleCheckProject,
   );
 
   server.tool(
-    'fix_files',
-    'Auto-fix linting violations in specific files using ESLint --fix and Ruff --fix.',
+    "fix_files",
+    "Auto-fix linting violations in specific files using ESLint --fix and Ruff --fix.",
     {
-      files: z.array(z.string()).describe('Array of file paths to fix (relative to project root)'),
+      files: z
+        .array(z.string())
+        .describe("Array of file paths to fix (relative to project root)"),
     },
-    handleFixFiles
+    handleFixFiles,
   );
 
   server.tool(
-    'get_guidelines',
-    'Fetch coding standards/guidelines templates. Uses templates from cmc.toml or specified templates.',
+    "get_guidelines",
+    "Fetch coding standards/guidelines templates. Uses templates from cmc.toml or specified templates.",
     {
       templates: z
         .array(z.string())
         .optional()
         .describe(
-          'Optional array of template names (e.g., ["typescript/5.5"]). Defaults to cmc.toml config.'
+          'Optional array of template names (e.g., ["typescript/5.5"]). Defaults to cmc.toml config.',
         ),
     },
-    handleGetGuidelines
+    handleGetGuidelines,
   );
 
   server.tool(
-    'get_status',
-    'Get current session state including project info and statistics.',
+    "get_status",
+    "Get current session state including project info and statistics.",
     {},
-    handleGetStatus
+    handleGetStatus,
   );
 
   server.tool(
-    'suggest_config',
-    'Generate a cmc.toml configuration based on a project description. Returns a prompt with schema guidance for the AI to generate appropriate config.',
+    "suggest_config",
+    "Generate a cmc.toml configuration based on a project description. Returns a prompt with schema guidance for the AI to generate appropriate config.",
     {
       description: z
         .string()
         .describe(
-          'Natural language description of the project (e.g., "A TypeScript REST API using Express with strict type checking")'
+          'Natural language description of the project (e.g., "A TypeScript REST API using Express with strict type checking")',
         ),
     },
-    handleSuggestConfig
+    handleSuggestConfig,
   );
 
   server.tool(
-    'validate_config',
-    'Validate TOML content against the cmc.toml schema. Use after suggest_config to verify generated config.',
+    "validate_config",
+    "Validate TOML content against the cmc.toml schema. Use after suggest_config to verify generated config.",
     {
-      config: z.string().describe('TOML content to validate against the cmc.toml schema'),
+      config: z
+        .string()
+        .describe("TOML content to validate against the cmc.toml schema"),
     },
-    handleValidateConfig
+    handleValidateConfig,
   );
 }

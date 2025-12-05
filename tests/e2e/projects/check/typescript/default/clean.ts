@@ -1,3 +1,3 @@
 // Clean file with no violations
-const message = 'hello';
+const message = "hello";
 console.log(message);
