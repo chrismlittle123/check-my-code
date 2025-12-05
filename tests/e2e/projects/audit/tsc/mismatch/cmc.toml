@@ -1,0 +1,7 @@
+[project]
+name = "audit-tsc-mismatch-test"
+
+[rulesets.tsc]
+strict = true
+noUncheckedIndexedAccess = true
+noImplicitReturns = true

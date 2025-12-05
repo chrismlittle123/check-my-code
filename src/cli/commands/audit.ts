@@ -3,9 +3,15 @@ import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { loadConfig, findProjectRoot, ConfigError } from '../../config/loader.js';
-import { ExitCode, type Config, type ESLintRuleValue, type RuffConfig } from '../../types.js';
+import {
+  ExitCode,
+  type Config,
+  type ESLintRuleValue,
+  type RuffConfig,
+  type TscConfig,
+} from '../../types.js';
 
-type LinterTarget = 'eslint' | 'ruff';
+type LinterTarget = 'eslint' | 'ruff' | 'tsc';
 
 interface Mismatch {
   type: 'missing' | 'different' | 'extra';
@@ -24,11 +30,12 @@ interface VerifyResult {
 const LINTER_CONFIGS: Record<LinterTarget, string> = {
   eslint: 'eslint.config.js',
   ruff: 'ruff.toml',
+  tsc: 'tsconfig.json',
 };
 
 export const auditCommand = new Command('audit')
   .description('Check that linter config files match the ruleset defined in cmc.toml')
-  .argument('[linter]', 'Linter to audit (eslint, ruff). If omitted, audits all.')
+  .argument('[linter]', 'Linter to audit (eslint, ruff, tsc). If omitted, audits all.')
   .addHelpText(
     'after',
     `
@@ -36,6 +43,7 @@ Examples:
   $ cmc audit           Audit all linter configs
   $ cmc audit eslint    Audit only ESLint config
   $ cmc audit ruff      Audit only Ruff config
+  $ cmc audit tsc       Audit only TypeScript config
 
 Use in CI to ensure configs haven't drifted from cmc.toml.`
   )
@@ -46,7 +54,7 @@ Use in CI to ensure configs haven't drifted from cmc.toml.`
 
       const targets = linter
         ? [validateLinterTarget(linter)]
-        : (['eslint', 'ruff'] as LinterTarget[]);
+        : (['eslint', 'ruff', 'tsc'] as LinterTarget[]);
 
       const allResults = await Promise.all(
         targets.map((target) => verifyLinterConfig(projectRoot, config, target))
@@ -95,8 +103,8 @@ class LinterConfigNotFoundError extends Error {
 
 function validateLinterTarget(linter: string): LinterTarget {
   const normalized = linter.toLowerCase();
-  if (normalized !== 'eslint' && normalized !== 'ruff') {
-    throw new ConfigError(`Unknown linter: ${linter}. Supported linters: eslint, ruff`);
+  if (normalized !== 'eslint' && normalized !== 'ruff' && normalized !== 'tsc') {
+    throw new ConfigError(`Unknown linter: ${linter}. Supported linters: eslint, ruff, tsc`);
   }
   return normalized;
 }
@@ -127,6 +135,9 @@ async function verifyLinterConfig(
   if (target === 'ruff' && !config.rulesets?.ruff) {
     return null; // No Ruff config defined, skip verification
   }
+  if (target === 'tsc' && !config.rulesets?.tsc) {
+    return null; // No tsc config defined, skip verification
+  }
 
   // Check if linter config file exists
   if (!existsSync(configPath)) {
@@ -135,8 +146,10 @@ async function verifyLinterConfig(
 
   if (target === 'eslint') {
     return verifyESLintConfig(projectRoot, config, filename);
-  } else {
+  } else if (target === 'ruff') {
     return verifyRuffConfig(projectRoot, config, filename);
+  } else {
+    return verifyTscConfig(projectRoot, config, filename);
   }
 }
 
@@ -215,6 +228,72 @@ async function verifyRuffConfig(
 
   return {
     linter: 'ruff',
+    filename,
+    matches: mismatches.length === 0,
+    mismatches,
+  };
+}
+
+async function verifyTscConfig(
+  projectRoot: string,
+  config: Config,
+  filename: string
+): Promise<VerifyResult> {
+  const configPath = join(projectRoot, filename);
+  const content = await readFile(configPath, 'utf-8');
+
+  let actualConfig: { compilerOptions?: Record<string, unknown> };
+  try {
+    actualConfig = JSON.parse(content);
+  } catch (error) {
+    throw new Error(
+      `Failed to parse ${filename}: ${error instanceof Error ? error.message : 'Parse error'}`
+    );
+  }
+
+  const expectedConfig = config.rulesets?.tsc ?? {};
+  const actualCompilerOptions = actualConfig.compilerOptions ?? {};
+  const mismatches: Mismatch[] = [];
+
+  // Get the list of tsc options to check (excluding 'enabled' which is cmc-specific)
+  const tscOptions: (keyof TscConfig)[] = [
+    'strict',
+    'noImplicitAny',
+    'strictNullChecks',
+    'strictFunctionTypes',
+    'strictBindCallApply',
+    'strictPropertyInitialization',
+    'noImplicitThis',
+    'alwaysStrict',
+    'noUncheckedIndexedAccess',
+    'noImplicitReturns',
+    'noFallthroughCasesInSwitch',
+    'noUnusedLocals',
+    'noUnusedParameters',
+    'exactOptionalPropertyTypes',
+    'noImplicitOverride',
+    'allowUnusedLabels',
+    'allowUnreachableCode',
+  ];
+
+  // Check each tsc option
+  for (const option of tscOptions) {
+    const expected = expectedConfig[option];
+    const actual = actualCompilerOptions[option];
+
+    if (expected !== undefined) {
+      if (actual === undefined) {
+        mismatches.push({ type: 'missing', rule: option, expected });
+      } else if (!deepEqual(expected, actual)) {
+        mismatches.push({ type: 'different', rule: option, expected, actual });
+      }
+    }
+    // Note: We don't report extra options in tsconfig.json as projects often have
+    // many other compiler options not managed by cmc (target, module, outDir, etc.)
+  }
+
+  return {
+    linter: 'tsc',
     filename,
     matches: mismatches.length === 0,
     mismatches,

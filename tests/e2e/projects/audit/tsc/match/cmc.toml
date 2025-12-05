@@ -1,0 +1,6 @@
+[project]
+name = "audit-tsc-match-test"
+
+[rulesets.tsc]
+strict = true
+noUncheckedIndexedAccess = true
