@@ -4,14 +4,14 @@
 
 languages:
   python:
-    version: '3.12'
+    version: "3.12"
     linter: ruff
     file_extensions:
       - .py
       - .pyi
 
   typescript:
-    version: '5.5'
+    version: "5.5"
     linter: eslint
     file_extensions:
       - .ts
@@ -23,17 +23,17 @@ languages:
 
 runtime:
   node:
-    version: '20'
+    version: "20"
 
 linters:
   ruff:
-    description: 'Fast Python linter'
-    install: 'pip install ruff'
+    description: "Fast Python linter"
+    install: "pip install ruff"
 
   eslint:
-    description: 'JavaScript/TypeScript linter'
-    install: 'npm install eslint'
+    description: "JavaScript/TypeScript linter"
+    install: "npm install eslint"
 
-docker:
-  python: 'python:3.12-slim'
-  node: 'node:20-slim'
+  tsc:
+    description: "TypeScript type checker"
+    install: "npm install typescript"

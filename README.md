@@ -103,6 +103,15 @@ Start an MCP (Model Context Protocol) server for AI agent integration.
 cmc mcp-server                # Start MCP server (communicates via stdio)
 ```
 
+### `cmc info`
+
+Display supported languages, runtimes, and linters.
+
+```bash
+cmc info                      # Show compatibility info
+cmc info --json               # Output as JSON
+```
+
 ## MCP Server
 
 The MCP server enables AI agents to proactively lint code and enforce coding standards. It exposes 7 tools:
@@ -220,18 +229,22 @@ source = "github:myorg/my-templates/prompts@v1.0.0"
 | 2    | Configuration error     |
 | 3    | Runtime error           |
 
-## Supported File Types
+## Supported Languages & Tools
 
-| Extensions                                   | Linter |
-| -------------------------------------------- | ------ |
-| `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs` | ESLint |
-| `.py`, `.pyi`                                | Ruff   |
+Run `cmc info` for the full compatibility matrix, or `cmc info --json` for machine-readable output.
 
-## Requirements
+| Language   | Version | Linter | Extensions                                   |
+| ---------- | ------- | ------ | -------------------------------------------- |
+| TypeScript | 5.5     | ESLint | `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs` |
+| Python     | 3.12    | Ruff   | `.py`, `.pyi`                                |
 
-- Node.js >= 18
-- ESLint (for TypeScript/JavaScript linting)
-- Ruff (for Python linting)
+| Tool   | Description                  | Install                  |
+| ------ | ---------------------------- | ------------------------ |
+| ESLint | JavaScript/TypeScript linter | `npm install eslint`     |
+| Ruff   | Fast Python linter           | `pip install ruff`       |
+| tsc    | TypeScript type checker      | `npm install typescript` |
+
+**Runtime:** Node.js >= 20
 
 Linters are optional - cmc gracefully skips files if the corresponding linter isn't installed.
 

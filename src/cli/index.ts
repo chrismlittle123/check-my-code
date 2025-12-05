@@ -11,6 +11,7 @@ import { auditCommand } from "./commands/audit.js";
 import { validateCommand } from "./commands/validate.js";
 import { mcpServerCommand } from "./commands/mcp-server.js";
 import { registryCommand } from "./commands/registry.js";
+import { infoCommand } from "./commands/info.js";
 
 // Read version from package.json
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -51,5 +52,6 @@ program.addCommand(auditCommand);
 program.addCommand(validateCommand);
 program.addCommand(mcpServerCommand);
 program.addCommand(registryCommand);
+program.addCommand(infoCommand);
 
 program.parse();
