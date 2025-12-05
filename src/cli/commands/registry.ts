@@ -175,7 +175,7 @@ const RULESETS_SCHEMA = {
       description: "Map of ruleset identifiers to their configurations",
       additionalProperties: false,
       patternProperties: {
-        "^(prototype|internal|production)/[a-z]+/[0-9.]+$": {
+        "^(prototype|internal|production)/[a-z]+/[0-9.]+(/[a-z]+)?$": {
           $ref: "#/$defs/rulesetEntry",
         },
       },
