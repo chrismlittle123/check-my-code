@@ -52,13 +52,223 @@ interface RulesetsRegistry {
 
 type RegistryType = "prompts" | "rulesets";
 
+// Built-in schemas for registry validation
+const PROMPTS_SCHEMA = {
+  $schema: "http://json-schema.org/draft-07/schema#",
+  $id: "https://palindrom.dev/schemas/prompts.schema.json",
+  title: "Prompts Registry",
+  description:
+    "Schema for the prompts registry that tracks coding standards prompts",
+  type: "object",
+  required: ["schema_version", "prompts"],
+  additionalProperties: false,
+  properties: {
+    schema_version: {
+      type: "string",
+      pattern: "^\\d+\\.\\d+\\.\\d+$",
+      description: "Semantic version of this schema",
+    },
+    prompts: {
+      type: "object",
+      description: "Map of prompt identifiers to their configurations",
+      additionalProperties: false,
+      patternProperties: {
+        "^(prototype|internal|production)/[a-z]+/[0-9.]+$": {
+          $ref: "#/$defs/promptEntry",
+        },
+      },
+    },
+  },
+  $defs: {
+    promptEntry: {
+      type: "object",
+      required: [
+        "tier",
+        "description",
+        "format",
+        "language_version",
+        "versions",
+      ],
+      additionalProperties: false,
+      properties: {
+        tier: {
+          type: "string",
+          enum: ["prototype", "internal", "production"],
+          description: "The quality tier for this prompt",
+        },
+        description: {
+          type: "string",
+          minLength: 1,
+          description: "Human-readable description of this prompt",
+        },
+        format: {
+          type: "string",
+          enum: ["md", "txt"],
+          description: "File format of the prompt files",
+        },
+        language_version: {
+          type: "string",
+          pattern: "^[0-9.]+$",
+          description: "Version of the programming language",
+        },
+        runtime_version: {
+          type: "string",
+          pattern: "^[a-z]+[0-9]+$",
+          description: "Runtime version (e.g., node20)",
+        },
+        versions: {
+          $ref: "#/$defs/versionMap",
+        },
+      },
+    },
+    versionMap: {
+      type: "object",
+      required: ["latest"],
+      properties: {
+        latest: {
+          type: "string",
+          pattern: "^\\d+\\.\\d+\\.\\d+$",
+          description: "The latest version identifier",
+        },
+      },
+      additionalProperties: {
+        oneOf: [
+          {
+            type: "object",
+            required: ["file"],
+            additionalProperties: false,
+            properties: {
+              file: {
+                type: "string",
+                pattern: "^[a-z]+/[a-z]+/[0-9.]+/[0-9.]+\\.md$",
+                description: "Relative path to the prompt file",
+              },
+            },
+          },
+          {
+            type: "string",
+            pattern: "^\\d+\\.\\d+\\.\\d+$",
+          },
+        ],
+      },
+    },
+  },
+};
+
+const RULESETS_SCHEMA = {
+  $schema: "http://json-schema.org/draft-07/schema#",
+  $id: "https://palindrom.dev/schemas/rulesets.schema.json",
+  title: "Rulesets Registry",
+  description:
+    "Schema for the rulesets registry that tracks linter/formatter configurations",
+  type: "object",
+  required: ["schema_version", "rulesets"],
+  additionalProperties: false,
+  properties: {
+    schema_version: {
+      type: "string",
+      pattern: "^\\d+\\.\\d+\\.\\d+$",
+      description: "Semantic version of this schema",
+    },
+    rulesets: {
+      type: "object",
+      description: "Map of ruleset identifiers to their configurations",
+      additionalProperties: false,
+      patternProperties: {
+        "^(prototype|internal|production)/[a-z]+/[0-9.]+$": {
+          $ref: "#/$defs/rulesetEntry",
+        },
+      },
+    },
+  },
+  $defs: {
+    rulesetEntry: {
+      type: "object",
+      required: ["tier", "description", "tool", "format", "versions"],
+      additionalProperties: false,
+      properties: {
+        tier: {
+          type: "string",
+          enum: ["prototype", "internal", "production"],
+          description: "The quality tier for this ruleset",
+        },
+        description: {
+          type: "string",
+          minLength: 1,
+          description: "Human-readable description of this ruleset",
+        },
+        tool: {
+          type: "string",
+          enum: ["ruff", "eslint", "biome", "prettier"],
+          description: "The linting/formatting tool this ruleset is for",
+        },
+        format: {
+          type: "string",
+          enum: ["toml", "json", "yaml", "js"],
+          description: "File format of the ruleset files",
+        },
+        target_version: {
+          type: "string",
+          pattern: "^py[0-9]+$",
+          description: "Python target version (e.g., py312)",
+        },
+        language_version: {
+          type: "string",
+          pattern: "^[0-9.]+$",
+          description: "Language version (e.g., 5.5 for TypeScript)",
+        },
+        runtime_version: {
+          type: "string",
+          pattern: "^[a-z]+[0-9]+$",
+          description: "Runtime version (e.g., node20)",
+        },
+        versions: {
+          $ref: "#/$defs/versionMap",
+        },
+      },
+    },
+    versionMap: {
+      type: "object",
+      required: ["latest"],
+      properties: {
+        latest: {
+          type: "string",
+          pattern: "^\\d+\\.\\d+\\.\\d+$",
+          description: "The latest version identifier",
+        },
+      },
+      additionalProperties: {
+        oneOf: [
+          {
+            type: "object",
+            required: ["file"],
+            additionalProperties: false,
+            properties: {
+              file: {
+                type: "string",
+                pattern: "^[a-z]+/[a-z]+/[0-9.]+/[a-z]+/[0-9.]+\\.toml$",
+                description: "Relative path to the ruleset file",
+              },
+            },
+          },
+          {
+            type: "string",
+            pattern: "^\\d+\\.\\d+\\.\\d+$",
+          },
+        ],
+      },
+    },
+  },
+};
+
+// Get built-in schema for registry type
+function getBuiltInSchema(type: RegistryType): object {
+  return type === "prompts" ? PROMPTS_SCHEMA : RULESETS_SCHEMA;
+}
+
 // Registry paths
 function getRegistryPath(projectRoot: string, type: RegistryType): string {
   return join(projectRoot, type, `${type}.json`);
-}
-
-function getSchemaPath(projectRoot: string, type: RegistryType): string {
-  return join(projectRoot, "schemas", `${type}.schema.json`);
 }
 
 // Load registry JSON
@@ -66,16 +276,6 @@ function loadRegistry<T>(path: string): T | null {
   if (!existsSync(path)) return null;
   try {
     return JSON.parse(readFileSync(path, "utf-8")) as T;
-  } catch {
-    return null;
-  }
-}
-
-// Load JSON schema
-function loadSchema(path: string): object | null {
-  if (!existsSync(path)) return null;
-  try {
-    return JSON.parse(readFileSync(path, "utf-8")) as object;
   } catch {
     return null;
   }
@@ -200,9 +400,8 @@ function collectRegisteredFiles(entries: RegistryEntries): Set<string> {
   return registeredFiles;
 }
 
-function checkFilesExist(
+function checkRegistryExists(
   registryPath: string,
-  schemaPath: string,
   result: ValidationResult,
 ): boolean {
   if (!existsSync(registryPath)) {
@@ -210,31 +409,21 @@ function checkFilesExist(
     result.valid = false;
     return false;
   }
-  if (!existsSync(schemaPath)) {
-    result.errors.push(`Schema file not found: ${schemaPath}`);
-    result.valid = false;
-    return false;
-  }
   return true;
 }
 
-function loadAndValidateFiles(
+function loadAndValidateRegistry(
   registryPath: string,
-  schemaPath: string,
+  type: RegistryType,
   result: ValidationResult,
 ): { registry: PromptsRegistry | RulesetsRegistry; schema: object } | null {
   const registry = loadRegistry<PromptsRegistry | RulesetsRegistry>(
     registryPath,
   );
-  const schema = loadSchema(schemaPath);
+  const schema = getBuiltInSchema(type);
 
   if (!registry) {
     result.errors.push(`Failed to parse registry: ${registryPath}`);
-    result.valid = false;
-    return null;
-  }
-  if (!schema) {
-    result.errors.push(`Failed to parse schema: ${schemaPath}`);
     result.valid = false;
     return null;
   }
@@ -288,13 +477,12 @@ async function validateRegistry(
 ): Promise<ValidationResult> {
   const result: ValidationResult = { valid: true, errors: [], warnings: [] };
   const registryPath = getRegistryPath(projectRoot, type);
-  const schemaPath = getSchemaPath(projectRoot, type);
 
-  if (!checkFilesExist(registryPath, schemaPath, result)) {
+  if (!checkRegistryExists(registryPath, result)) {
     return result;
   }
 
-  const loaded = loadAndValidateFiles(registryPath, schemaPath, result);
+  const loaded = loadAndValidateRegistry(registryPath, type, result);
   if (!loaded) {
     return result;
   }
