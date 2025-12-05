@@ -121,6 +121,84 @@
             }
           },
           "additionalProperties": {}
+        },
+        "tsc": {
+          "description": "TypeScript compiler configuration for type checking",
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "description": "Enable TypeScript type checking (default: true if tsc section present)",
+              "type": "boolean"
+            },
+            "strict": {
+              "description": "Enable all strict type-checking options",
+              "type": "boolean"
+            },
+            "noImplicitAny": {
+              "description": "Raise error on expressions and declarations with implied 'any' type",
+              "type": "boolean"
+            },
+            "strictNullChecks": {
+              "description": "Enable strict null checks",
+              "type": "boolean"
+            },
+            "strictFunctionTypes": {
+              "description": "Enable strict checking of function types",
+              "type": "boolean"
+            },
+            "strictBindCallApply": {
+              "description": "Enable strict 'bind', 'call', and 'apply' methods on functions",
+              "type": "boolean"
+            },
+            "strictPropertyInitialization": {
+              "description": "Enable strict checking of property initialization in classes",
+              "type": "boolean"
+            },
+            "noImplicitThis": {
+              "description": "Raise error on 'this' expressions with implied 'any' type",
+              "type": "boolean"
+            },
+            "alwaysStrict": {
+              "description": "Parse in strict mode and emit 'use strict' for each source file",
+              "type": "boolean"
+            },
+            "noUncheckedIndexedAccess": {
+              "description": "Add 'undefined' to a type when accessed using an index",
+              "type": "boolean"
+            },
+            "noImplicitReturns": {
+              "description": "Report error when not all code paths in function return a value",
+              "type": "boolean"
+            },
+            "noFallthroughCasesInSwitch": {
+              "description": "Report errors for fallthrough cases in switch statement",
+              "type": "boolean"
+            },
+            "noUnusedLocals": {
+              "description": "Report errors on unused local variables",
+              "type": "boolean"
+            },
+            "noUnusedParameters": {
+              "description": "Report errors on unused parameters",
+              "type": "boolean"
+            },
+            "exactOptionalPropertyTypes": {
+              "description": "Interpret optional property types as written, rather than adding 'undefined'",
+              "type": "boolean"
+            },
+            "noImplicitOverride": {
+              "description": "Ensure overriding members in derived classes are marked with an 'override' modifier",
+              "type": "boolean"
+            },
+            "allowUnusedLabels": {
+              "description": "Do not report errors on unused labels",
+              "type": "boolean"
+            },
+            "allowUnreachableCode": {
+              "description": "Do not report errors on unreachable code",
+              "type": "boolean"
+            }
+          }
         }
       }
     }

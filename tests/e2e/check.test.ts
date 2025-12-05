@@ -16,7 +16,7 @@ interface JsonOutput {
     column: number | null;
     rule: string;
     message: string;
-    linter: 'eslint' | 'ruff';
+    linter: 'eslint' | 'ruff' | 'tsc';
   }[];
   summary: {
     files_checked: number;
@@ -281,5 +281,62 @@ describe('cmc check - ignored directories', () => {
     const output: JsonOutput = JSON.parse(result.stdout);
 
     expect(output.summary.files_checked).toBe(1); // only src/main.ts
+  });
+});
+
+// =============================================================================
+// Check: TypeScript type checking (tsc)
+// =============================================================================
+describe('cmc check - TypeScript type checking', () => {
+  it('detects type errors when tsc is enabled', async () => {
+    const result = await run('check/typescript/with-tsc-enabled', ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+    // Should have tsc violations
+    const tscViolations = output.violations.filter((v) => v.linter === 'tsc');
+    expect(tscViolations.length).toBeGreaterThan(0);
+    // Should include TS error code
+    expect(tscViolations.some((v) => v.rule.startsWith('TS'))).toBe(true);
+  });
+
+  it('includes line and column in tsc violations', async () => {
+    const result = await run('check/typescript/with-tsc-enabled', ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    const tscViolations = output.violations.filter((v) => v.linter === 'tsc');
+    expect(tscViolations.length).toBeGreaterThan(0);
+    expect(tscViolations[0].line).toBeTypeOf('number');
+    expect(tscViolations[0].column).toBeTypeOf('number');
+  });
+
+  it('does not run tsc when not configured', async () => {
+    const result = await run('check/typescript/without-tsc', ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    // Should exit 0 because only ESLint runs (no lint violations in test file)
+    expect(result.exitCode).toBe(0);
+    // Should have no tsc violations even though file has type errors
+    const tscViolations = output.violations.filter((v) => v.linter === 'tsc');
+    expect(tscViolations.length).toBe(0);
+  });
+
+  it('runs both ESLint and tsc when both configured', async () => {
+    const result = await run('check/typescript/with-tsc-enabled', ['check', '--json']);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    const tscViolations = output.violations.filter((v) => v.linter === 'tsc');
+
+    // Should have tsc violations from type-error.ts
+    expect(tscViolations.length).toBeGreaterThan(0);
+    // ESLint also runs but may not have violations in these clean files
+    expect(output.summary.files_checked).toBeGreaterThan(0);
+  });
+
+  it('shows tsc violations in human-readable output', async () => {
+    const result = await run('check/typescript/with-tsc-enabled', ['check']);
+
+    expect(result.stdout).toMatch(/\[tsc\/TS\d+\]/);
+    expect(result.stdout).toContain('type');
   });
 });

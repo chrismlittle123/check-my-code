@@ -33,6 +33,33 @@ const ruffConfigSchema = z
   })
   .passthrough(); // Allow additional ruff options
 
+// TypeScript compiler configuration schema
+// Defines required tsconfig.json settings - audited via `cmc audit tsc`
+// When enabled, `cmc check` runs `tsc --noEmit` using the project's tsconfig.json
+const tscConfigSchema = z.object({
+  enabled: z.boolean().optional(),
+  // Strict type-checking options
+  strict: z.boolean().optional(),
+  noImplicitAny: z.boolean().optional(),
+  strictNullChecks: z.boolean().optional(),
+  strictFunctionTypes: z.boolean().optional(),
+  strictBindCallApply: z.boolean().optional(),
+  strictPropertyInitialization: z.boolean().optional(),
+  noImplicitThis: z.boolean().optional(),
+  alwaysStrict: z.boolean().optional(),
+  // Additional strictness
+  noUncheckedIndexedAccess: z.boolean().optional(),
+  noImplicitReturns: z.boolean().optional(),
+  noFallthroughCasesInSwitch: z.boolean().optional(),
+  noUnusedLocals: z.boolean().optional(),
+  noUnusedParameters: z.boolean().optional(),
+  exactOptionalPropertyTypes: z.boolean().optional(),
+  noImplicitOverride: z.boolean().optional(),
+  // Permissive options
+  allowUnusedLabels: z.boolean().optional(),
+  allowUnreachableCode: z.boolean().optional(),
+});
+
 // Remote reference pattern: github:owner/repo[/path]@version
 const remoteRefPattern = /^github:[^/]+\/[^/@]+(?:\/[^@]*)?@.+$/;
 
@@ -90,6 +117,7 @@ export const configSchema = z.object({
         })
         .optional(),
       ruff: ruffConfigSchema.optional(),
+      tsc: tscConfigSchema.optional(),
     })
     .optional(),
 });

@@ -9,6 +9,7 @@ export interface Config {
       rules?: Record<string, ESLintRuleValue>;
     };
     ruff?: RuffConfig;
+    tsc?: TscConfig;
   };
 }
 
@@ -54,13 +55,40 @@ export interface RuffConfig {
   };
 }
 
+// TypeScript compiler configuration for type checking
+// Defines required tsconfig.json settings - audited via `cmc audit tsc`
+// When enabled, `cmc check` runs `tsc --noEmit` using the project's tsconfig.json
+export interface TscConfig {
+  enabled?: boolean;
+  // Strict type-checking options
+  strict?: boolean;
+  noImplicitAny?: boolean;
+  strictNullChecks?: boolean;
+  strictFunctionTypes?: boolean;
+  strictBindCallApply?: boolean;
+  strictPropertyInitialization?: boolean;
+  noImplicitThis?: boolean;
+  alwaysStrict?: boolean;
+  // Additional strictness
+  noUncheckedIndexedAccess?: boolean;
+  noImplicitReturns?: boolean;
+  noFallthroughCasesInSwitch?: boolean;
+  noUnusedLocals?: boolean;
+  noUnusedParameters?: boolean;
+  exactOptionalPropertyTypes?: boolean;
+  noImplicitOverride?: boolean;
+  // Permissive options (usually false for strict projects)
+  allowUnusedLabels?: boolean;
+  allowUnreachableCode?: boolean;
+}
+
 export interface Violation {
   file: string;
   line: number | null;
   column: number | null;
   rule: string;
   message: string;
-  linter: 'eslint' | 'ruff';
+  linter: 'eslint' | 'ruff' | 'tsc';
 }
 
 export interface CheckResult {

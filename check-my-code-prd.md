@@ -412,6 +412,11 @@ templates = ["typescript/5.5", "python/3.12"]
 "no-console" = "error"                    # Adding a rule
 "@typescript-eslint/no-explicit-any" = "error"
 
+# TypeScript type checking configuration
+[rulesets.tsc]
+strict = true                             # Enable all strict options
+noUncheckedIndexedAccess = true           # Additional strictness
+
 # Local Ruff configuration overrides
 [rulesets.ruff]
 line-length = 100                         # Can override if stricter
@@ -531,25 +536,28 @@ When `cmc` runs, it discovers configuration by:
 
 #### 6.3.1 Supported Linters (v1)
 
-| Language              | Linter | Config File        |
-| --------------------- | ------ | ------------------ |
-| TypeScript/JavaScript | ESLint | `eslint.config.js` |
-| Python                | Ruff   | `ruff.toml`        |
+| Language              | Linter | Config File        | Purpose          |
+| --------------------- | ------ | ------------------ | ---------------- |
+| TypeScript/JavaScript | ESLint | `eslint.config.js` | Code style/rules |
+| TypeScript            | tsc    | `tsconfig.json`    | Type checking    |
+| Python                | Ruff   | `ruff.toml`        | Code style/rules |
 
 #### 6.3.2 Execution Flow
 
 1. Discover files in scope
 2. Route files to appropriate linters by extension
 3. Run linters using project's native config files
-4. Collect violations from linter JSON output
-5. Report violations to stdout in unified format
+4. Run TypeScript type checker if `[rulesets.tsc]` is configured
+5. Collect violations from linter JSON output
+6. Report violations to stdout in unified format
 
 #### 6.3.3 File Extension Routing
 
-| Extensions                                   | Linter |
-| -------------------------------------------- | ------ |
-| `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs` | ESLint |
-| `.py`, `.pyi`                                | Ruff   |
+| Extensions                                   | Linter           |
+| -------------------------------------------- | ---------------- |
+| `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs` | ESLint           |
+| `.ts`, `.tsx`                                | tsc (if enabled) |
+| `.py`, `.pyi`                                | Ruff             |
 
 #### 6.3.4 Missing Linter Handling
 
@@ -557,7 +565,62 @@ If a linter is not installed, `cmc` silently skips files for that linter. This e
 
 - Project with only TypeScript: Works without Ruff installed
 - Project with only Python: Works without ESLint installed
+- TypeScript project without tsc: Only runs ESLint (no type checking)
 - Mixed project: Checks whatever linters are available
+
+#### 6.3.5 TypeScript Type Checking
+
+TypeScript type checking is distinct from linting. While ESLint enforces code style and best practices, `tsc` verifies type correctness.
+
+**Configuration:**
+
+The `[rulesets.tsc]` section defines required `tsconfig.json` settings:
+
+```toml
+[rulesets.tsc]
+strict = true                    # Required in tsconfig.json
+noUncheckedIndexedAccess = true  # Required in tsconfig.json
+```
+
+**Available Options:**
+
+| Option                         | Description                                                     |
+| ------------------------------ | --------------------------------------------------------------- |
+| `enabled`                      | Enable/disable type checking (default: true if section present) |
+| `strict`                       | Enable all strict type-checking options                         |
+| `noImplicitAny`                | Error on expressions with implied 'any' type                    |
+| `strictNullChecks`             | Enable strict null checks                                       |
+| `strictFunctionTypes`          | Enable strict checking of function types                        |
+| `strictBindCallApply`          | Enable strict 'bind', 'call', 'apply' methods                   |
+| `strictPropertyInitialization` | Strict checking of property initialization                      |
+| `noImplicitThis`               | Error on 'this' with implied 'any' type                         |
+| `alwaysStrict`                 | Parse in strict mode, emit 'use strict'                         |
+| `noUncheckedIndexedAccess`     | Add 'undefined' to indexed access types                         |
+| `noImplicitReturns`            | Error when not all code paths return                            |
+| `noFallthroughCasesInSwitch`   | Error for fallthrough cases in switch                           |
+| `noUnusedLocals`               | Error on unused local variables                                 |
+| `noUnusedParameters`           | Error on unused parameters                                      |
+| `exactOptionalPropertyTypes`   | Interpret optional properties as written                        |
+| `noImplicitOverride`           | Require 'override' modifier on overriding members               |
+
+**Commands:**
+
+| Command            | Behavior                                            |
+| ------------------ | --------------------------------------------------- |
+| `cmc check`        | Runs `tsc --noEmit` using project's `tsconfig.json` |
+| `cmc audit tsc`    | Verifies `tsconfig.json` has required settings      |
+| `cmc generate tsc` | Generates `tsconfig.json` from cmc.toml settings    |
+
+**Example Output:**
+
+```
+src/utils.ts:42 [tsc/TS2345] Argument of type 'string' is not assignable to parameter of type 'number'
+src/api.ts:15 [tsc/TS7006] Parameter 'x' implicitly has an 'any' type
+
+✗ 2 violations found
+```
+
+**Design Principle:** The `cmc.toml` is the source of truth. The `tsconfig.json` is an artifact that should match it - just like `eslint.config.js` and `ruff.toml`.
 
 ---
 

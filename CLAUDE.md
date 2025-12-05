@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-check-my-code (`cmc`) is a CLI tool that runs ESLint and Ruff linters on code. It provides a unified way to enforce coding standards across TypeScript/JavaScript and Python files without per-repository configuration overhead.
+check-my-code (`cmc`) is a CLI tool that runs ESLint, Ruff, and TypeScript type checking on code. It provides a unified way to enforce coding standards and type safety across TypeScript/JavaScript and Python files without per-repository configuration overhead.
 
 ## Commands
 
@@ -88,13 +88,13 @@ src/
 │   └── state.ts          # Session state management
 ├── remote/
 │   └── fetcher.ts        # Git-based remote file fetching for templates
-├── linter.ts             # ESLint and Ruff execution
+├── linter.ts             # ESLint, Ruff, and tsc execution
 └── types.ts              # TypeScript interfaces and constants
 ```
 
 **Key flows:**
 
-1. **check**: Finds `cmc.toml` → discovers files → runs ESLint/Ruff → outputs violations
+1. **check**: Finds `cmc.toml` → discovers files → runs ESLint/Ruff/tsc → outputs violations
 2. **context**: Loads `cmc.toml` → fetches `prompts.json` manifest from remote → resolves template versions → fetches template files → appends to target file
 3. **generate**: Loads `cmc.toml` rulesets → generates `eslint.config.js` or `ruff.toml`
 4. **audit**: Compares generated config against existing config files
@@ -125,10 +125,33 @@ templates = ["typescript/5.5", "python/3.12"]
 [rulesets.eslint.rules]
 "no-console" = "error"
 
+# Optional: TypeScript type checking
+[rulesets.tsc]
+strict = true
+noUncheckedIndexedAccess = true
+
 # Optional: Ruff configuration
 [rulesets.ruff]
 line-length = 100
 ```
+
+### TypeScript Type Checking
+
+When `[rulesets.tsc]` is configured:
+
+- `cmc check` runs `tsc --noEmit` using the project's `tsconfig.json`
+- `cmc audit tsc` verifies `tsconfig.json` has the required settings
+- `cmc generate tsc` generates `tsconfig.json` from cmc.toml settings
+
+The `[rulesets.tsc]` section defines what settings your `tsconfig.json` **must have**:
+
+```toml
+[rulesets.tsc]
+strict = true
+noUncheckedIndexedAccess = true
+```
+
+This is the same pattern as ESLint/Ruff - cmc.toml is the source of truth, and the actual config file (`tsconfig.json`) is audited/generated from it.
 
 ## Exit Codes
 

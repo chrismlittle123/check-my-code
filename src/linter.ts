@@ -18,10 +18,20 @@ export interface FixResult {
   filesModified: string[];
 }
 
-export async function runLinters(projectRoot: string, files: string[]): Promise<Violation[]> {
+// Options for running linters
+export interface LinterOptions {
+  tscEnabled?: boolean;
+}
+
+export async function runLinters(
+  projectRoot: string,
+  files: string[],
+  options?: LinterOptions
+): Promise<Violation[]> {
   const violations: Violation[] = [];
 
   const pythonFiles = files.filter((f) => f.endsWith('.py') || f.endsWith('.pyi'));
+  const tsFiles = files.filter((f) => /\.(ts|tsx)$/.test(f));
   const jsFiles = files.filter((f) => /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(f));
 
   if (pythonFiles.length > 0) {
@@ -32,6 +42,12 @@ export async function runLinters(projectRoot: string, files: string[]): Promise<
   if (jsFiles.length > 0) {
     const eslintViolations = await runESLint(projectRoot, jsFiles);
     violations.push(...eslintViolations);
+  }
+
+  // Run TypeScript type checking if enabled and there are TS files
+  if (tsFiles.length > 0 && options?.tscEnabled) {
+    const tscViolations = await runTsc(projectRoot);
+    violations.push(...tscViolations);
   }
 
   return violations;
@@ -148,6 +164,110 @@ function parseESLintOutput(output: string, projectRoot: string): Violation[] {
   } catch {
     return [];
   }
+}
+
+/**
+ * Run TypeScript compiler for type checking only (no emit).
+ * Uses the project's tsconfig.json directly.
+ */
+async function runTsc(projectRoot: string): Promise<Violation[]> {
+  // Look for tsc in the project's node_modules or globally
+  const localTscPath = join(projectRoot, 'node_modules', '.bin', 'tsc');
+  const hasLocalTsc = existsSync(localTscPath);
+  const hasGlobalTsc = await commandExists('tsc');
+
+  if (!hasLocalTsc && !hasGlobalTsc) {
+    console.error('Warning: TypeScript (tsc) not found, skipping type checks');
+    return [];
+  }
+
+  // Check for tsconfig.json
+  const projectTsconfigPath = join(projectRoot, 'tsconfig.json');
+  if (!existsSync(projectTsconfigPath)) {
+    console.error('Warning: No tsconfig.json found, skipping type checks');
+    return [];
+  }
+
+  const tscBin = hasLocalTsc ? localTscPath : 'tsc';
+  const args = ['--noEmit', '--pretty', 'false'];
+
+  try {
+    const output = await runCommandWithStderr(tscBin, args, projectRoot);
+    return parseTscOutput(output, projectRoot);
+  } catch (error) {
+    if (error instanceof CommandErrorWithStderr) {
+      // tsc outputs errors to stdout, not stderr
+      return parseTscOutput(error.stdout + error.stderr, projectRoot);
+    }
+    return [];
+  }
+}
+
+/**
+ * Parse TypeScript compiler output into violations.
+ * tsc output format: file(line,col): error TSxxxx: message
+ */
+function parseTscOutput(output: string, projectRoot: string): Violation[] {
+  if (!output.trim()) return [];
+
+  const violations: Violation[] = [];
+  const lines = output.split('\n');
+
+  // Match: file(line,col): error TSxxxx: message
+  // or: file(line,col): error: message (for some errors)
+  const errorPattern = /^(.+?)\((\d+),(\d+)\):\s*(error)\s+(TS\d+)?:?\s*(.+)$/;
+
+  for (const line of lines) {
+    const match = errorPattern.exec(line);
+    if (match) {
+      const [, filePath, lineNum, colNum, , errorCode, message] = match;
+      violations.push({
+        file: relative(projectRoot, filePath),
+        line: parseInt(lineNum, 10),
+        column: parseInt(colNum, 10),
+        rule: errorCode || 'tsc',
+        message: message.trim(),
+        linter: 'tsc' as const,
+      });
+    }
+  }
+
+  return violations;
+}
+
+class CommandErrorWithStderr extends Error {
+  stdout: string;
+  stderr: string;
+  constructor(message: string, stdout: string, stderr: string) {
+    super(message);
+    this.stdout = stdout;
+    this.stderr = stderr;
+  }
+}
+
+function runCommandWithStderr(cmd: string, args: string[], cwd: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let stdout = '';
+    let stderr = '';
+
+    const proc = spawn(cmd, args, { cwd });
+
+    proc.stdout?.on('data', (data: Buffer) => {
+      stdout += data.toString();
+    });
+    proc.stderr?.on('data', (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    proc.on('error', (err) => reject(new Error(`Failed to run ${cmd}: ${err.message}`)));
+    proc.on('close', (code) => {
+      if (code === 0) {
+        resolve(stdout);
+      } else {
+        reject(new CommandErrorWithStderr(`${cmd} exited with code ${code}`, stdout, stderr));
+      }
+    });
+  });
 }
 
 async function commandExists(cmd: string): Promise<boolean> {

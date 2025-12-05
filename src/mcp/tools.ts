@@ -8,7 +8,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { glob } from 'glob';
 import { stat } from 'fs/promises';
 import { resolve, relative } from 'path';
-import { runLinters, runLintersFix } from '../linter.js';
+import { runLinters, runLintersFix, type LinterOptions } from '../linter.js';
 import {
   loadConfig,
   findProjectRoot,
@@ -278,6 +278,18 @@ async function loadAllTemplates(
   return { contents, loaded };
 }
 
+/**
+ * Build linter options from config
+ */
+function buildLinterOptions(config: Config): LinterOptions {
+  const options: LinterOptions = {};
+  // Enable tsc if configured and not explicitly disabled
+  if (config.rulesets?.tsc && config.rulesets.tsc.enabled !== false) {
+    options.tscEnabled = true;
+  }
+  return options;
+}
+
 // Tool handler for check_files
 async function handleCheckFiles({ files }: { files: string[] }) {
   const configResult = await loadProjectConfig();
@@ -285,7 +297,7 @@ async function handleCheckFiles({ files }: { files: string[] }) {
     return toTextContent(configResult);
   }
 
-  const { projectRoot } = configResult;
+  const { projectRoot, config } = configResult;
   const validFiles = await validateFiles(files, projectRoot);
 
   if (validFiles.length === 0) {
@@ -294,7 +306,8 @@ async function handleCheckFiles({ files }: { files: string[] }) {
     );
   }
 
-  const violations = await runLinters(projectRoot, validFiles);
+  const linterOptions = buildLinterOptions(config);
+  const violations = await runLinters(projectRoot, validFiles, linterOptions);
 
   recordFilesChecked(validFiles.length);
   recordViolationsFound(violations.length);
@@ -315,7 +328,7 @@ async function handleCheckProject({ path }: { path?: string }) {
     return toTextContent(configResult);
   }
 
-  const { projectRoot } = configResult;
+  const { projectRoot, config } = configResult;
   const targetPath = path ? resolve(projectRoot, path) : projectRoot;
 
   const files = await discoverFiles(targetPath, projectRoot);
@@ -331,7 +344,8 @@ async function handleCheckProject({ path }: { path?: string }) {
     );
   }
 
-  const violations = await runLinters(projectRoot, files);
+  const linterOptions = buildLinterOptions(config);
+  const violations = await runLinters(projectRoot, files, linterOptions);
 
   recordFilesChecked(files.length);
   recordViolationsFound(violations.length);
@@ -472,6 +486,10 @@ SCHEMA REQUIREMENTS:
 - [rulesets.ruff] section (optional) for Ruff Python linter config
   - "line-length" (integer)
   - [rulesets.ruff.lint] with "select" and "ignore" arrays
+- [rulesets.tsc] section (optional) for TypeScript type checking
+  - "enabled" (boolean) - enable/disable type checking
+  - "strict" (boolean) - enable all strict options
+  - Individual options: noImplicitAny, strictNullChecks, noUncheckedIndexedAccess, etc.
 
 EXAMPLE CONFIG:
 \`\`\`toml
@@ -485,6 +503,10 @@ templates = ["typescript/5.5"]
 "no-console" = "warn"
 "@typescript-eslint/no-explicit-any" = "error"
 
+[rulesets.tsc]
+strict = true
+noUncheckedIndexedAccess = true
+
 [rulesets.ruff]
 line-length = 100
 
@@ -493,9 +515,10 @@ select = ["E", "F", "I", "UP"]
 \`\`\`
 
 GUIDELINES:
-- For TypeScript projects: Add strict typing rules, use typescript/5.5 template
+- For TypeScript projects: Add [rulesets.tsc] with strict=true for type safety
+- For TypeScript projects: Add strict typing ESLint rules, use typescript/5.5 template
 - For Python projects: Add Ruff rules for style (E, F), imports (I), upgrades (UP)
-- For production/strict projects: Use "error" level, add more rules
+- For production/strict projects: Use "error" level, strict=true, add more rules
 - For development/flexible projects: Use "warn" level, fewer rules
 
 Return ONLY the TOML content, no markdown code blocks or explanation.

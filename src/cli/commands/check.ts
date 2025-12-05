@@ -3,11 +3,11 @@ import { glob } from 'glob';
 import { stat } from 'fs/promises';
 import { resolve, relative } from 'path';
 import { loadConfig, findProjectRoot, ConfigError } from '../../config/loader.js';
-import { runLinters, LinterError } from '../../linter.js';
-import { ExitCode, type CheckResult } from '../../types.js';
+import { runLinters, LinterError, type LinterOptions } from '../../linter.js';
+import { ExitCode, type CheckResult, type Config } from '../../types.js';
 
 export const checkCommand = new Command('check')
-  .description('Run ESLint and Ruff checks on project files')
+  .description('Run ESLint, Ruff, and TypeScript type checks on project files')
   .argument('[path]', 'Path to check (default: current directory)')
   .option('--json', 'Output results as JSON', false)
   .addHelpText(
@@ -38,7 +38,7 @@ Examples:
 
 async function runCheck(path?: string): Promise<CheckResult> {
   const projectRoot = findProjectRoot();
-  await loadConfig(projectRoot); // Validates config exists
+  const config = await loadConfig(projectRoot);
 
   const targetPath = path ? resolve(projectRoot, path) : projectRoot;
   const files = await discoverFiles(targetPath, projectRoot);
@@ -47,12 +47,25 @@ async function runCheck(path?: string): Promise<CheckResult> {
     return { violations: [], filesChecked: 0 };
   }
 
-  const violations = await runLinters(projectRoot, files);
+  // Build linter options from config
+  const linterOptions = buildLinterOptions(config);
+  const violations = await runLinters(projectRoot, files, linterOptions);
 
   return {
     violations,
     filesChecked: files.length,
   };
+}
+
+function buildLinterOptions(config: Config): LinterOptions {
+  const options: LinterOptions = {};
+
+  // Enable tsc if configured and not explicitly disabled
+  if (config.rulesets?.tsc && config.rulesets.tsc.enabled !== false) {
+    options.tscEnabled = true;
+  }
+
+  return options;
 }
 
 async function discoverFiles(targetPath: string, projectRoot: string): Promise<string[]> {
