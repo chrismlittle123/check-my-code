@@ -1,6 +1,7 @@
 import { readFile } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join, dirname } from 'path';
+import { existsSync, readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { z } from 'zod';
 import type { Config } from '../types.js';
 
@@ -156,8 +157,37 @@ export interface ValidationResult {
   errors?: string[];
 }
 
+interface AjvErrorObject {
+  instancePath: string;
+  keyword: string;
+  message?: string;
+  params: Record<string, unknown>;
+}
+
+function formatAjvError(error: AjvErrorObject): string {
+  switch (error.keyword) {
+    case 'required':
+      return `missing required property '${error.params.missingProperty}'`;
+    case 'type':
+      return `must be ${error.params.type}`;
+    case 'minLength':
+      return `must have at least ${error.params.limit} character(s)`;
+    case 'minItems':
+      return `must have at least ${error.params.limit} item(s)`;
+    case 'pattern':
+      return `must match pattern: ${error.params.pattern}`;
+    case 'enum':
+      return `must be one of: ${(error.params.allowedValues as string[]).join(', ')}`;
+    case 'additionalProperties':
+      return `has unknown property '${error.params.additionalProperty}'`;
+    default:
+      return error.message ?? 'validation failed';
+  }
+}
+
 /**
- * Validate TOML content against the cmc.toml schema.
+ * Validate TOML content against the cmc.toml JSON schema.
+ * Uses the same JSON Schema validation as the CLI validate command.
  * Returns validation result with parsed config or errors.
  */
 export async function validateConfigContent(tomlContent: string): Promise<ValidationResult> {
@@ -177,21 +207,37 @@ export async function validateConfigContent(tomlContent: string): Promise<Valida
   // Strip Symbol keys added by @iarna/toml
   parsed = stripSymbolKeys(parsed);
 
-  // Validate against schema
-  const result = configSchema.safeParse(parsed);
-  if (!result.success) {
-    const errors = result.error.issues.map((issue) => {
-      const pathStr = issue.path.map((p) => String(p)).join('.');
-      return `${pathStr}: ${issue.message}`;
-    });
+  // Load JSON schema from package
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const schemaPath = join(__dirname, '../../schema.json');
+  const schemaContent = readFileSync(schemaPath, 'utf-8');
+  const schema = JSON.parse(schemaContent);
+
+  // Validate against JSON schema using Ajv 2020-12 (for JSON Schema draft 2020-12)
+  const ajvModule = await import('ajv/dist/2020.js');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const Ajv2020 = ajvModule.default as any;
+  const ajv = new Ajv2020({ allErrors: true, verbose: true, strict: false });
+  const validate = ajv.compile(schema);
+  const valid = validate(parsed);
+
+  if (valid) {
     return {
-      valid: false,
-      errors,
+      valid: true,
+      config: parsed as Config,
     };
   }
 
+  // Convert Ajv errors to our format
+  const errors = (
+    ((validate as { errors?: AjvErrorObject[] }).errors ?? []) as AjvErrorObject[]
+  ).map((err) => {
+    const path = err.instancePath || '/';
+    return `${path}: ${formatAjvError(err)}`;
+  });
+
   return {
-    valid: true,
-    config: result.data as Config,
+    valid: false,
+    errors,
   };
 }

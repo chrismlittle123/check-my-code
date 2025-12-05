@@ -1,7 +1,0 @@
-[project]
-name = "private-repo-test"
-
-[prompts]
-# Uses private repo - requires SSH key access
-templates = ["typescript/5.5"]
-source = "github:chrismlittle123/check-my-code-private/prompts@latest"

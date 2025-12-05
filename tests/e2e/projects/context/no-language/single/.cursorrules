@@ -1,0 +1,156 @@
+## TypeScript 5.5 Coding Standards
+
+You MUST follow these TypeScript 5.5 coding standards when writing or modifying code:
+
+### Target Version
+
+- Target TypeScript 5.5 specifically.
+- Target Node.js 20 runtime.
+- Use TypeScript 5.5 features where appropriate.
+
+### Variable Declarations
+
+- NEVER use `var`. Always use `const` for values that won't be reassigned, or `let` when reassignment is necessary.
+- Prefer `const` over `let` whenever possible.
+
+### Type Safety
+
+- NEVER use `any` type. Use `unknown` if the type is truly unknown, then narrow it with type guards.
+- Always provide explicit return types for functions.
+- Use strict null checks - handle `null` and `undefined` explicitly.
+- Enable `strict: true` in tsconfig.json.
+
+### TypeScript 5.5 Features
+
+- Use inferred type predicates for cleaner type narrowing.
+- Use `const` type parameters where appropriate.
+- Use `satisfies` operator for type validation without widening.
+- Use `using` declarations for resource management (Explicit Resource Management).
+- Use `import type` and `export type` for type-only imports/exports.
+
+### Equality
+
+- ALWAYS use strict equality (`===` and `!==`). Never use loose equality (`==` and `!=`).
+
+### Error Handling
+
+- Always handle errors explicitly. Never swallow errors silently.
+- Use typed error handling where possible.
+- Prefer `unknown` over `any` in catch clauses.
+
+### Imports
+
+- Use ES module imports (`import`/`export`), not CommonJS (`require`/`module.exports`).
+- Sort imports: external dependencies first, then internal modules.
+- Use `import type` for type-only imports.
+
+### Node.js 20
+
+- Use native fetch API (no need for node-fetch).
+- Use native test runner where appropriate.
+- Use ES modules (`"type": "module"` in package.json).
+
+## TypeScript 5.5 Coding Standards
+
+You MUST follow these TypeScript 5.5 coding standards when writing or modifying code:
+
+### Target Version
+
+- Target TypeScript 5.5 specifically.
+- Target Node.js 20 runtime.
+- Use TypeScript 5.5 features where appropriate.
+
+### Variable Declarations
+
+- NEVER use `var`. Always use `const` for values that won't be reassigned, or `let` when reassignment is necessary.
+- Prefer `const` over `let` whenever possible.
+
+### Type Safety
+
+- NEVER use `any` type. Use `unknown` if the type is truly unknown, then narrow it with type guards.
+- Always provide explicit return types for functions.
+- Use strict null checks - handle `null` and `undefined` explicitly.
+- Enable `strict: true` in tsconfig.json.
+
+### TypeScript 5.5 Features
+
+- Use inferred type predicates for cleaner type narrowing.
+- Use `const` type parameters where appropriate.
+- Use `satisfies` operator for type validation without widening.
+- Use `using` declarations for resource management (Explicit Resource Management).
+- Use `import type` and `export type` for type-only imports/exports.
+
+### Equality
+
+- ALWAYS use strict equality (`===` and `!==`). Never use loose equality (`==` and `!=`).
+
+### Error Handling
+
+- Always handle errors explicitly. Never swallow errors silently.
+- Use typed error handling where possible.
+- Prefer `unknown` over `any` in catch clauses.
+
+### Imports
+
+- Use ES module imports (`import`/`export`), not CommonJS (`require`/`module.exports`).
+- Sort imports: external dependencies first, then internal modules.
+- Use `import type` for type-only imports.
+
+### Node.js 20
+
+- Use native fetch API (no need for node-fetch).
+- Use native test runner where appropriate.
+- Use ES modules (`"type": "module"` in package.json).
+
+## TypeScript 5.5 Coding Standards
+
+You MUST follow these TypeScript 5.5 coding standards when writing or modifying code:
+
+### Target Version
+
+- Target TypeScript 5.5 specifically.
+- Target Node.js 20 runtime.
+- Use TypeScript 5.5 features where appropriate.
+
+### Variable Declarations
+
+- NEVER use `var`. Always use `const` for values that won't be reassigned, or `let` when reassignment is necessary.
+- Prefer `const` over `let` whenever possible.
+
+### Type Safety
+
+- NEVER use `any` type. Use `unknown` if the type is truly unknown, then narrow it with type guards.
+- Always provide explicit return types for functions.
+- Use strict null checks - handle `null` and `undefined` explicitly.
+- Enable `strict: true` in tsconfig.json.
+
+### TypeScript 5.5 Features
+
+- Use inferred type predicates for cleaner type narrowing.
+- Use `const` type parameters where appropriate.
+- Use `satisfies` operator for type validation without widening.
+- Use `using` declarations for resource management (Explicit Resource Management).
+- Use `import type` and `export type` for type-only imports/exports.
+
+### Equality
+
+- ALWAYS use strict equality (`===` and `!==`). Never use loose equality (`==` and `!=`).
+
+### Error Handling
+
+- Always handle errors explicitly. Never swallow errors silently.
+- Use typed error handling where possible.
+- Prefer `unknown` over `any` in catch clauses.
+
+### Imports
+
+- Use ES module imports (`import`/`export`), not CommonJS (`require`/`module.exports`).
+- Sort imports: external dependencies first, then internal modules.
+- Use `import type` for type-only imports.
+
+### Node.js 20
+
+- Use native fetch API (no need for node-fetch).
+- Use native test runner where appropriate.
+- Use ES modules (`"type": "module"` in package.json).
+

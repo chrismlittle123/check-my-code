@@ -1,0 +1,6 @@
+# Valid TOML but invalid schema - missing required project.name
+[project]
+# name is missing
+
+[rulesets.eslint.rules]
+"no-var" = "error"

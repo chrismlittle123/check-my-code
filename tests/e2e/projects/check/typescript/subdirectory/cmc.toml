@@ -1,5 +1,0 @@
-[project]
-name = "subdirectory-test"
-
-[rulesets.eslint.rules]
-"no-var" = "error"

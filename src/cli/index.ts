@@ -8,6 +8,7 @@ import { checkCommand } from './commands/check.js';
 import { contextCommand } from './commands/context.js';
 import { generateCommand } from './commands/generate.js';
 import { auditCommand } from './commands/audit.js';
+import { validateCommand } from './commands/validate.js';
 import { mcpServerCommand } from './commands/mcp-server.js';
 
 // Read version from package.json
@@ -29,6 +30,7 @@ Examples:
   $ cmc check --json             Output results as JSON
   $ cmc generate eslint          Generate eslint.config.js
   $ cmc audit                    Audit linter configs match cmc.toml
+  $ cmc validate                 Validate cmc.toml against schema
   $ cmc context --target claude  Add coding standards to CLAUDE.md
 
 Getting started:
@@ -43,6 +45,7 @@ program.addCommand(checkCommand);
 program.addCommand(contextCommand);
 program.addCommand(generateCommand);
 program.addCommand(auditCommand);
+program.addCommand(validateCommand);
 program.addCommand(mcpServerCommand);
 
 program.parse();
