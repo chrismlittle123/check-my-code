@@ -1,0 +1,8 @@
+# TypeScript 5.5 strict type checking ruleset
+# Version: 1.0.0
+
+[rulesets.tsc]
+strict = true
+noUncheckedIndexedAccess = true
+noImplicitReturns = true
+noFallthroughCasesInSwitch = true

@@ -48,7 +48,23 @@ describe("cmc registry list", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("internal/python/3.12");
-    expect(result.stdout).toContain("internal/typescript/5.5");
+    expect(result.stdout).toContain("internal/typescript/5.5/eslint");
+    expect(result.stdout).toContain("internal/typescript/5.5/tsc");
+  });
+
+  it("lists tsc tool entries", async () => {
+    const result = await run("registry/valid-registry", [
+      "registry",
+      "list",
+      "--json",
+    ]);
+    const output = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(0);
+    const tscEntries = output.filter(
+      (e: { key: string }) => e.key.includes("tsc") || e.key.endsWith("/tsc"),
+    );
+    expect(tscEntries.length).toBeGreaterThan(0);
   });
 
   it("filters by tier", async () => {
@@ -101,6 +117,33 @@ describe("cmc registry check", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Found");
     expect(result.stdout).toContain("internal/python/3.12");
+  });
+
+  it("finds tsc tool ruleset entry", async () => {
+    const result = await run("registry/valid-registry", [
+      "registry",
+      "check",
+      "internal/typescript/5.5/tsc",
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Found");
+    expect(result.stdout).toContain("internal/typescript/5.5/tsc");
+  });
+
+  it("finds tsc ruleset entry with JSON output", async () => {
+    const result = await run("registry/valid-registry", [
+      "registry",
+      "check",
+      "internal/typescript/5.5/tsc",
+      "--json",
+    ]);
+    const output = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(0);
+    expect(output.exists).toBe(true);
+    expect(output.key).toBe("internal/typescript/5.5/tsc");
+    expect(output.type).toBe("ruleset");
   });
 
   it("reports missing entry", async () => {
@@ -235,5 +278,22 @@ describe("cmc registry bump", () => {
     ]);
     const majorOutput = JSON.parse(majorResult.stdout);
     expect(majorOutput.newVersion).toBe("2.0.0");
+  });
+
+  it("bumps tsc ruleset entry", async () => {
+    const result = await run("registry/valid-registry", [
+      "registry",
+      "bump",
+      "internal/typescript/5.5/tsc",
+      "--type=patch",
+      "--dry-run",
+      "--json",
+    ]);
+    const output = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(0);
+    expect(output.currentVersion).toBe("1.0.0");
+    expect(output.newVersion).toBe("1.0.1");
+    expect(output.dryRun).toBe(true);
   });
 });
