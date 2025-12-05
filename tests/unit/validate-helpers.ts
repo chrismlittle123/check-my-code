@@ -57,7 +57,7 @@ export async function validateConfig(configPath: string): Promise<ValidateResult
 
   // Load schema from package
   const __dirname = dirname(fileURLToPath(import.meta.url));
-  const schemaPath = join(__dirname, '../../schema.json');
+  const schemaPath = join(__dirname, '../../schemas/cmc.schema.json');
   const schemaContent = await readFile(schemaPath, 'utf-8');
   const schema = JSON.parse(schemaContent);
 

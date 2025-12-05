@@ -3,7 +3,7 @@
  * Generate JSON Schema from Zod schema
  *
  * Usage: npx ts-node scripts/generate-schema.ts
- * Output: schema.json in project root
+ * Output: schemas/cmc.schema.json
  */
 
 import { writeFileSync } from 'fs';
@@ -115,7 +115,7 @@ const schemaWithMeta = {
 };
 
 // Write to file
-const outputPath = join(process.cwd(), 'schema.json');
+const outputPath = join(process.cwd(), 'schemas/cmc.schema.json');
 writeFileSync(outputPath, JSON.stringify(schemaWithMeta, null, 2) + '\n');
 
-console.log(`✓ Generated schema.json`);
+console.log(`✓ Generated schemas/cmc.schema.json`);

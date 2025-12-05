@@ -33,6 +33,7 @@ node dist/cli/index.js check [path]
 node dist/cli/index.js context --target claude
 node dist/cli/index.js generate eslint
 node dist/cli/index.js audit
+node dist/cli/index.js validate
 node dist/cli/index.js mcp-server
 
 # Run a single test file
@@ -74,7 +75,8 @@ src/
 │       ├── check.ts      # Run linters and report violations
 │       ├── context.ts    # Append AI context from remote templates
 │       ├── generate.ts   # Generate linter configs from cmc.toml
-│       ├── audit.ts     # Audit linter configs match cmc.toml
+│       ├── audit.ts      # Audit linter configs match cmc.toml
+│       ├── validate.ts   # Validate cmc.toml against JSON schema
 │       └── mcp-server.ts # Start MCP server for AI agents
 ├── config/
 │   └── loader.ts         # cmc.toml discovery and parsing (Zod validation)
@@ -94,7 +96,8 @@ src/
 2. **context**: Loads `cmc.toml` → fetches `prompts.json` manifest from remote → resolves template versions → fetches template files → appends to target file
 3. **generate**: Loads `cmc.toml` rulesets → generates `eslint.config.js` or `ruff.toml`
 4. **audit**: Compares generated config against existing config files
-5. **mcp-server**: Starts MCP server exposing linting tools to AI agents
+5. **validate**: Validates cmc.toml against JSON schema using Ajv
+6. **mcp-server**: Starts MCP server exposing linting tools to AI agents
 
 **Remote template system** (`context.ts` + `fetcher.ts`):
 
@@ -161,3 +164,53 @@ claude mcp add cmc -- npx -y check-my-code mcp-server
 - `fix_files` - Auto-fix violations using ESLint --fix / Ruff --fix
 - `get_guidelines` - Fetch coding standards templates
 - `get_status` - Get session state and statistics
+- `suggest_config` - Generate cmc.toml from project description
+- `validate_config` - Validate TOML against cmc.toml schema
+
+## TypeScript 5.5 Coding Standards - INTERNAL
+
+Standards for internal tools, services, and team-facing applications.
+
+### Target Version
+
+- Target TypeScript 5.5 specifically.
+- Target Node.js 20 runtime.
+- Use TypeScript 5.5 features where appropriate.
+
+### Variable Declarations
+
+- NEVER use `var`. Always use `const` for values that won't be reassigned, or `let` when reassignment is necessary.
+- Prefer `const` over `let` whenever possible.
+
+### Type Safety
+
+- Avoid `any` type. Use `unknown` if the type is truly unknown, then narrow it with type guards.
+- Provide explicit return types for public functions.
+- Use strict null checks - handle `null` and `undefined` explicitly.
+
+### TypeScript 5.5 Features
+
+- Use inferred type predicates for cleaner type narrowing.
+- Use `const` type parameters where appropriate.
+- Use `satisfies` operator for type validation without widening.
+- Use `import type` and `export type` for type-only imports/exports.
+
+### Equality
+
+- ALWAYS use strict equality (`===` and `!==`). Never use loose equality.
+
+### Error Handling
+
+- Handle errors explicitly. Never swallow errors silently.
+- Prefer `unknown` over `any` in catch clauses.
+
+### Imports
+
+- Use ES module imports (`import`/`export`), not CommonJS.
+- Sort imports: external dependencies first, then internal modules.
+- Use `import type` for type-only imports.
+
+### Node.js 20
+
+- Use native fetch API (no need for node-fetch).
+- Use ES modules (`"type": "module"` in package.json).
