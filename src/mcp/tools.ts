@@ -219,7 +219,9 @@ function resolveTemplatePath(
  * Load a single template from remote source
  */
 async function loadTemplate(templateName: string, source: string): Promise<string | ErrorResponse> {
-  const [name, version] = templateName.split('@');
+  const parts = templateName.split('@');
+  const name = parts[0] ?? templateName;
+  const version = parts[1];
 
   let manifest: PromptsManifest;
   try {

@@ -134,7 +134,9 @@ function resolveTemplatePath(
 async function loadTemplate(templateName: string, source: string): Promise<string> {
   try {
     // Parse template name for optional version: "typescript/strict@1.0.0"
-    const [name, version] = templateName.split('@');
+    const parts = templateName.split('@');
+    const name = parts[0] ?? templateName;
+    const version = parts[1];
 
     // Fetch and parse manifest
     const manifest = await loadManifest(source);

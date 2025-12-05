@@ -334,6 +334,9 @@ function extractESLintRules(content: string): Record<string, ESLintRuleValue> {
   }
 
   const rulesBlock = rulesMatch[1];
+  if (!rulesBlock) {
+    return {};
+  }
 
   // Parse the rules object using a simple approach
   // Convert JavaScript object literal to JSON-compatible format
@@ -371,12 +374,13 @@ function parseRulesManually(rulesBlock: string): Record<string, ESLintRuleValue>
 
   while ((match = rulePattern.exec(rulesBlock)) !== null) {
     const ruleName = match[1];
-    let ruleValue = match[2];
+    const ruleValue = match[2];
+    if (!ruleName || !ruleValue) continue;
 
     try {
       // Convert single quotes to double quotes for JSON parsing
-      ruleValue = ruleValue.replace(/'/g, '"');
-      rules[ruleName] = JSON.parse(ruleValue);
+      const normalizedValue = ruleValue.replace(/'/g, '"');
+      rules[ruleName] = JSON.parse(normalizedValue);
     } catch {
       // If parsing fails, store as-is (removing quotes)
       rules[ruleName] = ruleValue.replace(/['"]/g, '') as ESLintRuleValue;

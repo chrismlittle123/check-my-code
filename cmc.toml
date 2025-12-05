@@ -7,3 +7,9 @@ eslint = "github:chrismlittle123/check-my-code-private/rulesets/internal/typescr
 [prompts]
 templates = ["internal/typescript/5.5"]
 source = "github:chrismlittle123/check-my-code-private/prompts@main"
+
+[rulesets.tsc]
+strict = true
+noUncheckedIndexedAccess = true
+noImplicitReturns = true
+noFallthroughCasesInSwitch = true

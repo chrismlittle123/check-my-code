@@ -57,11 +57,17 @@ export function parseRemoteRef(ref: string): RemoteRef {
 
   const [, host, owner, repo, path, version] = match;
 
+  if (!host || !owner || !repo || !version) {
+    throw new RemoteFetchError(
+      `Invalid remote reference: ${ref}\n` + `Expected format: github:owner/repo/path@version`
+    );
+  }
+
   return {
     host: host as 'github',
     owner,
     repo,
-    path: path || '',
+    path: path ?? '',
     version,
   };
 }

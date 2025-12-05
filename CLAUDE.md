@@ -46,25 +46,20 @@ npm run generate:schema
 
 ## E2E Testing
 
-E2E tests use Docker with shared base images for speed. They require Docker to be installed and running.
+Most E2E tests run directly using the `run()` helper from `runner.ts`, which executes the CLI in test project directories. Some tests (like `audit.ts`) use Docker for isolated environments.
 
 ```bash
-# Run all e2e tests (auto-skips if Docker unavailable)
+# Run all e2e tests
 npm run test:run tests/e2e/
 
 # Run specific e2e test file
 npm run test:run tests/e2e/check.test.ts
 
 # Run tests matching a pattern
-npm run test:run -- -t "private repo"
+npm run test:run -- -t "type error"
 ```
 
-**Base images** (in `tests/e2e/`):
-
-- `Dockerfile.base` - Full image with ESLint, Ruff, git, SSH
-- `Dockerfile.base-no-linters` - For testing graceful degradation
-
-Test projects in `tests/e2e/projects/` contain only `cmc.toml` and test files - Dockerfiles are auto-generated from base images.
+Test projects in `tests/e2e/projects/` contain `cmc.toml` and test files organized by command (check, audit, generate, etc.).
 
 ## Architecture
 
@@ -96,8 +91,8 @@ src/
 
 1. **check**: Finds `cmc.toml` → discovers files → runs ESLint/Ruff/tsc → outputs violations
 2. **context**: Loads `cmc.toml` → fetches `prompts.json` manifest from remote → resolves template versions → fetches template files → appends to target file
-3. **generate**: Loads `cmc.toml` rulesets → generates `eslint.config.js` or `ruff.toml`
-4. **audit**: Compares generated config against existing config files
+3. **generate**: Loads `cmc.toml` rulesets → generates `eslint.config.js`, `ruff.toml`, or `tsconfig.json`
+4. **audit**: Compares generated config against existing config files (eslint, ruff, tsc)
 5. **validate**: Validates cmc.toml against JSON schema using Ajv
 6. **registry**: Manages prompts/rulesets registries (validate, list, check, sync, bump)
 7. **mcp-server**: Starts MCP server exposing linting tools to AI agents

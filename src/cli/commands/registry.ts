@@ -79,7 +79,7 @@ function loadSchema(path: string): object | null {
 function parseVersion(version: string): { major: number; minor: number; patch: number } | null {
   const versionRegex = /^(\d+)\.(\d+)\.(\d+)$/;
   const match = versionRegex.exec(version);
-  if (!match) return null;
+  if (!match?.[1] || !match[2] || !match[3]) return null;
   return {
     major: parseInt(match[1], 10),
     minor: parseInt(match[2], 10),

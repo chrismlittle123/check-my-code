@@ -221,14 +221,16 @@ function parseTscOutput(output: string, projectRoot: string): Violation[] {
     const match = errorPattern.exec(line);
     if (match) {
       const [, filePath, lineNum, colNum, , errorCode, message] = match;
-      violations.push({
-        file: relative(projectRoot, filePath),
-        line: parseInt(lineNum, 10),
-        column: parseInt(colNum, 10),
-        rule: errorCode || 'tsc',
-        message: message.trim(),
-        linter: 'tsc' as const,
-      });
+      if (filePath && lineNum && colNum && message) {
+        violations.push({
+          file: relative(projectRoot, filePath),
+          line: parseInt(lineNum, 10),
+          column: parseInt(colNum, 10),
+          rule: errorCode ?? 'tsc',
+          message: message.trim(),
+          linter: 'tsc' as const,
+        });
+      }
     }
   }
 
