@@ -84,6 +84,10 @@ const extendsSchema = z.object({
     .string()
     .regex(remoteRefPattern, "must be format: github:owner/repo/path@version")
     .optional(),
+  tsc: z
+    .string()
+    .regex(remoteRefPattern, "must be format: github:owner/repo/path@version")
+    .optional(),
 });
 
 // Strip Symbol keys from an object (recursively)

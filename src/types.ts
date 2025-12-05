@@ -18,6 +18,7 @@ export interface Config {
 export interface ExtendsConfig {
   eslint?: string;
   ruff?: string;
+  tsc?: string;
 }
 
 // AI context configuration for `cmc context` command
