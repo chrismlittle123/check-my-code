@@ -199,7 +199,7 @@ const RULESETS_SCHEMA = {
         },
         tool: {
           type: "string",
-          enum: ["ruff", "eslint", "biome", "prettier"],
+          enum: ["ruff", "eslint", "biome", "prettier", "tsc"],
           description: "The linting/formatting tool this ruleset is for",
         },
         format: {
