@@ -10,6 +10,7 @@ import { generateCommand } from './commands/generate.js';
 import { auditCommand } from './commands/audit.js';
 import { validateCommand } from './commands/validate.js';
 import { mcpServerCommand } from './commands/mcp-server.js';
+import { registryCommand } from './commands/registry.js';
 
 // Read version from package.json
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -47,5 +48,6 @@ program.addCommand(generateCommand);
 program.addCommand(auditCommand);
 program.addCommand(validateCommand);
 program.addCommand(mcpServerCommand);
+program.addCommand(registryCommand);
 
 program.parse();

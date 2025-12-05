@@ -34,6 +34,7 @@ node dist/cli/index.js context --target claude
 node dist/cli/index.js generate eslint
 node dist/cli/index.js audit
 node dist/cli/index.js validate
+node dist/cli/index.js registry validate
 node dist/cli/index.js mcp-server
 
 # Run a single test file
@@ -77,6 +78,7 @@ src/
 │       ├── generate.ts   # Generate linter configs from cmc.toml
 │       ├── audit.ts      # Audit linter configs match cmc.toml
 │       ├── validate.ts   # Validate cmc.toml against JSON schema
+│       ├── registry.ts   # Manage prompts/rulesets registries
 │       └── mcp-server.ts # Start MCP server for AI agents
 ├── config/
 │   └── loader.ts         # cmc.toml discovery and parsing (Zod validation)
@@ -97,7 +99,8 @@ src/
 3. **generate**: Loads `cmc.toml` rulesets → generates `eslint.config.js` or `ruff.toml`
 4. **audit**: Compares generated config against existing config files
 5. **validate**: Validates cmc.toml against JSON schema using Ajv
-6. **mcp-server**: Starts MCP server exposing linting tools to AI agents
+6. **registry**: Manages prompts/rulesets registries (validate, list, check, sync, bump)
+7. **mcp-server**: Starts MCP server exposing linting tools to AI agents
 
 **Remote template system** (`context.ts` + `fetcher.ts`):
 

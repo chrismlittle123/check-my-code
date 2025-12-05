@@ -1,0 +1,5 @@
+# ESLint configuration for TypeScript 5.5 - INTERNAL
+
+[rulesets.eslint.rules]
+"no-var" = "error"
+"prefer-const" = "error"

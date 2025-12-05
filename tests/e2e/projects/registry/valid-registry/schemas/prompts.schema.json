@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://palindrom.dev/schemas/prompts.schema.json",
+  "title": "Prompts Registry",
+  "description": "Schema for the prompts registry that tracks coding standards prompts",
+  "type": "object",
+  "required": ["schema_version", "prompts"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of this schema"
+    },
+    "prompts": {
+      "type": "object",
+      "description": "Map of prompt identifiers to their configurations",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^(prototype|internal|production)/[a-z]+/[0-9.]+$": {
+          "$ref": "#/$defs/promptEntry"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "promptEntry": {
+      "type": "object",
+      "required": ["tier", "description", "format", "language_version", "versions"],
+      "additionalProperties": false,
+      "properties": {
+        "tier": {
+          "type": "string",
+          "enum": ["prototype", "internal", "production"],
+          "description": "The quality tier for this prompt"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable description of this prompt"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["md", "txt"],
+          "description": "File format of the prompt files"
+        },
+        "language_version": {
+          "type": "string",
+          "pattern": "^[0-9.]+$",
+          "description": "Version of the programming language"
+        },
+        "runtime_version": {
+          "type": "string",
+          "pattern": "^[a-z]+[0-9]+$",
+          "description": "Runtime version (e.g., node20)"
+        },
+        "versions": {
+          "$ref": "#/$defs/versionMap"
+        }
+      }
+    },
+    "versionMap": {
+      "type": "object",
+      "required": ["latest"],
+      "properties": {
+        "latest": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "The latest version identifier"
+        }
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["file"],
+            "additionalProperties": false,
+            "properties": {
+              "file": {
+                "type": "string",
+                "pattern": "^[a-z]+/[a-z]+/[0-9.]+/[0-9.]+\\.md$",
+                "description": "Relative path to the prompt file"
+              }
+            }
+          },
+          {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$"
+          }
+        ]
+      }
+    }
+  }
+}

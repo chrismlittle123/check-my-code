@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0.0",
+  "prompts": {
+    "internal/python/3.12": {
+      "tier": "internal",
+      "description": "Python 3.12 coding standards for internal tools",
+      "format": "md",
+      "language_version": "3.12",
+      "versions": {
+        "1.0.0": { "file": "internal/python/3.12/1.0.0.md" },
+        "latest": "1.0.0"
+      }
+    }
+  }
+}

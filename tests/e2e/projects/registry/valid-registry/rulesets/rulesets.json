@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0.0",
+  "rulesets": {
+    "internal/typescript/5.5": {
+      "tier": "internal",
+      "description": "TypeScript 5.5 ESLint configuration for internal tools",
+      "tool": "eslint",
+      "format": "toml",
+      "language_version": "5.5",
+      "runtime_version": "node20",
+      "versions": {
+        "1.0.0": { "file": "internal/typescript/5.5/eslint/1.0.0.toml" },
+        "latest": "1.0.0"
+      }
+    }
+  }
+}
