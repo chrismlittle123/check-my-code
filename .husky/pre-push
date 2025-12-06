@@ -38,4 +38,20 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# 6. Unit tests
+echo "🧪 Running unit tests..."
+npm run test:unit
+if [ $? -ne 0 ]; then
+  echo "❌ Unit tests failed!"
+  exit 1
+fi
+
+# 7. E2E tests
+echo "🔬 Running e2e tests..."
+npm run test:e2e
+if [ $? -ne 0 ]; then
+  echo "❌ E2E tests failed!"
+  exit 1
+fi
+
 echo "✅ All checks passed!"

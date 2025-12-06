@@ -36,7 +36,7 @@ jobs:
         run: npm run build
 
       - name: Run unit tests
-        run: npm run test:run -- tests/unit/
+        run: npm run test:unit
 
       - name: cmc check
         run: node dist/cli/index.js check src/
@@ -69,7 +69,7 @@ jobs:
         run: npm run build
 
       - name: Run e2e tests
-        run: npm run test:run -- tests/e2e/
+        run: npm run test:e2e
         timeout-minutes: 15
 
   publish:
