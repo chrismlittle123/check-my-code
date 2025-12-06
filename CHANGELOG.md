@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.4
+
+### Patch Changes
+
+- [#19](https://github.com/chrismlittle123/check-my-code/pull/19) [`bcf3ad8`](https://github.com/chrismlittle123/check-my-code/commit/bcf3ad80b5c95a2c6c4de7428ceeb657b23cd269) Thanks [@chrismlittle123](https://github.com/chrismlittle123)! - Fix release workflow to use Node.js LTS for npm OIDC compatibility
+
 ## 1.5.3
 
 ### Patch Changes
