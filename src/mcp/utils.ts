@@ -72,16 +72,23 @@ export async function loadProjectConfig(
 }
 
 /**
- * Validate that files exist and return valid ones as relative paths
+ * Validate that files exist and return valid ones as relative paths.
+ * @param files - Array of file paths (can be absolute or relative to cwd)
+ * @param projectRoot - The project root directory (where cmc.toml is)
+ * @param cwd - The current working directory to resolve relative paths from (defaults to process.cwd())
  */
 export async function validateFiles(
   files: string[],
   projectRoot: string,
+  cwd?: string,
 ): Promise<string[]> {
+  // Normalize cwd to absolute path to avoid subtle resolution bugs
+  const baseCwd = cwd ? resolve(cwd) : process.cwd();
   const validFiles: string[] = [];
   const checkPromises = files.map(async (file) => {
-    // Handle both absolute and relative paths (cross-platform)
-    const fullPath = isAbsolute(file) ? file : resolve(projectRoot, file);
+    // Resolve relative paths from cwd, not projectRoot
+    // This ensures paths like "nested-paths/file.ts" work when MCP runs from parent directory
+    const fullPath = isAbsolute(file) ? file : resolve(baseCwd, file);
     const stats = await stat(fullPath).catch(() => null);
     if (stats?.isFile()) {
       // Always return relative path from projectRoot

@@ -5,7 +5,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
-import { join } from "path";
+import { isAbsolute, join } from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
@@ -395,6 +395,36 @@ describe("findProjectRoot", () => {
 
     const result = findProjectRoot(nonExistentPath);
     expect(result).toBe(testDir);
+  });
+
+  it("always returns absolute path even when given relative input", () => {
+    // Create cmc.toml in testDir
+    writeFileSync(join(testDir, "cmc.toml"), '[project]\nname = "test"');
+
+    // Use a relative path that exists
+    const result = findProjectRoot(testDir);
+
+    expect(isAbsolute(result)).toBe(true);
+  });
+
+  it("returns absolute path when no cmc.toml found (fallback)", () => {
+    // No cmc.toml created, should return the input path as absolute
+    const result = findProjectRoot(nestedDir);
+
+    expect(isAbsolute(result)).toBe(true);
+  });
+
+  it("returns directory (not file) when startPath is a file and no cmc.toml found", () => {
+    // Create a file but no cmc.toml
+    const filePath = join(nestedDir, "somefile.ts");
+    writeFileSync(filePath, "const x = 1;");
+
+    const result = findProjectRoot(filePath);
+
+    // Should return the directory containing the file, not the file itself
+    expect(isAbsolute(result)).toBe(true);
+    expect(result).toBe(nestedDir);
+    expect(result).not.toBe(filePath);
   });
 });
 

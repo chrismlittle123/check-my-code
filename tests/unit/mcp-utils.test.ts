@@ -29,7 +29,12 @@ describe("validateFiles", () => {
 
   describe("relative paths", () => {
     it("validates relative files in project root", async () => {
-      const result = await validateFiles(["file1.ts", "file2.ts"], projectRoot);
+      // Pass cwd=projectRoot so relative paths resolve correctly
+      const result = await validateFiles(
+        ["file1.ts", "file2.ts"],
+        projectRoot,
+        projectRoot,
+      );
 
       expect(result).toHaveLength(2);
       expect(result).toContain("file1.ts");
@@ -37,7 +42,11 @@ describe("validateFiles", () => {
     });
 
     it("validates relative files in subdirectories", async () => {
-      const result = await validateFiles(["subdir/nested.ts"], projectRoot);
+      const result = await validateFiles(
+        ["subdir/nested.ts"],
+        projectRoot,
+        projectRoot,
+      );
 
       expect(result).toHaveLength(1);
       expect(result).toContain("subdir/nested.ts");
@@ -46,6 +55,7 @@ describe("validateFiles", () => {
     it("filters out nonexistent relative files", async () => {
       const result = await validateFiles(
         ["file1.ts", "nonexistent.ts"],
+        projectRoot,
         projectRoot,
       );
 
@@ -56,6 +66,7 @@ describe("validateFiles", () => {
     it("returns empty array for all nonexistent files", async () => {
       const result = await validateFiles(
         ["nonexistent1.ts", "nonexistent2.ts"],
+        projectRoot,
         projectRoot,
       );
 
@@ -86,6 +97,7 @@ describe("validateFiles", () => {
       const absolutePath = join(projectRoot, "file1.ts");
       const result = await validateFiles(
         [absolutePath, "file2.ts", "subdir/nested.ts"],
+        projectRoot,
         projectRoot,
       );
 
@@ -132,7 +144,11 @@ describe("validateFiles", () => {
     });
 
     it("handles paths with trailing slashes", async () => {
-      const result = await validateFiles(["file1.ts/"], projectRoot);
+      const result = await validateFiles(
+        ["file1.ts/"],
+        projectRoot,
+        projectRoot,
+      );
       // Node.js resolve normalizes trailing slashes, so file1.ts/ -> file1.ts
       expect(result).toHaveLength(1);
       expect(result[0]).toBe("file1.ts");

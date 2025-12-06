@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, statSync } from "fs";
 import { readFile } from "fs/promises";
-import { dirname, join } from "path";
+import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { z } from "zod";
 
@@ -172,25 +172,27 @@ export async function loadConfig(projectRoot: string): Promise<Config> {
 }
 
 /**
+ * Resolve a path to an absolute directory path.
+ * If the path is a file, returns its parent directory.
+ */
+function resolveToDirectory(inputPath: string): string {
+  const absolutePath = resolve(inputPath);
+  if (existsSync(absolutePath)) {
+    const stats = statSync(absolutePath);
+    return stats.isDirectory() ? absolutePath : dirname(absolutePath);
+  }
+  return absolutePath;
+}
+
+/**
  * Find the project root by searching for cmc.toml.
  * @param startPath - Optional starting path to search from. Defaults to process.cwd().
  *                    If provided, searches from this path upward. Supports both file and directory paths.
+ * @returns Absolute path to the project root directory
  */
 export function findProjectRoot(startPath?: string): string {
-  // Determine starting directory
-  let dir: string;
-  if (startPath) {
-    // If startPath is a file, start from its directory
-    if (existsSync(startPath)) {
-      const stats = statSync(startPath);
-      dir = stats.isDirectory() ? startPath : dirname(startPath);
-    } else {
-      // Path doesn't exist, assume it's a directory path
-      dir = startPath;
-    }
-  } else {
-    dir = process.cwd();
-  }
+  // Determine starting directory - always resolve to absolute path
+  let dir = startPath ? resolveToDirectory(startPath) : process.cwd();
 
   while (dir !== dirname(dir)) {
     if (existsSync(join(dir, "cmc.toml"))) {
@@ -204,7 +206,8 @@ export function findProjectRoot(startPath?: string): string {
     return dir;
   }
 
-  return startPath ?? process.cwd();
+  // Fallback: return absolute directory path
+  return startPath ? resolveToDirectory(startPath) : process.cwd();
 }
 
 export interface ValidationResult {

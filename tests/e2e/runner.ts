@@ -123,6 +123,83 @@ export async function runMcp(
 }
 
 /**
+ * Run MCP server from a specific working directory (may differ from project directory).
+ * This simulates real-world usage where MCP server runs from a different cwd than the project.
+ */
+export async function runMcpFromCwd(
+  cwdPath: string,
+  toolName: string,
+  toolArgs: Record<string, unknown> = {},
+): Promise<{ response: unknown; exitCode: number }> {
+  const initRequest = JSON.stringify({
+    jsonrpc: "2.0",
+    method: "initialize",
+    params: {
+      protocolVersion: "2024-11-05",
+      capabilities: {},
+      clientInfo: { name: "test", version: "1.0.0" },
+    },
+    id: 1,
+  });
+
+  const toolRequest = JSON.stringify({
+    jsonrpc: "2.0",
+    method: "tools/call",
+    params: { name: toolName, arguments: toolArgs },
+    id: 2,
+  });
+
+  return new Promise((resolve) => {
+    const proc = spawn("node", [CLI_PATH, "mcp-server"], {
+      cwd: cwdPath,
+      env: { ...process.env, NO_COLOR: "1" },
+    });
+
+    let stdout = "";
+    let resolved = false;
+
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        proc.kill();
+        resolve({ response: null, exitCode: 1 });
+      }
+    }, 30000);
+
+    proc.stdout.on("data", (data) => {
+      stdout += data.toString();
+      const lines = stdout.split("\n").filter((l) => l.trim());
+      for (const line of lines) {
+        try {
+          const parsed = JSON.parse(line);
+          if (parsed.id === 2 && !resolved) {
+            resolved = true;
+            clearTimeout(timeout);
+            proc.kill();
+            resolve({ response: parsed, exitCode: 0 });
+          }
+        } catch {
+          // Not JSON yet
+        }
+      }
+    });
+
+    proc.on("close", (code) => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        resolve({ response: null, exitCode: code ?? 1 });
+      }
+    });
+
+    // Write requests to stdin
+    proc.stdin.write(initRequest + "\n");
+    proc.stdin.write(toolRequest + "\n");
+    proc.stdin.end();
+  });
+}
+
+/**
  * Run MCP server and list tools
  */
 export async function runMcpListTools(projectPath: string): Promise<{
