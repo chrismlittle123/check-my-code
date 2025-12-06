@@ -27,7 +27,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Check kebab-case directory names
-./scripts/check-kebab-case.sh
+./.github/scripts/check-kebab-case.sh
 if [ $? -ne 0 ]; then
   echo "❌ Pre-commit checks failed. Please fix the errors above."
   exit 1
