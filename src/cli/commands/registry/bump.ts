@@ -141,12 +141,12 @@ function getCurrentVersionEntry(
   key: string,
   currentVersion: string,
 ): VersionEntry {
-  const entry = found.entry.versions[currentVersion] as VersionEntry;
-  if (!entry?.file) {
+  const raw = found.entry.versions[currentVersion];
+  if (typeof raw === "string" || !raw?.file) {
     error(`No file found for current version: ${key}@${currentVersion}`);
     process.exit(ExitCode.RUNTIME_ERROR);
   }
-  return entry;
+  return raw;
 }
 
 function buildNewFileName(
@@ -191,7 +191,11 @@ function runBump(projectRoot: string, key: string, options: BumpOptions): void {
   const found = findEntry(projectRoot, key);
   validateEntry(found, key);
 
-  const currentVersion = found.entry.versions.latest as string;
+  const currentVersion = found.entry.versions.latest;
+  if (!currentVersion || typeof currentVersion !== "string") {
+    error(`No latest version found for: ${key}`);
+    process.exit(ExitCode.RUNTIME_ERROR);
+  }
   const newVersion = incrementVersion(currentVersion, options.type);
   const currentVersionEntry = getCurrentVersionEntry(
     found,

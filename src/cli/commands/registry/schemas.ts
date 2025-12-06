@@ -185,7 +185,8 @@ export const RULESETS_SCHEMA = {
                 properties: {
                   file: {
                     type: "string",
-                    pattern: "^[a-z]+/[a-z]+/[0-9.]+/[a-z]+/[0-9.]+\\.toml$",
+                    pattern:
+                      "^[a-z]+/[a-z]+/[0-9.]+/[a-z]+/[0-9.]+\\.(toml|json|yaml|js)$",
                     description: "Relative path to the ruleset file",
                   },
                 },

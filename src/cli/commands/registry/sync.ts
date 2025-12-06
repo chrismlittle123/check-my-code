@@ -8,12 +8,12 @@ import { existsSync } from "fs";
 import { glob } from "glob";
 import { join } from "path";
 
-import {
-  type PromptsRegistry,
-  type RegistryEntries,
-  type RegistryType,
-  type RulesetsRegistry,
-  type VersionEntry,
+import type {
+  PromptsRegistry,
+  RegistryEntries,
+  RegistryType,
+  RulesetsRegistry,
+  VersionEntry,
 } from "./types.js";
 import {
   collectRegisteredFiles,

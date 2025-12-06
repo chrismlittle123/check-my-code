@@ -5,7 +5,7 @@
 
 import { Command } from "commander";
 
-import { type PromptsRegistry, type RulesetsRegistry } from "./types.js";
+import type { PromptsRegistry, RulesetsRegistry } from "./types.js";
 import { getRegistryPath, loadRegistry } from "./utils.js";
 
 interface ListOptions {
@@ -43,7 +43,10 @@ function collectPrompts(
       type: "prompt",
       tier: entry.tier,
       description: entry.description,
-      latest: entry.versions.latest as string,
+      latest:
+        typeof entry.versions.latest === "string"
+          ? entry.versions.latest
+          : "unknown",
     });
   }
   return results;
@@ -69,7 +72,10 @@ function collectRulesets(
       type: "ruleset",
       tier: entry.tier,
       description: entry.description,
-      latest: entry.versions.latest as string,
+      latest:
+        typeof entry.versions.latest === "string"
+          ? entry.versions.latest
+          : "unknown",
       tool: entry.tool,
     });
   }
@@ -101,6 +107,13 @@ function runList(projectRoot: string, options: ListOptions): void {
 
   const prompts = loadRegistry<PromptsRegistry>(promptsPath);
   const rulesets = loadRegistry<RulesetsRegistry>(rulesetsPath);
+
+  if (!prompts && !rulesets) {
+    console.log(
+      "No registries found. Run from a project with prompts/ or rulesets/ directories.",
+    );
+    return;
+  }
 
   const results = [
     ...collectPrompts(prompts, options),

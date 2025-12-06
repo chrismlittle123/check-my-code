@@ -102,6 +102,11 @@ async function runAudit(linter?: string): Promise<void> {
   );
   const results = allResults.filter((r): r is VerifyResult => r !== null);
 
+  if (results.length === 0) {
+    console.log("No linter configs to audit (no rulesets defined in cmc.toml)");
+    process.exit(ExitCode.SUCCESS);
+  }
+
   outputResults(results);
   const hasErrors = results.some((r) => !r.matches);
   process.exit(hasErrors ? ExitCode.VIOLATIONS : ExitCode.SUCCESS);
@@ -120,11 +125,6 @@ function outputResults(results: VerifyResult[]): void {
         console.log(formatMismatch(mismatch));
       }
     }
-  }
-
-  if (results.length === 0) {
-    console.log("No linter configs to audit (no rulesets defined in cmc.toml)");
-    process.exit(ExitCode.SUCCESS);
   }
 }
 

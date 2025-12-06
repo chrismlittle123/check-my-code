@@ -62,7 +62,6 @@ function outputTextResult(found: FoundEntry | null, key: string): void {
     );
   } else {
     error(`Not found: ${key}`);
-    process.exit(ExitCode.VIOLATIONS);
   }
 }
 
@@ -77,6 +76,10 @@ function runCheck(
     outputJsonResult(found, key);
   } else {
     outputTextResult(found, key);
+  }
+
+  if (!found) {
+    process.exit(ExitCode.VIOLATIONS);
   }
 }
 

@@ -79,7 +79,7 @@ export function info(message: string): void {
 }
 
 export function warning(message: string): void {
-  console.log(`⚠ ${message}`);
+  console.warn(`⚠ ${message}`);
 }
 
 // Collect all registered files from entries
