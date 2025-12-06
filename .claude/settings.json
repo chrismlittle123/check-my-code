@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "timeout": 30,
+        "type": "command",
+        "command": "node dist/cli/index.js check src/ 2>&1 | grep -E '(✓|✗|violation|error)' | head -20"
+      }
+    ]
+  }
+}

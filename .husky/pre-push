@@ -26,4 +26,16 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# 4. cmc audit - verify linter configs match cmc.toml
+echo "🔎 cmc audit..."
+node dist/cli/index.js audit 2>/dev/null || true
+
+# 5. cmc check - verify code follows standards
+echo "📋 cmc check src/..."
+node dist/cli/index.js check src/
+if [ $? -ne 0 ]; then
+  echo "❌ cmc check failed - code violates standards!"
+  exit 1
+fi
+
 echo "✅ All checks passed!"
