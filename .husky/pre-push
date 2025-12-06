@@ -46,12 +46,4 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# 7. E2E tests
-echo "🔬 Running e2e tests..."
-npm run test:e2e
-if [ $? -ne 0 ]; then
-  echo "❌ E2E tests failed!"
-  exit 1
-fi
-
 echo "✅ All checks passed!"

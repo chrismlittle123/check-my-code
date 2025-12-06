@@ -28,7 +28,7 @@ describe("LinterError", () => {
     const throwAndCatch = () => {
       try {
         throw new LinterError("linter failed");
-      } catch (e) {
+      } catch (e: unknown) {
         if (e instanceof LinterError) {
           return "caught LinterError";
         }

@@ -58,4 +58,12 @@ describe("findProjectRoot", () => {
     // Should not throw, returns cwd or finds cmc.toml from cwd
     expect(typeof result).toBe("string");
   });
+
+  it("handles non-existent startPath by treating it as a directory", () => {
+    writeFileSync(join(testDir, "cmc.toml"), '[project]\nname = "test"');
+    const nonExistentPath = join(testDir, "sub", "does-not-exist");
+
+    const result = findProjectRoot(nonExistentPath);
+    expect(result).toBe(testDir);
+  });
 });
