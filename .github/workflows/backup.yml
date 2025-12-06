@@ -1,0 +1,58 @@
+name: Daily Backup
+
+on:
+  schedule:
+    # Run at midnight UTC every day
+    - cron: "0 0 * * *"
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for complete backup
+
+      - name: Create backup archive
+        run: |
+          BACKUP_DATE=$(date +%Y-%m-%d)
+          BACKUP_FILE="backup-${BACKUP_DATE}.tar.gz"
+
+          # Create tarball of entire repo including .git
+          tar -czf "${BACKUP_FILE}" .
+
+          echo "BACKUP_FILE=${BACKUP_FILE}" >> $GITHUB_ENV
+          echo "BACKUP_DATE=${BACKUP_DATE}" >> $GITHUB_ENV
+
+      - name: Push to backup repository
+        env:
+          BACKUP_TOKEN: ${{ secrets.BACKUP_TOKEN }}
+        run: |
+          # Clone backup repo
+          git clone https://x-access-token:${BACKUP_TOKEN}@github.com/chrismlittle123/check-my-code-backup.git backup-repo
+          cd backup-repo
+
+          # Configure git
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          # Copy backup file
+          cp ../${BACKUP_FILE} .
+
+          # Keep only last 30 backups to manage storage
+          ls -t backup-*.tar.gz 2>/dev/null | tail -n +31 | xargs -r rm
+
+          # Commit and push
+          git add .
+          git commit -m "Backup ${BACKUP_DATE}" || echo "No changes to commit"
+          git push
+
+      - name: Mirror repository
+        env:
+          BACKUP_TOKEN: ${{ secrets.BACKUP_TOKEN }}
+        run: |
+          # Also do a full mirror push for easy restoration
+          git remote add backup https://x-access-token:${BACKUP_TOKEN}@github.com/chrismlittle123/check-my-code-backup.git
+          git push backup --mirror --force
