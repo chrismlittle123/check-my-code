@@ -2,4 +2,4 @@
 name = "context-test"
 
 [prompts]
-templates = ["typescript/5.5"]
+templates = ["internal/typescript/5.5"]

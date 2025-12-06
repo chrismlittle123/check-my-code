@@ -2,4 +2,4 @@
 name = "context-multiple-test"
 
 [prompts]
-templates = ["typescript/5.5", "python/3.12"]
+templates = ["internal/typescript/5.5", "internal/python/3.12"]

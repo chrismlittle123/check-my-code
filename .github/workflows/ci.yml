@@ -54,6 +54,14 @@ jobs:
           node-version: 20
           cache: "npm"
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ruff
+        run: pip install ruff
+
       - name: Install dependencies
         run: npm ci
 
