@@ -200,3 +200,74 @@ describe("cmc mcp-server - path-based config discovery", () => {
     expect(content.files_checked).toBeGreaterThan(0);
   });
 });
+
+// =============================================================================
+// BUG: check_files absolute path handling
+// https://github.com/anthropics/claude-code/issues/XXX
+// =============================================================================
+describe("cmc mcp-server - check_files absolute paths", () => {
+  it("accepts absolute paths and returns violations", async () => {
+    // Use absolute path to the violation file
+    const projectDir = process.cwd();
+    const absolutePath = `${projectDir}/tests/e2e/projects/mcp-server/default/violation.ts`;
+
+    const result = await runMcp("mcp-server/default", "check_files", {
+      files: [absolutePath],
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      violations: { rule: string; linter: string; file: string }[];
+      has_violations: boolean;
+    };
+
+    expect(content).not.toBeNull();
+    expect(content.success).toBe(true);
+    expect(content.has_violations).toBe(true);
+    // Should detect the no-var violation
+    expect(content.violations.some((v) => v.rule === "no-var")).toBe(true);
+    // File path in results should be relative, not absolute
+    expect(content.violations[0].file).not.toMatch(/^\//);
+  });
+
+  it("handles mixed absolute and relative paths", async () => {
+    const projectDir = process.cwd();
+    const absolutePath = `${projectDir}/tests/e2e/projects/mcp-server/default/violation.ts`;
+
+    const result = await runMcp("mcp-server/default", "check_files", {
+      files: [absolutePath, "clean.ts"],
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      files_checked: number;
+      violations: { file: string }[];
+    };
+
+    expect(content.success).toBe(true);
+    expect(content.files_checked).toBe(2);
+    // All file paths in results should be relative
+    content.violations.forEach((v) => {
+      expect(v.file).not.toMatch(/^\//);
+    });
+  });
+
+  it("returns FILE_NOT_FOUND for nonexistent absolute path within project", async () => {
+    // Use an absolute path within the project directory that doesn't exist
+    // This ensures cmc.toml can be found, but the file itself doesn't exist
+    const projectDir = process.cwd();
+    const absolutePath = `${projectDir}/tests/e2e/projects/mcp-server/default/nonexistent.ts`;
+
+    const result = await runMcp("mcp-server/default", "check_files", {
+      files: [absolutePath],
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      error?: { code: string };
+    };
+
+    expect(content.success).toBe(false);
+    expect(content.error?.code).toBe("FILE_NOT_FOUND");
+  });
+});
