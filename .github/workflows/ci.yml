@@ -35,8 +35,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Run unit tests
-        run: npm run test:unit
+      - name: Run unit tests with coverage
+        run: npm run test:unit:coverage
 
       - name: cmc check
         run: node dist/cli/index.js check src/
@@ -108,6 +108,12 @@ jobs:
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "Version unchanged: $PACKAGE_VERSION"
           fi
+
+      - name: Verify npm authentication
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          echo "Registry: $(npm config get registry)"
+          npm whoami || echo "OIDC auth will be used for publish"
 
       - name: Publish to npm
         if: steps.version.outputs.changed == 'true'
