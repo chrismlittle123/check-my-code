@@ -19,6 +19,8 @@
     "start": "node dist/cli/index.js",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:unit": "vitest run tests/unit/",
+    "test:e2e": "vitest run tests/e2e/",
     "lint": "eslint src/ tests/",
     "lint:fix": "eslint src/ tests/ --fix",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
