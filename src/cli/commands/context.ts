@@ -204,6 +204,65 @@ function generateContentHash(content: string): string {
   return createHash("sha256").update(content).digest("hex").slice(0, 12);
 }
 
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+interface CmcBlockMatch {
+  startMatch: RegExpExecArray;
+  endMatch: RegExpExecArray;
+  existingHash: string | null;
+}
+
+/** Find existing CMC block markers in content */
+function findCmcBlock(content: string): CmcBlockMatch | null {
+  const startMarkerRegex = new RegExp(
+    `${escapeRegex(CMC_START_MARKER)}:[a-f0-9]+\\s*-->`,
+  );
+  const endMarkerRegex = new RegExp(escapeRegex(CMC_END_MARKER));
+
+  const startMatch = startMarkerRegex.exec(content);
+  const endMatch = endMarkerRegex.exec(content);
+
+  if (!startMatch || !endMatch || startMatch.index >= endMatch.index) {
+    return null;
+  }
+
+  const existingHashMatch = /:([a-f0-9]{12})\s*-->$/.exec(startMatch[0]);
+  return {
+    startMatch,
+    endMatch,
+    existingHash: existingHashMatch?.[1] ?? null,
+  };
+}
+
+/** Replace existing CMC block with new content */
+function replaceExistingBlock(
+  existingContent: string,
+  block: CmcBlockMatch,
+  wrappedOutput: string,
+): string {
+  const before = existingContent.slice(0, block.startMatch.index);
+  const after = existingContent.slice(
+    block.endMatch.index + CMC_END_MARKER.length,
+  );
+  const prefix = before.length > 0 ? "\n\n" : "";
+  const suffix = after.trimStart().length > 0 ? "\n\n" : "\n";
+  return `${before.trimEnd()}${prefix}${wrappedOutput}${suffix}${after.trimStart()}`;
+}
+
+/** Create new content by appending CMC block */
+function appendNewBlock(
+  existingContent: string,
+  wrappedOutput: string,
+): string {
+  let prefix = "";
+  if (existingContent.length > 0 && !existingContent.endsWith("\n\n")) {
+    prefix = existingContent.endsWith("\n") ? "\n" : "\n\n";
+  }
+  return `${existingContent}${prefix}${wrappedOutput}\n`;
+}
+
 async function appendToTargetFile(
   projectRoot: string,
   target: AiTarget,
@@ -211,65 +270,28 @@ async function appendToTargetFile(
 ): Promise<void> {
   const targetFile = AI_TARGET_FILES[target];
   const targetPath = join(projectRoot, targetFile);
-  const targetDir = dirname(targetPath);
 
-  if (!existsSync(targetDir)) {
-    mkdirSync(targetDir, { recursive: true });
-  }
+  ensureDirectoryExists(dirname(targetPath));
 
   const contentHash = generateContentHash(output);
   const wrappedOutput = `${CMC_START_MARKER}:${contentHash} -->\n${output}\n${CMC_END_MARKER}`;
 
-  let existingContent = "";
-  if (existsSync(targetPath)) {
-    existingContent = await readFile(targetPath, "utf-8");
-  }
+  const existingContent = await readExistingContent(targetPath);
+  const block = findCmcBlock(existingContent);
 
-  // Check if there's an existing CMC block
-  const startMarkerRegex = new RegExp(
-    `${CMC_START_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:[a-f0-9]+\\s*-->`,
-  );
-  const endMarkerRegex = new RegExp(
-    CMC_END_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-  );
-
-  const startMatch = startMarkerRegex.exec(existingContent);
-  const endMatch = endMarkerRegex.exec(existingContent);
-
-  if (startMatch && endMatch && startMatch.index < endMatch.index) {
-    // Extract the existing hash from the start marker
-    // The hash follows the last colon and is exactly 12 hex characters
-    const existingHashMatch = /:([a-f0-9]{12})\s*-->$/.exec(startMatch[0]);
-    const existingHash = existingHashMatch ? existingHashMatch[1] : null;
-
-    if (existingHash === contentHash) {
-      console.log(
-        colors.green(
-          `✓ Context in ${targetFile} is already up to date (hash: ${contentHash})`,
-        ),
-      );
-      return;
-    }
-
-    // Replace existing CMC block with new content
-    const before = existingContent.slice(0, startMatch.index);
-    const after = existingContent.slice(endMatch.index + CMC_END_MARKER.length);
-    const newContent = `${before.trimEnd()}${before.length > 0 ? "\n\n" : ""}${wrappedOutput}${after.trimStart().length > 0 ? "\n\n" : "\n"}${after.trimStart()}`;
-
-    await writeFile(targetPath, newContent, "utf-8");
-    console.log(
-      colors.green(`✓ Updated context in ${targetFile} (hash: ${contentHash})`),
-    );
+  if (block) {
+    await handleExistingBlock({
+      targetPath,
+      targetFile,
+      existingContent,
+      block,
+      contentHash,
+      wrappedOutput,
+    });
   } else {
-    // No existing CMC block, append new content
-    let prefix = "";
-    if (existingContent.length > 0 && !existingContent.endsWith("\n\n")) {
-      prefix = existingContent.endsWith("\n") ? "\n" : "\n\n";
-    }
-
     await writeFile(
       targetPath,
-      `${existingContent}${prefix}${wrappedOutput}\n`,
+      appendNewBlock(existingContent, wrappedOutput),
       "utf-8",
     );
     console.log(
@@ -278,6 +300,54 @@ async function appendToTargetFile(
       ),
     );
   }
+}
+
+/** Ensure directory exists, create if needed */
+function ensureDirectoryExists(dir: string): void {
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+}
+
+/** Read existing file content or return empty string */
+async function readExistingContent(path: string): Promise<string> {
+  if (existsSync(path)) {
+    return readFile(path, "utf-8");
+  }
+  return "";
+}
+
+interface ExistingBlockContext {
+  targetPath: string;
+  targetFile: string;
+  existingContent: string;
+  block: CmcBlockMatch;
+  contentHash: string;
+  wrappedOutput: string;
+}
+
+/** Handle updating existing CMC block */
+async function handleExistingBlock(ctx: ExistingBlockContext): Promise<void> {
+  if (ctx.block.existingHash === ctx.contentHash) {
+    console.log(
+      colors.green(
+        `✓ Context in ${ctx.targetFile} is already up to date (hash: ${ctx.contentHash})`,
+      ),
+    );
+    return;
+  }
+
+  const newContent = replaceExistingBlock(
+    ctx.existingContent,
+    ctx.block,
+    ctx.wrappedOutput,
+  );
+  await writeFile(ctx.targetPath, newContent, "utf-8");
+  console.log(
+    colors.green(
+      `✓ Updated context in ${ctx.targetFile} (hash: ${ctx.contentHash})`,
+    ),
+  );
 }
 
 function handleError(error: unknown): never {

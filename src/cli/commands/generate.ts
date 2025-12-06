@@ -49,45 +49,70 @@ Examples:
   .action(
     async (linter: string, options: { force?: boolean; stdout?: boolean }) => {
       try {
-        const target = validateLinterTarget(linter);
-        const projectRoot = findProjectRoot();
-        const config = await loadConfig(projectRoot);
-
-        const { filename, generator } = LINTER_CONFIGS[target];
-        const content = generator(config);
-
-        if (options.stdout) {
-          console.log(content);
-          process.exit(ExitCode.SUCCESS);
-        }
-
-        const outputPath = join(projectRoot, filename);
-
-        if (existsSync(outputPath) && !options.force) {
-          console.error(
-            colors.yellow(
-              `Error: ${filename} already exists. Use --force to overwrite.`,
-            ),
-          );
-          process.exit(ExitCode.CONFIG_ERROR);
-        }
-
-        await writeFile(outputPath, content, "utf-8");
-        console.log(colors.green(`✓ Generated ${filename}`));
-        process.exit(ExitCode.SUCCESS);
+        await runGenerate(linter, options);
       } catch (error) {
-        console.error(
-          colors.red(
-            `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-          ),
-        );
-        if (error instanceof ConfigError) {
-          process.exit(ExitCode.CONFIG_ERROR);
-        }
-        process.exit(ExitCode.RUNTIME_ERROR);
+        handleGenerateError(error);
       }
     },
   );
+
+interface GenerateOptions {
+  force?: boolean;
+  stdout?: boolean;
+}
+
+async function runGenerate(
+  linter: string,
+  options: GenerateOptions,
+): Promise<void> {
+  const target = validateLinterTarget(linter);
+  const projectRoot = findProjectRoot();
+  const config = await loadConfig(projectRoot);
+
+  const { filename, generator } = LINTER_CONFIGS[target];
+  const content = generator(config);
+
+  if (options.stdout) {
+    console.log(content);
+    process.exit(ExitCode.SUCCESS);
+  }
+
+  await writeConfigFile(projectRoot, filename, content, options.force ?? false);
+}
+
+async function writeConfigFile(
+  projectRoot: string,
+  filename: string,
+  content: string,
+  force: boolean,
+): Promise<void> {
+  const outputPath = join(projectRoot, filename);
+
+  if (existsSync(outputPath) && !force) {
+    console.error(
+      colors.yellow(
+        `Error: ${filename} already exists. Use --force to overwrite.`,
+      ),
+    );
+    process.exit(ExitCode.CONFIG_ERROR);
+  }
+
+  await writeFile(outputPath, content, "utf-8");
+  console.log(colors.green(`✓ Generated ${filename}`));
+  process.exit(ExitCode.SUCCESS);
+}
+
+function handleGenerateError(error: unknown): never {
+  console.error(
+    colors.red(
+      `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+    ),
+  );
+  if (error instanceof ConfigError) {
+    process.exit(ExitCode.CONFIG_ERROR);
+  }
+  process.exit(ExitCode.RUNTIME_ERROR);
+}
 
 function validateLinterTarget(linter: string): LinterTarget {
   const normalized = linter.toLowerCase();

@@ -37,25 +37,31 @@ function formatOutput(compat: Compatibility, json: boolean): void {
   }
 
   console.log("check-my-code (cmc) - Supported Languages & Tools\n");
+  formatLanguages(compat.languages);
+  formatRuntime(compat.runtime);
+  formatLinters(compat.linters);
+}
 
-  // Languages
+function formatLanguages(languages: Compatibility["languages"]): void {
   console.log("Languages:");
-  for (const [name, lang] of Object.entries(compat.languages)) {
+  for (const [name, lang] of Object.entries(languages)) {
     const extensions = lang.file_extensions.join(", ");
     console.log(`  ${name} ${lang.version}`);
     console.log(`    Linter: ${lang.linter}`);
     console.log(`    Extensions: ${extensions}`);
   }
+}
 
-  // Runtime
+function formatRuntime(runtime: Compatibility["runtime"]): void {
   console.log("\nRuntime:");
-  for (const [name, runtime] of Object.entries(compat.runtime)) {
-    console.log(`  ${name} >= ${runtime.version}`);
+  for (const [name, rt] of Object.entries(runtime)) {
+    console.log(`  ${name} >= ${rt.version}`);
   }
+}
 
-  // Linters
+function formatLinters(linters: Compatibility["linters"]): void {
   console.log("\nLinters:");
-  for (const [name, linter] of Object.entries(compat.linters)) {
+  for (const [name, linter] of Object.entries(linters)) {
     console.log(`  ${name}`);
     console.log(`    ${linter.description}`);
     console.log(`    Install: ${linter.install}`);

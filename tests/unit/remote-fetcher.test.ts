@@ -4,7 +4,45 @@
 
 import { describe, expect, it } from "vitest";
 
-import { parseRemoteRef, RemoteFetchError } from "../../src/remote/fetcher.js";
+import {
+  clearCache,
+  getCacheInfo,
+  parseRemoteRef,
+  RemoteFetchError,
+} from "../../src/remote/fetcher.js";
+
+describe("RemoteFetchError", () => {
+  it("is a proper Error subclass", () => {
+    const error = new RemoteFetchError("test error");
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(RemoteFetchError);
+    expect(error.name).toBe("RemoteFetchError");
+    expect(error.message).toBe("test error");
+  });
+
+  it("has a stack trace", () => {
+    const error = new RemoteFetchError("test error");
+
+    expect(error.stack).toBeDefined();
+    expect(error.stack).toContain("RemoteFetchError");
+  });
+
+  it("can be caught and identified", () => {
+    const throwAndCatch = () => {
+      try {
+        throw new RemoteFetchError("fetch failed");
+      } catch (e: unknown) {
+        if (e instanceof RemoteFetchError) {
+          return "caught RemoteFetchError";
+        }
+        return "caught other error";
+      }
+    };
+
+    expect(throwAndCatch()).toBe("caught RemoteFetchError");
+  });
+});
 
 describe("parseRemoteRef", () => {
   describe("valid references", () => {
@@ -81,6 +119,29 @@ describe("parseRemoteRef", () => {
         version: "abc123def456",
       });
     });
+
+    it("parses semver versions with different formats", () => {
+      const ref1 = parseRemoteRef("github:owner/repo@1.0.0");
+      expect(ref1.version).toBe("1.0.0");
+
+      const ref2 = parseRemoteRef("github:owner/repo@v1.2.3-beta.1");
+      expect(ref2.version).toBe("v1.2.3-beta.1");
+
+      const ref3 = parseRemoteRef("github:owner/repo@v0.0.1-alpha");
+      expect(ref3.version).toBe("v0.0.1-alpha");
+    });
+
+    it("handles single-level path", () => {
+      const ref = parseRemoteRef("github:owner/repo/configs@v1.0.0");
+
+      expect(ref.path).toBe("configs");
+    });
+
+    it("handles deeply nested path", () => {
+      const ref = parseRemoteRef("github:owner/repo/a/b/c/d/e/f@v1.0.0");
+
+      expect(ref.path).toBe("a/b/c/d/e/f");
+    });
   });
 
   describe("invalid references", () => {
@@ -116,6 +177,18 @@ describe("parseRemoteRef", () => {
       expect(() => parseRemoteRef("github:@v1.0.0")).toThrow(RemoteFetchError);
     });
 
+    it("throws on reference without @ separator", () => {
+      expect(() => parseRemoteRef("github:owner/repo/pathv1.0.0")).toThrow(
+        RemoteFetchError,
+      );
+    });
+
+    it("throws on bitbucket host", () => {
+      expect(() => parseRemoteRef("bitbucket:owner/repo@v1.0.0")).toThrow(
+        RemoteFetchError,
+      );
+    });
+
     it("error message includes expected format", () => {
       try {
         parseRemoteRef("invalid");
@@ -127,5 +200,55 @@ describe("parseRemoteRef", () => {
         );
       }
     });
+
+    it("error message includes the invalid reference", () => {
+      try {
+        parseRemoteRef("bad-ref");
+        expect.fail("should have thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(RemoteFetchError);
+        expect((e as Error).message).toContain("bad-ref");
+      }
+    });
+
+    it("error message includes examples", () => {
+      try {
+        parseRemoteRef("invalid");
+        expect.fail("should have thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(RemoteFetchError);
+        expect((e as Error).message).toContain("Examples:");
+      }
+    });
+  });
+});
+
+describe("getCacheInfo", () => {
+  it("returns cache path and existence status", () => {
+    const info = getCacheInfo();
+
+    expect(info).toHaveProperty("path");
+    expect(info).toHaveProperty("exists");
+    expect(typeof info.path).toBe("string");
+    expect(typeof info.exists).toBe("boolean");
+    expect(info.path).toContain(".cmc");
+    expect(info.path).toContain("cache");
+  });
+});
+
+describe("clearCache", () => {
+  it("does not throw when cache does not exist", () => {
+    // This should not throw even if the cache doesn't exist
+    expect(() => clearCache()).not.toThrow();
+  });
+
+  it("clears cache when it exists", () => {
+    // Note: This test is a bit weak because we can't easily create/verify
+    // the cache without actually cloning a repo. But it verifies the
+    // function doesn't throw.
+    clearCache();
+    const info = getCacheInfo();
+    // After clearing, cache should not exist
+    expect(info.exists).toBe(false);
   });
 });
