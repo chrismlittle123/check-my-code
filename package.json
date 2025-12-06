@@ -1,6 +1,6 @@
 {
   "name": "check-my-code",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "description": "A CLI tool that runs ESLint and Ruff linters on your code with a unified interface",
   "main": "dist/cli/index.js",
   "bin": {
@@ -19,6 +19,8 @@
     "start": "node dist/cli/index.js",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:unit": "vitest run tests/unit/",
+    "test:e2e": "vitest run tests/e2e/",
     "lint": "eslint src/ tests/",
     "lint:fix": "eslint src/ tests/ --fix",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
@@ -44,6 +46,7 @@
     "@eslint/js": "^9.15.0",
     "@types/node": "^20.10.0",
     "eslint": "^9.15.0",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
     "globals": "^16.5.0",
     "husky": "^9.1.0",
     "lint-staged": "^15.2.0",

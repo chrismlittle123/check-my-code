@@ -1,6 +1,7 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import globals from 'globals';
+import simpleImportSort from 'eslint-plugin-simple-import-sort';
 
 export default tseslint.config(
   // Base recommended configs
@@ -26,6 +27,9 @@ export default tseslint.config(
   // Source files configuration
   {
     files: ['src/**/*.ts'],
+    plugins: {
+      'simple-import-sort': simpleImportSort,
+    },
     languageOptions: {
       globals: {
         ...globals.node,
@@ -36,6 +40,12 @@ export default tseslint.config(
       },
     },
     rules: {
+      // ============================================
+      // Import sorting
+      // ============================================
+      'simple-import-sort/imports': 'error',
+      'simple-import-sort/exports': 'error',
+
       // ============================================
       // TypeScript-specific rules
       // ============================================
@@ -159,6 +169,9 @@ export default tseslint.config(
   // Test files configuration - more relaxed
   {
     files: ['tests/**/*.ts'],
+    plugins: {
+      'simple-import-sort': simpleImportSort,
+    },
     languageOptions: {
       globals: {
         ...globals.node,
@@ -169,6 +182,9 @@ export default tseslint.config(
       },
     },
     rules: {
+      // Import sorting for tests too
+      'simple-import-sort/imports': 'error',
+      'simple-import-sort/exports': 'error',
       // Relax some rules for tests
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',

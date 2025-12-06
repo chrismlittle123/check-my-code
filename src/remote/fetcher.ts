@@ -9,10 +9,10 @@
  */
 
 import { execSync, spawn } from "child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync } from "fs";
-import { join } from "path";
-import { homedir } from "os";
 import { createHash } from "crypto";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "fs";
+import { homedir } from "os";
+import { join } from "path";
 
 // Cache directory for cloned repositories
 const CACHE_DIR = join(homedir(), ".cmc", "cache");

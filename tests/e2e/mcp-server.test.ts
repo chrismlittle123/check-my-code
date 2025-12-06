@@ -2,7 +2,8 @@
  * E2E tests for `cmc mcp-server` command
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import { runMcp, runMcpListTools } from "./runner.js";
 
 function parseToolContent(response: unknown): unknown {
@@ -177,5 +178,25 @@ name = "missing bracket"`;
 
     expect(content.success).toBe(false);
     expect(content.error?.code).toBe("VALIDATION_ERROR");
+  });
+});
+
+// =============================================================================
+// BUG-002: Path context for config discovery
+// =============================================================================
+describe("cmc mcp-server - path-based config discovery", () => {
+  it("check_project accepts subdirectory path", async () => {
+    // When path is provided, the tool should look for cmc.toml from that path
+    const result = await runMcp("mcp-server/default", "check_project", {
+      path: ".",
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      files_checked: number;
+    };
+
+    expect(content.success).toBe(true);
+    expect(content.files_checked).toBeGreaterThan(0);
   });
 });

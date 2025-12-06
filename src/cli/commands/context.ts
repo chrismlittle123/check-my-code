@@ -1,19 +1,21 @@
 import { Command } from "commander";
+import { createHash } from "crypto";
 import { existsSync, mkdirSync } from "fs";
-import { readFile, appendFile } from "fs/promises";
-import { join, dirname } from "path";
+import { readFile, writeFile } from "fs/promises";
+import { dirname, join } from "path";
+
 import {
-  loadConfig,
-  findProjectRoot,
   ConfigError,
+  findProjectRoot,
+  loadConfig,
 } from "../../config/loader.js";
 import { fetchRemoteFile, RemoteFetchError } from "../../remote/fetcher.js";
 import {
-  ExitCode,
   AI_TARGET_FILES,
-  DEFAULT_AI_CONTEXT_SOURCE,
   type AiTarget,
   type Config,
+  DEFAULT_AI_CONTEXT_SOURCE,
+  ExitCode,
 } from "../../types.js";
 
 const VALID_TARGETS: AiTarget[] = ["claude", "cursor", "copilot"];
@@ -187,6 +189,14 @@ async function loadAllTemplates(
   return contents.join("\n\n");
 }
 
+// Markers for CMC-managed content blocks
+const CMC_START_MARKER = "<!-- cmc:context:start";
+const CMC_END_MARKER = "<!-- cmc:context:end -->";
+
+function generateContentHash(content: string): string {
+  return createHash("sha256").update(content).digest("hex").slice(0, 12);
+}
+
 async function appendToTargetFile(
   projectRoot: string,
   target: AiTarget,
@@ -200,16 +210,59 @@ async function appendToTargetFile(
     mkdirSync(targetDir, { recursive: true });
   }
 
-  let prefix = "";
+  const contentHash = generateContentHash(output);
+  const wrappedOutput = `${CMC_START_MARKER}:${contentHash} -->\n${output}\n${CMC_END_MARKER}`;
+
+  let existingContent = "";
   if (existsSync(targetPath)) {
-    const existingContent = await readFile(targetPath, "utf-8");
+    existingContent = await readFile(targetPath, "utf-8");
+  }
+
+  // Check if there's an existing CMC block
+  const startMarkerRegex = new RegExp(
+    `${CMC_START_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:[a-f0-9]+\\s*-->`,
+  );
+  const endMarkerRegex = new RegExp(
+    CMC_END_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+  );
+
+  const startMatch = startMarkerRegex.exec(existingContent);
+  const endMatch = endMarkerRegex.exec(existingContent);
+
+  if (startMatch && endMatch && startMatch.index < endMatch.index) {
+    // Extract the existing hash from the start marker
+    // The hash follows the last colon and is exactly 12 hex characters
+    const existingHashMatch = /:([a-f0-9]{12})\s*-->$/.exec(startMatch[0]);
+    const existingHash = existingHashMatch ? existingHashMatch[1] : null;
+
+    if (existingHash === contentHash) {
+      console.log(
+        `✓ Context in ${targetFile} is already up to date (hash: ${contentHash})`,
+      );
+      return;
+    }
+
+    // Replace existing CMC block with new content
+    const before = existingContent.slice(0, startMatch.index);
+    const after = existingContent.slice(endMatch.index + CMC_END_MARKER.length);
+    const newContent = `${before.trimEnd()}${before.length > 0 ? "\n\n" : ""}${wrappedOutput}${after.trimStart().length > 0 ? "\n\n" : "\n"}${after.trimStart()}`;
+
+    await writeFile(targetPath, newContent, "utf-8");
+    console.log(`✓ Updated context in ${targetFile} (hash: ${contentHash})`);
+  } else {
+    // No existing CMC block, append new content
+    let prefix = "";
     if (existingContent.length > 0 && !existingContent.endsWith("\n\n")) {
       prefix = existingContent.endsWith("\n") ? "\n" : "\n\n";
     }
-  }
 
-  await appendFile(targetPath, `${prefix}${output}\n`, "utf-8");
-  console.log(`✓ Appended context to ${targetFile}`);
+    await writeFile(
+      targetPath,
+      `${existingContent}${prefix}${wrappedOutput}\n`,
+      "utf-8",
+    );
+    console.log(`✓ Appended context to ${targetFile} (hash: ${contentHash})`);
+  }
 }
 
 function handleError(error: unknown): never {

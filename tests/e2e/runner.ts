@@ -3,8 +3,8 @@
  */
 
 import { exec, spawn } from "child_process";
-import { promisify } from "util";
 import { join } from "path";
+import { promisify } from "util";
 
 const execAsync = promisify(exec);
 

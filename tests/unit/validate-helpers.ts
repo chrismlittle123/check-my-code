@@ -3,10 +3,11 @@
  * Exports a function that can validate a config file without invoking the full CLI
  */
 
-import { readFile } from "fs/promises";
 import { existsSync } from "fs";
+import { readFile } from "fs/promises";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+
 import { stripSymbolKeys } from "../../src/config/loader.js";
 
 interface AjvErrorObject {

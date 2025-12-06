@@ -2,12 +2,13 @@ import { Command } from "commander";
 import { existsSync } from "fs";
 import { writeFile } from "fs/promises";
 import { join } from "path";
+
 import {
-  loadConfig,
-  findProjectRoot,
   ConfigError,
+  findProjectRoot,
+  loadConfig,
 } from "../../config/loader.js";
-import { ExitCode, type Config } from "../../types.js";
+import { type Config, ExitCode } from "../../types.js";
 
 type LinterTarget = "eslint" | "ruff" | "tsc";
 

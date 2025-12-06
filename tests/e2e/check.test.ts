@@ -2,9 +2,10 @@
  * E2E tests for `cmc check` command
  */
 
-import { describe, it, expect } from "vitest";
 import { symlink, unlink } from "fs/promises";
 import { join } from "path";
+import { describe, expect, it } from "vitest";
+
 import { run } from "./runner.js";
 
 const PROJECTS_DIR = join(process.cwd(), "tests", "e2e", "projects");
@@ -347,6 +348,18 @@ describe("cmc check - ignored directories", () => {
     const output: JsonOutput = JSON.parse(result.stdout);
 
     expect(output.summary.files_checked).toBe(1); // only src/main.ts
+  });
+});
+
+// =============================================================================
+// BUG-003: Linter execution errors
+// =============================================================================
+describe("cmc check - linter execution errors", () => {
+  it("exits with code 3 when ESLint config is broken", async () => {
+    const result = await run("check/config-errors/broken-eslint", ["check"]);
+
+    expect(result.exitCode).toBe(3);
+    expect(result.stderr).toContain("ESLint failed");
   });
 });
 

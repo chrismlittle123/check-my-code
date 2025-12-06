@@ -1,0 +1,5 @@
+[project]
+name = "duplicate-test"
+
+[prompts]
+templates = ["internal/typescript/5.5"]

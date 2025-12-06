@@ -1,8 +1,9 @@
+import { existsSync, readFileSync, statSync } from "fs";
 import { readFile } from "fs/promises";
-import { existsSync, readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { z } from "zod";
+
 import type { Config } from "../types.js";
 
 // Custom error class for configuration errors (exit code 2)
@@ -167,8 +168,26 @@ export async function loadConfig(projectRoot: string): Promise<Config> {
   return result.data as Config;
 }
 
-export function findProjectRoot(): string {
-  let dir = process.cwd();
+/**
+ * Find the project root by searching for cmc.toml.
+ * @param startPath - Optional starting path to search from. Defaults to process.cwd().
+ *                    If provided, searches from this path upward. Supports both file and directory paths.
+ */
+export function findProjectRoot(startPath?: string): string {
+  // Determine starting directory
+  let dir: string;
+  if (startPath) {
+    // If startPath is a file, start from its directory
+    if (existsSync(startPath)) {
+      const stats = statSync(startPath);
+      dir = stats.isDirectory() ? startPath : dirname(startPath);
+    } else {
+      // Path doesn't exist, assume it's a directory path
+      dir = startPath;
+    }
+  } else {
+    dir = process.cwd();
+  }
 
   while (dir !== dirname(dir)) {
     if (existsSync(join(dir, "cmc.toml"))) {
@@ -182,7 +201,7 @@ export function findProjectRoot(): string {
     return dir;
   }
 
-  return process.cwd();
+  return startPath ?? process.cwd();
 }
 
 export interface ValidationResult {

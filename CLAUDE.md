@@ -237,6 +237,18 @@ claude mcp add cmc -- npx -y check-my-code mcp-server
 - `suggest_config` - Generate cmc.toml from project description
 - `validate_config` - Validate TOML against cmc.toml schema
 
+## Related Documentation
+
+| Document             | Purpose                                                    |
+| -------------------- | ---------------------------------------------------------- |
+| `docs/PROCESS.md`    | Full development workflow                                  |
+| `docs/ROADMAP.md`    | Feature planning and tracking                              |
+| `docs/STANDARDS.md`  | Coding standards                                           |
+| `CHANGELOG.md`       | Version history                                            |
+| `compatibility.yaml` | Supported languages/tools (source of truth for `cmc info`) |
+
+<!-- cmc:context:start:510bdadf27b5 -->
+
 ## TypeScript 5.5 Coding Standards - INTERNAL
 
 Standards for internal tools, services, and team-facing applications.
@@ -285,12 +297,4 @@ Standards for internal tools, services, and team-facing applications.
 - Use native fetch API (no need for node-fetch).
 - Use ES modules (`"type": "module"` in package.json).
 
-## Related Documentation
-
-| Document             | Purpose                                                    |
-| -------------------- | ---------------------------------------------------------- |
-| `docs/PROCESS.md`    | Full development workflow                                  |
-| `docs/ROADMAP.md`    | Feature planning and tracking                              |
-| `docs/STANDARDS.md`  | Coding standards                                           |
-| `CHANGELOG.md`       | Version history                                            |
-| `compatibility.yaml` | Supported languages/tools (source of truth for `cmc info`) |
+<!-- cmc:context:end -->

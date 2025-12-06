@@ -2,15 +2,16 @@ import { Command } from "commander";
 import { existsSync } from "fs";
 import { readFile } from "fs/promises";
 import { join } from "path";
+
 import {
-  loadConfig,
-  findProjectRoot,
   ConfigError,
+  findProjectRoot,
+  loadConfig,
 } from "../../config/loader.js";
 import {
-  ExitCode,
   type Config,
   type ESLintRuleValue,
+  ExitCode,
   type RuffConfig,
   type TscConfig,
 } from "../../types.js";

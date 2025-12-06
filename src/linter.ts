@@ -1,6 +1,7 @@
 import { spawn } from "child_process";
 import { existsSync } from "fs";
 import { join, relative } from "path";
+
 import type { Violation } from "./types.js";
 
 // Custom error class for linter runtime errors (exit code 3)
@@ -73,9 +74,24 @@ async function runRuff(
     return parseRuffOutput(output, projectRoot);
   } catch (error) {
     if (error instanceof CommandError && error.stdout) {
-      return parseRuffOutput(error.stdout, projectRoot);
+      // Ruff exits with non-zero when it finds violations - parse the output
+      const violations = parseRuffOutput(error.stdout, projectRoot);
+      // If we got violations, that's the expected behavior
+      if (violations.length > 0) {
+        return violations;
+      }
+      // If no violations but exit code was non-zero, check for config errors
+      // Ruff outputs config errors in stderr, not as JSON
+      throw new LinterError(
+        `Ruff failed to run. This may indicate a configuration error.\n` +
+          `Exit code was non-zero but no violations were found.\n` +
+          `Please check your ruff.toml configuration.`,
+      );
     }
-    return [];
+    // Unknown error - likely a spawn error or ruff crashed
+    throw new LinterError(
+      `Ruff failed to execute: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
@@ -113,9 +129,33 @@ async function runESLint(
     return parseESLintOutput(output, projectRoot);
   } catch (error) {
     if (error instanceof CommandError && error.stdout) {
-      return parseESLintOutput(error.stdout, projectRoot);
+      // ESLint exits with non-zero when it finds violations - try to parse the output
+      // If the output is valid JSON with violations, return them
+      const violations = parseESLintOutput(error.stdout, projectRoot);
+      if (violations.length > 0) {
+        return violations;
+      }
+      // Check if the output looks like valid JSON (empty results array)
+      try {
+        const parsed = JSON.parse(error.stdout);
+        if (Array.isArray(parsed)) {
+          // Valid JSON but no violations - this is fine
+          return [];
+        }
+      } catch {
+        // Not valid JSON - ESLint failed to run properly
+      }
+      // ESLint exited with error but didn't produce valid output
+      throw new LinterError(
+        `ESLint failed to run. This may indicate a configuration error.\n` +
+          `Check your eslint.config.js and ensure all required packages are installed.\n` +
+          `Exit code was non-zero but no valid lint output was produced.`,
+      );
     }
-    return [];
+    // Unknown error - likely a spawn error or ESLint crashed
+    throw new LinterError(
+      `ESLint failed to execute: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 

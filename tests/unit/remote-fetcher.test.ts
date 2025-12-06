@@ -2,7 +2,8 @@
  * Unit tests for remote fetcher
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import { parseRemoteRef, RemoteFetchError } from "../../src/remote/fetcher.js";
 
 describe("parseRemoteRef", () => {

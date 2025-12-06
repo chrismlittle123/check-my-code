@@ -5,10 +5,11 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { registerTools } from "./tools.js";
 import { readFileSync } from "fs";
-import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+
+import { registerTools } from "./tools.js";
 
 // Read version from package.json
 const __dirname = dirname(fileURLToPath(import.meta.url));

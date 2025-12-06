@@ -2,9 +2,10 @@
  * E2E tests for `cmc generate` command
  */
 
-import { describe, it, expect, afterEach } from "vitest";
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
+import { afterEach, describe, expect, it } from "vitest";
+
 import { run } from "./runner.js";
 
 const PROJECTS_DIR = join(process.cwd(), "tests", "e2e", "projects");

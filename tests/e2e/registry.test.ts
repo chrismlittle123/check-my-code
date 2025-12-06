@@ -2,7 +2,8 @@
  * E2E tests for `cmc registry` command
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import { run } from "./runner.js";
 
 describe("cmc registry validate", () => {
