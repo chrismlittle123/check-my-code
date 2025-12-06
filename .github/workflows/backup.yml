@@ -15,6 +15,24 @@ jobs:
         with:
           fetch-depth: 0 # Full history for complete backup
 
+      - name: Setup SSH for backup repo
+        env:
+          BACKUP_DEPLOY_KEY: ${{ secrets.BACKUP_DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${BACKUP_DEPLOY_KEY}" > ~/.ssh/backup_key
+          chmod 600 ~/.ssh/backup_key
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+          # Configure SSH to use this key for the backup repo
+          cat >> ~/.ssh/config << EOF
+          Host github-backup
+            HostName github.com
+            User git
+            IdentityFile ~/.ssh/backup_key
+            IdentitiesOnly yes
+          EOF
+
       - name: Create backup archive
         run: |
           BACKUP_DATE=$(date +%Y-%m-%d)
@@ -27,11 +45,9 @@ jobs:
           echo "BACKUP_DATE=${BACKUP_DATE}" >> $GITHUB_ENV
 
       - name: Push to backup repository
-        env:
-          BACKUP_TOKEN: ${{ secrets.BACKUP_TOKEN }}
         run: |
-          # Clone backup repo
-          git clone https://x-access-token:${BACKUP_TOKEN}@github.com/chrismlittle123/check-my-code-backup.git backup-repo
+          # Clone backup repo using deploy key
+          git clone git@github-backup:chrismlittle123/check-my-code-backup.git backup-repo
           cd backup-repo
 
           # Configure git
@@ -50,9 +66,7 @@ jobs:
           git push
 
       - name: Mirror repository
-        env:
-          BACKUP_TOKEN: ${{ secrets.BACKUP_TOKEN }}
         run: |
           # Also do a full mirror push for easy restoration
-          git remote add backup https://x-access-token:${BACKUP_TOKEN}@github.com/chrismlittle123/check-my-code-backup.git
+          git remote add backup git@github-backup:chrismlittle123/check-my-code-backup.git
           git push backup --mirror --force
