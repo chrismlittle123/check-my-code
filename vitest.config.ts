@@ -18,13 +18,16 @@ export default defineConfig({
         // They contain Commander action handlers that call process.exit()
         'src/cli/index.ts',
         'src/cli/commands/**',
-        // MCP server and tools require MCP client integration to test
-        'src/mcp/server.ts',
-        'src/mcp/tools.ts',
-        // linter.ts and fetcher.ts have process-spawning code tested via E2E.
-        // Excluding from unit test coverage - E2E tests provide the coverage.
-        'src/linter.ts',
+        // MCP module is tested via E2E tests (requires MCP client integration)
+        'src/mcp/**',
+        // Linter execution code is tested via E2E tests (process-spawning)
+        'src/linter/command.ts',
+        'src/linter/fix.ts',
+        'src/linter/runners.ts',
+        // Remote fetcher has process-spawning code tested via E2E
         'src/remote/fetcher.ts',
+        // Utility functions used by E2E-tested code
+        'src/utils/**',
       ],
       thresholds: {
         lines: 80,
