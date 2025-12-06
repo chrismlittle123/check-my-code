@@ -83,12 +83,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js LTS
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "lts/*"
           cache: "npm"
           registry-url: "https://registry.npmjs.org"
+
+      - name: Verify npm version supports OIDC
+        run: |
+          echo "npm version: $(npm --version)"
+          echo "Node version: $(node --version)"
 
       - name: Install dependencies
         run: npm ci
@@ -108,12 +113,6 @@ jobs:
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "Version unchanged: $PACKAGE_VERSION"
           fi
-
-      - name: Verify npm authentication
-        if: steps.version.outputs.changed == 'true'
-        run: |
-          echo "Registry: $(npm config get registry)"
-          npm whoami || echo "OIDC auth will be used for publish"
 
       - name: Publish to npm
         if: steps.version.outputs.changed == 'true'
