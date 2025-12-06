@@ -2,6 +2,48 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Development Process
+
+**IMPORTANT:** Follow the process defined in `docs/PROCESS.md`. Key rules:
+
+### Branching
+
+- **NEVER commit directly to main** - main branch is protected
+- Create a branch for every feature, bugfix, or change
+- Branch naming patterns:
+  - `feature/<version>/<description>` - e.g., `feature/v1.5/colored-output`
+  - `fix/<version>/<description>` - e.g., `fix/v1.4/audit-bug`
+  - `refactor/<description>` - e.g., `refactor/loader-cleanup`
+  - `docs/<description>` - e.g., `docs/readme-update`
+  - `hotfix/<description>` - e.g., `hotfix/critical-bug`
+
+### Before Making Changes
+
+```bash
+git checkout main
+git pull origin main
+git checkout -b feature/v1.5/my-feature
+```
+
+### Code Quality
+
+- Run `cmc check src/` periodically to verify code follows standards
+- Keep PRs small (~200-300 lines changed)
+- One feature or fix per PR
+- Update `CHANGELOG.md` for any functionality changes
+
+### Before Pushing
+
+Pre-push hooks run automatically, but you can verify manually:
+
+```bash
+npm run typecheck
+npm run lint
+npm run build
+cmc check src/
+npm run test:run
+```
+
 ## Project Overview
 
 check-my-code (`cmc`) is a CLI tool that runs ESLint, Ruff, and TypeScript type checking on code. It provides a unified way to enforce coding standards and type safety across TypeScript/JavaScript and Python files without per-repository configuration overhead.
