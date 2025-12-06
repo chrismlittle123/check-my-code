@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.5
+
+### Patch Changes
+
+- [#21](https://github.com/chrismlittle123/check-my-code/pull/21) [`5f19a1f`](https://github.com/chrismlittle123/check-my-code/commit/5f19a1f87f2b1d716744a44f5c546aa531e72fc8) Thanks [@chrismlittle123](https://github.com/chrismlittle123)! - Split release workflow into separate jobs for changesets and publish
+
 ## 1.5.4
 
 ### Patch Changes
