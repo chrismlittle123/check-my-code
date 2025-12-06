@@ -17,6 +17,7 @@ import {
   DEFAULT_AI_CONTEXT_SOURCE,
   ExitCode,
 } from "../../types.js";
+import { colors } from "../output.js";
 
 const VALID_TARGETS: AiTarget[] = ["claude", "cursor", "copilot"];
 
@@ -38,14 +39,16 @@ function isValidTarget(target: string): target is AiTarget {
 
 function validateOptions(options: ContextOptions): void {
   if (!options.stdout && !options.target) {
-    console.error("Error: Either --target or --stdout must be specified.");
+    console.error(
+      colors.red("Error: Either --target or --stdout must be specified."),
+    );
     console.error("Usage: cmc context --target <claude|cursor|copilot>");
     console.error("       cmc context --stdout");
     process.exit(ExitCode.CONFIG_ERROR);
   }
 
   if (options.target && !isValidTarget(options.target)) {
-    console.error(`Error: Invalid target "${options.target}".`);
+    console.error(colors.red(`Error: Invalid target "${options.target}".`));
     console.error("Valid targets: claude, cursor, copilot");
     process.exit(ExitCode.CONFIG_ERROR);
   }
@@ -56,7 +59,9 @@ function validateAiContextConfig(config: Config): {
   source: string;
 } {
   if (!config["prompts"]?.templates?.length) {
-    console.error("Error: No prompts templates configured in cmc.toml.");
+    console.error(
+      colors.red("Error: No prompts templates configured in cmc.toml."),
+    );
     console.error("\nAdd to your cmc.toml:");
     console.error("  [prompts]");
     console.error('  templates = ["typescript/5.5"]');
@@ -237,7 +242,9 @@ async function appendToTargetFile(
 
     if (existingHash === contentHash) {
       console.log(
-        `✓ Context in ${targetFile} is already up to date (hash: ${contentHash})`,
+        colors.green(
+          `✓ Context in ${targetFile} is already up to date (hash: ${contentHash})`,
+        ),
       );
       return;
     }
@@ -248,7 +255,9 @@ async function appendToTargetFile(
     const newContent = `${before.trimEnd()}${before.length > 0 ? "\n\n" : ""}${wrappedOutput}${after.trimStart().length > 0 ? "\n\n" : "\n"}${after.trimStart()}`;
 
     await writeFile(targetPath, newContent, "utf-8");
-    console.log(`✓ Updated context in ${targetFile} (hash: ${contentHash})`);
+    console.log(
+      colors.green(`✓ Updated context in ${targetFile} (hash: ${contentHash})`),
+    );
   } else {
     // No existing CMC block, append new content
     let prefix = "";
@@ -261,25 +270,31 @@ async function appendToTargetFile(
       `${existingContent}${prefix}${wrappedOutput}\n`,
       "utf-8",
     );
-    console.log(`✓ Appended context to ${targetFile} (hash: ${contentHash})`);
+    console.log(
+      colors.green(
+        `✓ Appended context to ${targetFile} (hash: ${contentHash})`,
+      ),
+    );
   }
 }
 
 function handleError(error: unknown): never {
   if (error instanceof ConfigError) {
-    console.error(`Error: ${error.message}`);
+    console.error(colors.red(`Error: ${error.message}`));
     process.exit(ExitCode.CONFIG_ERROR);
   }
   if (error instanceof TemplateError) {
-    console.error(`Error: ${error.message}`);
+    console.error(colors.red(`Error: ${error.message}`));
     process.exit(ExitCode.RUNTIME_ERROR);
   }
   if (error instanceof RemoteFetchError) {
-    console.error(`Error: ${error.message}`);
+    console.error(colors.red(`Error: ${error.message}`));
     process.exit(ExitCode.RUNTIME_ERROR);
   }
   console.error(
-    `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+    colors.red(
+      `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+    ),
   );
   process.exit(ExitCode.RUNTIME_ERROR);
 }

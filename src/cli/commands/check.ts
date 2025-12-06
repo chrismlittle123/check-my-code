@@ -10,11 +10,13 @@ import {
 } from "../../config/loader.js";
 import { LinterError, type LinterOptions, runLinters } from "../../linter.js";
 import { type CheckResult, type Config, ExitCode } from "../../types.js";
+import { colors } from "../output.js";
 
 export const checkCommand = new Command("check")
   .description("Run ESLint, Ruff, and TypeScript type checks on project files")
   .argument("[path]", "Path to check (default: current directory)")
   .option("--json", "Output results as JSON", false)
+  .option("-q, --quiet", "Suppress all output (exit code only)", false)
   .addHelpText(
     "after",
     `
@@ -22,28 +24,38 @@ Examples:
   $ cmc check                Check entire project
   $ cmc check src/           Check specific directory
   $ cmc check src/main.ts    Check specific file
-  $ cmc check --json         Output as JSON for CI/tooling`,
+  $ cmc check --json         Output as JSON for CI/tooling
+  $ cmc check --quiet        Silent mode (exit code only)`,
   )
-  .action(async (path: string | undefined, options: { json?: boolean }) => {
-    try {
-      const result = await runCheck(path);
-      outputResults(result, options.json ?? false);
-      process.exit(
-        result.violations.length > 0 ? ExitCode.VIOLATIONS : ExitCode.SUCCESS,
-      );
-    } catch (error) {
-      console.error(
-        `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-      if (error instanceof ConfigError) {
-        process.exit(ExitCode.CONFIG_ERROR);
-      } else if (error instanceof LinterError) {
-        process.exit(ExitCode.RUNTIME_ERROR);
-      } else {
-        process.exit(ExitCode.RUNTIME_ERROR);
+  .action(
+    async (
+      path: string | undefined,
+      options: { json?: boolean; quiet?: boolean },
+    ) => {
+      try {
+        const result = await runCheck(path);
+        outputResults(result, options.json ?? false, options.quiet ?? false);
+        process.exit(
+          result.violations.length > 0 ? ExitCode.VIOLATIONS : ExitCode.SUCCESS,
+        );
+      } catch (error) {
+        if (!options.quiet) {
+          console.error(
+            colors.red(
+              `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+            ),
+          );
+        }
+        if (error instanceof ConfigError) {
+          process.exit(ExitCode.CONFIG_ERROR);
+        } else if (error instanceof LinterError) {
+          process.exit(ExitCode.RUNTIME_ERROR);
+        } else {
+          process.exit(ExitCode.RUNTIME_ERROR);
+        }
       }
-    }
-  });
+    },
+  );
 
 async function runCheck(path?: string): Promise<CheckResult> {
   const projectRoot = findProjectRoot();
@@ -84,7 +96,7 @@ async function discoverFiles(
   const stats = await stat(targetPath).catch(() => null);
 
   if (!stats) {
-    console.error(`Warning: Path not found: ${targetPath}`);
+    console.error(colors.yellow(`Warning: Path not found: ${targetPath}`));
     return [];
   }
 
@@ -112,7 +124,16 @@ async function discoverFiles(
   return foundFiles.map((f) => relative(projectRoot, f)).sort();
 }
 
-function outputResults(result: CheckResult, json: boolean): void {
+function outputResults(
+  result: CheckResult,
+  json: boolean,
+  quiet: boolean,
+): void {
+  // --quiet takes precedence over --json
+  if (quiet) {
+    return;
+  }
+
   if (json) {
     console.log(
       JSON.stringify(
@@ -131,15 +152,23 @@ function outputResults(result: CheckResult, json: boolean): void {
   }
 
   if (result.violations.length === 0) {
-    console.log(`✓ No violations found (${result.filesChecked} files checked)`);
+    console.log(
+      colors.green(
+        `✓ No violations found (${result.filesChecked} files checked)`,
+      ),
+    );
     return;
   }
 
   for (const v of result.violations) {
     const location = v.line ? `:${v.line}` : "";
-    console.log(`${v.file}${location} [${v.linter}/${v.rule}] ${v.message}`);
+    const filePath = colors.cyan(`${v.file}${location}`);
+    const rule = colors.dim(`[${v.linter}/${v.rule}]`);
+    console.log(`${filePath} ${rule} ${v.message}`);
   }
 
   const s = result.violations.length === 1 ? "" : "s";
-  console.log(`\n✗ ${result.violations.length} violation${s} found`);
+  console.log(
+    colors.red(`\n✗ ${result.violations.length} violation${s} found`),
+  );
 }

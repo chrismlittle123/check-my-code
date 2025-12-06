@@ -1,6 +1,6 @@
 {
   "name": "check-my-code",
-  "version": "1.4.5",
+  "version": "1.5.1",
   "description": "A CLI tool that runs ESLint and Ruff linters on your code with a unified interface",
   "main": "dist/cli/index.js",
   "bin": {

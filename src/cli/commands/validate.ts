@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 
 import { findProjectRoot, stripSymbolKeys } from "../../config/loader.js";
 import { ExitCode } from "../../types.js";
+import { colors } from "../output.js";
 
 interface AjvErrorObject {
   instancePath: string;
@@ -60,7 +61,7 @@ Examples:
             JSON.stringify({ valid: false, error: message }, null, 2),
           );
         } else {
-          console.error(`Error: ${message}`);
+          console.error(colors.red(`Error: ${message}`));
         }
         process.exit(ExitCode.RUNTIME_ERROR);
       }
@@ -180,11 +181,11 @@ function outputResults(
   }
 
   if (result.valid) {
-    console.log(`✓ ${result.configPath} is valid`);
+    console.log(colors.green(`✓ ${result.configPath} is valid`));
     return;
   }
 
-  console.log(`✗ ${result.configPath} has validation errors:\n`);
+  console.log(colors.red(`✗ ${result.configPath} has validation errors:\n`));
 
   for (const error of result.errors) {
     if (verbose) {
@@ -200,5 +201,7 @@ function outputResults(
   }
 
   const s = result.errors.length === 1 ? "" : "s";
-  console.log(`\n${result.errors.length} validation error${s} found`);
+  console.log(
+    colors.red(`\n${result.errors.length} validation error${s} found`),
+  );
 }

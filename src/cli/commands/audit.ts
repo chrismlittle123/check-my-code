@@ -15,6 +15,7 @@ import {
   type RuffConfig,
   type TscConfig,
 } from "../../types.js";
+import { colors } from "../output.js";
 
 type LinterTarget = "eslint" | "ruff" | "tsc";
 
@@ -77,9 +78,11 @@ Use in CI to ensure configs haven't drifted from cmc.toml.`,
       // Output results
       for (const result of results) {
         if (result.matches) {
-          console.log(`✓ ${result.filename} matches cmc.toml ruleset`);
+          console.log(
+            colors.green(`✓ ${result.filename} matches cmc.toml ruleset`),
+          );
         } else {
-          console.log(`✗ ${result.filename} has mismatches:`);
+          console.log(colors.red(`✗ ${result.filename} has mismatches:`));
           for (const mismatch of result.mismatches) {
             console.log(formatMismatch(mismatch));
           }
@@ -96,15 +99,17 @@ Use in CI to ensure configs haven't drifted from cmc.toml.`,
       process.exit(hasErrors ? ExitCode.VIOLATIONS : ExitCode.SUCCESS);
     } catch (error) {
       if (error instanceof ConfigError) {
-        console.error(`Error: ${error.message}`);
+        console.error(colors.red(`Error: ${error.message}`));
         process.exit(ExitCode.CONFIG_ERROR);
       }
       if (error instanceof LinterConfigNotFoundError) {
-        console.error(`Error: ${error.message}`);
+        console.error(colors.red(`Error: ${error.message}`));
         process.exit(ExitCode.RUNTIME_ERROR);
       }
       console.error(
-        `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        colors.red(
+          `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        ),
       );
       process.exit(ExitCode.RUNTIME_ERROR);
     }

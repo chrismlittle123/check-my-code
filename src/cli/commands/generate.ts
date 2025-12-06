@@ -9,6 +9,7 @@ import {
   loadConfig,
 } from "../../config/loader.js";
 import { type Config, ExitCode } from "../../types.js";
+import { colors } from "../output.js";
 
 type LinterTarget = "eslint" | "ruff" | "tsc";
 
@@ -64,17 +65,21 @@ Examples:
 
         if (existsSync(outputPath) && !options.force) {
           console.error(
-            `Error: ${filename} already exists. Use --force to overwrite.`,
+            colors.yellow(
+              `Error: ${filename} already exists. Use --force to overwrite.`,
+            ),
           );
           process.exit(ExitCode.CONFIG_ERROR);
         }
 
         await writeFile(outputPath, content, "utf-8");
-        console.log(`✓ Generated ${filename}`);
+        console.log(colors.green(`✓ Generated ${filename}`));
         process.exit(ExitCode.SUCCESS);
       } catch (error) {
         console.error(
-          `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+          colors.red(
+            `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+          ),
         );
         if (error instanceof ConfigError) {
           process.exit(ExitCode.CONFIG_ERROR);
