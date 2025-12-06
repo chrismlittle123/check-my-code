@@ -68,38 +68,31 @@ Examples:
     },
   );
 
-async function runValidation(path?: string): Promise<ValidateResult> {
-  // Determine config path
-  let configPath: string;
-  if (path) {
-    configPath = resolve(path);
-  } else {
-    const projectRoot = findProjectRoot();
-    configPath = join(projectRoot, "cmc.toml");
-  }
+function resolveConfigPath(path?: string): string {
+  if (path) return resolve(path);
+  const projectRoot = findProjectRoot();
+  return join(projectRoot, "cmc.toml");
+}
 
-  // Check if file exists
-  if (!existsSync(configPath)) {
-    throw new Error(`Config file not found: ${configPath}`);
-  }
-
-  // Load schema from package
+async function loadSchema(): Promise<object> {
   const __dirname = dirname(fileURLToPath(import.meta.url));
   const schemaPath = join(__dirname, "../../../schemas/cmc.schema.json");
-  const schemaContent = await readFile(schemaPath, "utf-8");
-  const schema = JSON.parse(schemaContent);
+  const content = await readFile(schemaPath, "utf-8");
+  return JSON.parse(content);
+}
 
-  // Load and parse TOML config
+async function parseConfig(
+  configPath: string,
+): Promise<{ parsed: unknown } | { errors: ValidationError[] }> {
   const configContent = await readFile(configPath, "utf-8");
   const TOML = await import("@iarna/toml");
 
-  let parsed: unknown;
   try {
-    parsed = TOML.parse(configContent);
+    const parsed = stripSymbolKeys(TOML.parse(configContent));
+    return { parsed };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Parse error";
     return {
-      valid: false,
       errors: [
         {
           path: "",
@@ -107,36 +100,46 @@ async function runValidation(path?: string): Promise<ValidateResult> {
           keyword: "syntax",
         },
       ],
-      configPath,
     };
   }
+}
 
-  // Strip Symbol keys added by @iarna/toml
-  parsed = stripSymbolKeys(parsed);
-
-  // Validate against JSON schema using Ajv 2020-12 (for JSON Schema draft 2020-12)
+async function validateWithAjv(
+  parsed: unknown,
+  schema: object,
+): Promise<ValidationError[]> {
   const ajvModule = await import("ajv/dist/2020.js");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const Ajv2020 = ajvModule.default as any;
   const ajv = new Ajv2020({ allErrors: true, verbose: true, strict: false });
   const validate = ajv.compile(schema);
-  const valid = validate(parsed);
 
-  if (valid) {
-    return { valid: true, errors: [], configPath };
-  }
+  if (validate(parsed)) return [];
 
-  // Convert Ajv errors to our format
-  const errors = (
-    ((validate as { errors?: AjvErrorObject[] }).errors ??
-      []) as AjvErrorObject[]
-  ).map((err) => ({
+  const ajvErrors = (validate as { errors?: AjvErrorObject[] }).errors ?? [];
+  return ajvErrors.map((err) => ({
     path: err.instancePath || "/",
     message: formatAjvError(err),
     keyword: err.keyword,
   }));
+}
 
-  return { valid: false, errors, configPath };
+async function runValidation(path?: string): Promise<ValidateResult> {
+  const configPath = resolveConfigPath(path);
+
+  if (!existsSync(configPath)) {
+    throw new Error(`Config file not found: ${configPath}`);
+  }
+
+  const schema = await loadSchema();
+  const parseResult = await parseConfig(configPath);
+
+  if ("errors" in parseResult) {
+    return { valid: false, errors: parseResult.errors, configPath };
+  }
+
+  const errors = await validateWithAjv(parseResult.parsed, schema);
+  return { valid: errors.length === 0, errors, configPath };
 }
 
 function formatAjvError(error: AjvErrorObject): string {
@@ -160,23 +163,41 @@ function formatAjvError(error: AjvErrorObject): string {
   }
 }
 
+function outputJsonResults(result: ValidateResult): void {
+  console.log(
+    JSON.stringify(
+      {
+        valid: result.valid,
+        configPath: result.configPath,
+        errors: result.errors,
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+function outputTextErrors(errors: ValidationError[], verbose: boolean): void {
+  for (const error of errors) {
+    if (verbose) {
+      console.log(`  Path: ${error.path || "(root)"}`);
+      console.log(`  Error: ${error.message}`);
+      console.log(`  Keyword: ${error.keyword}`);
+      console.log();
+    } else {
+      const pathDisplay = error.path ? `${error.path}: ` : "";
+      console.log(`  - ${pathDisplay}${error.message}`);
+    }
+  }
+}
+
 function outputResults(
   result: ValidateResult,
   json: boolean,
   verbose: boolean,
 ): void {
   if (json) {
-    console.log(
-      JSON.stringify(
-        {
-          valid: result.valid,
-          configPath: result.configPath,
-          errors: result.errors,
-        },
-        null,
-        2,
-      ),
-    );
+    outputJsonResults(result);
     return;
   }
 
@@ -186,19 +207,7 @@ function outputResults(
   }
 
   console.log(colors.red(`✗ ${result.configPath} has validation errors:\n`));
-
-  for (const error of result.errors) {
-    if (verbose) {
-      const pathDisplay = error.path || "(root)";
-      console.log(`  Path: ${pathDisplay}`);
-      console.log(`  Error: ${error.message}`);
-      console.log(`  Keyword: ${error.keyword}`);
-      console.log();
-    } else {
-      const pathDisplay = error.path ? `${error.path}: ` : "";
-      console.log(`  - ${pathDisplay}${error.message}`);
-    }
-  }
+  outputTextErrors(result.errors, verbose);
 
   const s = result.errors.length === 1 ? "" : "s";
   console.log(

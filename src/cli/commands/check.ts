@@ -8,7 +8,11 @@ import {
   findProjectRoot,
   loadConfig,
 } from "../../config/loader.js";
-import { LinterError, type LinterOptions, runLinters } from "../../linter.js";
+import {
+  LinterError,
+  type LinterOptions,
+  runLinters,
+} from "../../linter/index.js";
 import { type CheckResult, type Config, ExitCode } from "../../types.js";
 import { colors } from "../output.js";
 

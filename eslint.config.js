@@ -88,6 +88,20 @@ export default tseslint.config(
       '@typescript-eslint/prefer-regexp-exec': 'warn',
 
       // ============================================
+      // File and function size limits
+      // ============================================
+
+      // Max lines per file - enforces small, focused modules
+      'max-lines': [
+        'warn',
+        {
+          max: 400,
+          skipBlankLines: true,
+          skipComments: true,
+        },
+      ],
+
+      // ============================================
       // General JavaScript rules
       // ============================================
 
@@ -112,27 +126,27 @@ export default tseslint.config(
       // No nested ternary
       'no-nested-ternary': 'error',
 
-      // Limit cyclomatic complexity
-      complexity: ['warn', 20],
+      // Limit cyclomatic complexity - lower is better for maintainability
+      complexity: ['warn', 10],
 
-      // Max depth of nested blocks
-      'max-depth': ['warn', 5],
+      // Max depth of nested blocks - deep nesting is hard to read
+      'max-depth': ['warn', 4],
 
-      // Max lines per function - enforced strictly
+      // Max lines per function - keep functions small and focused
       'max-lines-per-function': [
-        'error',
+        'warn',
         {
-          max: 100,
+          max: 50,
           skipBlankLines: true,
           skipComments: true,
         },
       ],
 
-      // Max statements per function
-      'max-statements': ['error', 30],
+      // Max statements per function - encourages extraction of helper functions
+      'max-statements': ['warn', 15],
 
-      // Max parameters per function
-      'max-params': ['error', 5],
+      // Max parameters per function - too many params suggests need for options object
+      'max-params': ['warn', 4],
 
       // No duplicate imports
       'no-duplicate-imports': 'error',

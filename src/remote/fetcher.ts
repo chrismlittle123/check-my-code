@@ -116,6 +116,54 @@ function isGitAvailable(): boolean {
   }
 }
 
+function cleanupPath(path: string): void {
+  if (existsSync(path)) {
+    rmSync(path, { recursive: true, force: true });
+  }
+}
+
+async function tryFetchExisting(
+  cachePath: string,
+  version: string,
+): Promise<boolean> {
+  if (!existsSync(cachePath)) return false;
+
+  try {
+    await gitFetch(cachePath, version);
+    await gitCheckout(cachePath, version);
+    return true;
+  } catch {
+    cleanupPath(cachePath);
+    return false;
+  }
+}
+
+async function tryCloneUrls(
+  urls: string[],
+  cachePath: string,
+  version: string,
+  ref: RemoteRef,
+): Promise<string> {
+  let lastError: Error | null = null;
+
+  for (const url of urls) {
+    try {
+      cleanupPath(cachePath);
+      // eslint-disable-next-line no-await-in-loop
+      await gitClone(url, cachePath, version);
+      return cachePath;
+    } catch (error) {
+      lastError = error as Error;
+      cleanupPath(cachePath);
+    }
+  }
+
+  throw (
+    lastError ??
+    new RemoteFetchError(`Failed to clone ${ref.owner}/${ref.repo}`)
+  );
+}
+
 /**
  * Clone or fetch a repository to cache
  */
@@ -124,54 +172,16 @@ async function cloneOrFetch(ref: RemoteRef): Promise<string> {
     throw new RemoteFetchError("git is not installed or not in PATH");
   }
 
-  const cachePath = getCachePath(ref);
-  const cloneUrls = buildCloneUrls(ref);
-
-  // Ensure cache directory exists
   mkdirSync(CACHE_DIR, { recursive: true });
 
-  if (existsSync(cachePath)) {
-    // Repository already cached, fetch updates
-    try {
-      await gitFetch(cachePath, ref.version);
-      await gitCheckout(cachePath, ref.version);
-      return cachePath;
-    } catch {
-      // Cache corrupted, remove and re-clone
-      rmSync(cachePath, { recursive: true, force: true });
-    }
+  const cachePath = getCachePath(ref);
+
+  if (await tryFetchExisting(cachePath, ref.version)) {
+    return cachePath;
   }
 
-  // Ensure clean state before cloning
-  if (existsSync(cachePath)) {
-    rmSync(cachePath, { recursive: true, force: true });
-  }
-
-  // Try each URL in order (HTTPS first, then SSH)
-  // Sequential attempts are required - can't clone in parallel
-  let lastError: Error | null = null;
-  for (const url of cloneUrls) {
-    try {
-      // Ensure directory doesn't exist before clone attempt
-      if (existsSync(cachePath)) {
-        rmSync(cachePath, { recursive: true, force: true });
-      }
-      // eslint-disable-next-line no-await-in-loop
-      await gitClone(url, cachePath, ref.version);
-      return cachePath;
-    } catch (error) {
-      lastError = error as Error;
-      // Clean up failed clone attempt
-      if (existsSync(cachePath)) {
-        rmSync(cachePath, { recursive: true, force: true });
-      }
-    }
-  }
-
-  throw (
-    lastError ??
-    new RemoteFetchError(`Failed to clone ${ref.owner}/${ref.repo}`)
-  );
+  cleanupPath(cachePath);
+  return tryCloneUrls(buildCloneUrls(ref), cachePath, ref.version, ref);
 }
 
 /**

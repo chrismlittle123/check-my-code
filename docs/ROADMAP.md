@@ -1,6 +1,6 @@
 # check-my-code Roadmap
 
-This document tracks planned features from the [PRD](../docs/check-my-code-prd.md). Check off items as they're completed.
+This document tracks planned features for check-my-code. Check off items as they're completed.
 
 ---
 
@@ -9,15 +9,13 @@ This document tracks planned features from the [PRD](../docs/check-my-code-prd.m
 | Version | Focus Area                                        |
 | ------- | ------------------------------------------------- |
 | v1.5.x  | Colored output, `--quiet` flag                    |
-| v1.6.x  | `cmc sync` command (config merging)               |
-| v1.7.x  | CLI polish (verbose, progress, error messages)    |
-| v2.0.x  | Remote config inheritance                         |
-| v2.1.x  | Environment enforcers                             |
-| v2.2.x  | CI/CD integration                                 |
-| v2.3.x  | Security scanning                                 |
-| v2.4.x  | AI agent security & configuration                 |
-| v2.5.x  | Code quality & conventions                        |
-| v2.6.x  | Documentation requirements                        |
+| v1.6.x  | Remote config inheritance                         |
+| v1.7.x  | Environment enforcers                             |
+| v1.8.x  | CI/CD integration                                 |
+| v1.9.x  | Security scanning                                 |
+| v2.0.x  | AI agent security & configuration                 |
+| v2.1.x  | Code quality & conventions                        |
+| v2.2.x  | Documentation requirements                        |
 | v3.0.x  | Extended linting, custom hooks, advanced features |
 
 ---
@@ -32,35 +30,11 @@ This document tracks planned features from the [PRD](../docs/check-my-code-prd.m
 
 - [x] `--quiet` flag for minimal output (exit code only)
 
-### Deferred to v1.6.x
-
-The following features were originally planned for v1.5.x but moved to later versions:
-
-- Progress indicators for large projects → v1.7.x
-- File count in violation output → v1.7.x
-- `--verbose` flag → v1.7.x
-- Better error messages with actionable suggestions → v1.7.x
-
 ---
 
-## v1.6.x - Config Sync Command
+## v1.6.x - Remote Config Inheritance
 
-### `cmc sync` Command (PRD 6.1.3)
-
-- [ ] `cmc sync eslint` - Merge rules into existing `eslint.config.js`
-- [ ] `cmc sync ruff` - Merge rules into existing `ruff.toml`
-- [ ] `cmc sync tsc` - Merge settings into existing `tsconfig.json`
-- [ ] `cmc sync` (no args) - Sync all linter configs
-- [ ] Conflict detection (existing rule has different value)
-- [ ] Conflict reporting with clear output format
-- [ ] Preserve existing rules not defined in `cmc.toml`
-- [ ] Exit codes: 0 (success), 1 (conflicts), 2 (config error), 3 (file not found)
-
----
-
-## v2.0.x - Remote Config Inheritance
-
-### Remote Ruleset Fetching (PRD 6.2.2)
+### Remote Ruleset Fetching
 
 - [ ] `[extends]` section support in cmc.toml
 - [ ] Parse `github:owner/repo/path@version` format for rulesets
@@ -69,18 +43,17 @@ The following features were originally planned for v1.5.x but moved to later ver
 - [ ] Version pinning (`@v1.0.0`, `@latest`, `@main`)
 - [ ] SSH authentication for private repos (already partial)
 
-### Additive-Only Inheritance (PRD 6.2.3)
+### Additive-Only Inheritance
 
 - [ ] Block local rules from weakening base rules (`error` -> `warn`)
 - [ ] Block local rules from disabling base rules (`error` -> `off`)
 - [ ] Clear error messages when inheritance violations detected
 - [ ] Enforcement in `cmc generate`
-- [ ] Enforcement in `cmc sync`
 - [ ] Enforcement in `cmc audit`
 
 ---
 
-## v2.1.x - Environment Enforcers (PRD 7.2)
+## v1.7.x - Environment Enforcers
 
 ### `[enforcers]` Configuration
 
@@ -104,7 +77,7 @@ The following features were originally planned for v1.5.x but moved to later ver
 
 ---
 
-## v2.2.x - CI/CD Integration (PRD 7.7)
+## v1.8.x - CI/CD Integration
 
 ### `[ci.coverage]` Configuration
 
@@ -152,7 +125,7 @@ The following features were originally planned for v1.5.x but moved to later ver
 
 ---
 
-## v2.3.x - Security Scanning (PRD 7.10)
+## v1.9.x - Security Scanning
 
 ### `[security]` Configuration
 
@@ -187,7 +160,7 @@ The following features were originally planned for v1.5.x but moved to later ver
 
 ---
 
-## v2.4.x - AI Agent Security & Configuration (PRD 7.11)
+## v2.0.x - AI Agent Security & Configuration
 
 ### `[ai.security]` Configuration
 
@@ -228,7 +201,7 @@ The following features were originally planned for v1.5.x but moved to later ver
 
 ---
 
-## v2.5.x - Code Quality & Conventions (PRD 7.12)
+## v2.1.x - Code Quality & Conventions
 
 ### `[code.limits]` Configuration
 
@@ -332,7 +305,7 @@ The following features were originally planned for v1.5.x but moved to later ver
 
 ---
 
-## v2.6.x - Documentation Requirements (PRD 7.9)
+## v2.2.x - Documentation Requirements
 
 ### `[docs]` Configuration
 
@@ -356,27 +329,27 @@ The following features were originally planned for v1.5.x but moved to later ver
 
 ## v3.0.x - Advanced Features
 
-### Additional Commands (PRD 7.5)
+### Additional Commands
 
 - [ ] `cmc diff` - Show changes since last check
 - [ ] `cmc dry-run` - Preview what would be checked
 - [ ] `cmc report` - Generate detailed reports
 - [ ] `cmc report --html` - HTML report output
 
-### Custom Hooks (PRD 7.4)
+### Custom Hooks
 
 - [ ] `[hooks]` configuration section
 - [ ] `pre_check` script path
 - [ ] `post_check` script path
 - [ ] Script execution with environment variables
 
-### Enhanced Features (PRD 7.6)
+### Enhanced Features
 
 - [ ] Smart checking with file hash caching
 - [ ] Nested config inheritance (base extends another base)
 - [ ] Multiple inheritance sources per linter
 
-### Extended Linting Categories (PRD 7.3)
+### Extended Linting Categories
 
 - [ ] Formatting standards (Prettier, Black)
 - [ ] Import ordering enforcement
@@ -386,7 +359,7 @@ The following features were originally planned for v1.5.x but moved to later ver
 - [ ] Cyclomatic complexity limits (native, not via external tool)
 - [ ] Function/file length limits (native enforcement)
 
-### MCP Server Configuration (PRD 7.8)
+### MCP Server Configuration
 
 - [ ] `[mcp]` configuration section
 - [ ] `servers` recommended array
@@ -465,4 +438,3 @@ _Add new feature ideas here for future consideration:_
 - Check off items as they're implemented
 - Move items between versions as priorities change
 - Add new ideas to the Ideas Backlog section
-- Reference PRD section numbers for detailed specifications

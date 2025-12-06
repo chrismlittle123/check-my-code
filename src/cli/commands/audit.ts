@@ -15,6 +15,7 @@ import {
   type RuffConfig,
   type TscConfig,
 } from "../../types.js";
+import { deepEqual } from "../../utils/deep-equal.js";
 import { colors } from "../output.js";
 
 type LinterTarget = "eslint" | "ruff" | "tsc";
@@ -39,6 +40,27 @@ const LINTER_CONFIGS: Record<LinterTarget, string> = {
   tsc: "tsconfig.json",
 };
 
+// TypeScript compiler options to check
+const TSC_OPTIONS: (keyof TscConfig)[] = [
+  "strict",
+  "noImplicitAny",
+  "strictNullChecks",
+  "strictFunctionTypes",
+  "strictBindCallApply",
+  "strictPropertyInitialization",
+  "noImplicitThis",
+  "alwaysStrict",
+  "noUncheckedIndexedAccess",
+  "noImplicitReturns",
+  "noFallthroughCasesInSwitch",
+  "noUnusedLocals",
+  "noUnusedParameters",
+  "exactOptionalPropertyTypes",
+  "noImplicitOverride",
+  "allowUnusedLabels",
+  "allowUnreachableCode",
+];
+
 export const auditCommand = new Command("audit")
   .description(
     "Check that linter config files match the ruleset defined in cmc.toml",
@@ -60,60 +82,69 @@ Use in CI to ensure configs haven't drifted from cmc.toml.`,
   )
   .action(async (linter?: string) => {
     try {
-      const projectRoot = findProjectRoot();
-      const config = await loadConfig(projectRoot);
-
-      const targets = linter
-        ? [validateLinterTarget(linter)]
-        : (["eslint", "ruff", "tsc"] as LinterTarget[]);
-
-      const allResults = await Promise.all(
-        targets.map((target) =>
-          verifyLinterConfig(projectRoot, config, target),
-        ),
-      );
-      const results = allResults.filter((r): r is VerifyResult => r !== null);
-      const hasErrors = results.some((r) => !r.matches);
-
-      // Output results
-      for (const result of results) {
-        if (result.matches) {
-          console.log(
-            colors.green(`✓ ${result.filename} matches cmc.toml ruleset`),
-          );
-        } else {
-          console.log(colors.red(`✗ ${result.filename} has mismatches:`));
-          for (const mismatch of result.mismatches) {
-            console.log(formatMismatch(mismatch));
-          }
-        }
-      }
-
-      if (results.length === 0) {
-        console.log(
-          "No linter configs to audit (no rulesets defined in cmc.toml)",
-        );
-        process.exit(ExitCode.SUCCESS);
-      }
-
-      process.exit(hasErrors ? ExitCode.VIOLATIONS : ExitCode.SUCCESS);
+      await runAudit(linter);
     } catch (error) {
-      if (error instanceof ConfigError) {
-        console.error(colors.red(`Error: ${error.message}`));
-        process.exit(ExitCode.CONFIG_ERROR);
-      }
-      if (error instanceof LinterConfigNotFoundError) {
-        console.error(colors.red(`Error: ${error.message}`));
-        process.exit(ExitCode.RUNTIME_ERROR);
-      }
-      console.error(
-        colors.red(
-          `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-        ),
-      );
-      process.exit(ExitCode.RUNTIME_ERROR);
+      handleAuditError(error);
     }
   });
+
+/** Main audit logic */
+async function runAudit(linter?: string): Promise<void> {
+  const projectRoot = findProjectRoot();
+  const config = await loadConfig(projectRoot);
+
+  const targets = linter
+    ? [validateLinterTarget(linter)]
+    : (["eslint", "ruff", "tsc"] as LinterTarget[]);
+
+  const allResults = await Promise.all(
+    targets.map((target) => verifyLinterConfig(projectRoot, config, target)),
+  );
+  const results = allResults.filter((r): r is VerifyResult => r !== null);
+
+  if (results.length === 0) {
+    console.log("No linter configs to audit (no rulesets defined in cmc.toml)");
+    process.exit(ExitCode.SUCCESS);
+  }
+
+  outputResults(results);
+  const hasErrors = results.some((r) => !r.matches);
+  process.exit(hasErrors ? ExitCode.VIOLATIONS : ExitCode.SUCCESS);
+}
+
+/** Output audit results */
+function outputResults(results: VerifyResult[]): void {
+  for (const result of results) {
+    if (result.matches) {
+      console.log(
+        colors.green(`✓ ${result.filename} matches cmc.toml ruleset`),
+      );
+    } else {
+      console.log(colors.red(`✗ ${result.filename} has mismatches:`));
+      for (const mismatch of result.mismatches) {
+        console.log(formatMismatch(mismatch));
+      }
+    }
+  }
+}
+
+/** Handle audit errors */
+function handleAuditError(error: unknown): void {
+  if (error instanceof ConfigError) {
+    console.error(colors.red(`Error: ${error.message}`));
+    process.exit(ExitCode.CONFIG_ERROR);
+  }
+  if (error instanceof LinterConfigNotFoundError) {
+    console.error(colors.red(`Error: ${error.message}`));
+    process.exit(ExitCode.RUNTIME_ERROR);
+  }
+  console.error(
+    colors.red(
+      `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+    ),
+  );
+  process.exit(ExitCode.RUNTIME_ERROR);
+}
 
 class LinterConfigNotFoundError extends Error {
   constructor(filename: string) {
@@ -124,16 +155,12 @@ class LinterConfigNotFoundError extends Error {
 
 function validateLinterTarget(linter: string): LinterTarget {
   const normalized = linter.toLowerCase();
-  if (
-    normalized !== "eslint" &&
-    normalized !== "ruff" &&
-    normalized !== "tsc"
-  ) {
+  if (!["eslint", "ruff", "tsc"].includes(normalized)) {
     throw new ConfigError(
       `Unknown linter: ${linter}. Supported linters: eslint, ruff, tsc`,
     );
   }
-  return normalized;
+  return normalized as LinterTarget;
 }
 
 function formatMismatch(mismatch: Mismatch): string {
@@ -147,6 +174,13 @@ function formatMismatch(mismatch: Mismatch): string {
   }
 }
 
+/** Check if ruleset is defined for target */
+function isRulesetDefined(config: Config, target: LinterTarget): boolean {
+  if (target === "eslint") return !!config.rulesets?.eslint?.rules;
+  if (target === "ruff") return !!config.rulesets?.ruff;
+  return !!config.rulesets?.tsc;
+}
+
 async function verifyLinterConfig(
   projectRoot: string,
   config: Config,
@@ -155,29 +189,21 @@ async function verifyLinterConfig(
   const filename = LINTER_CONFIGS[target];
   const configPath = join(projectRoot, filename);
 
-  // Check if ruleset is defined in cmc.toml
-  if (target === "eslint" && !config.rulesets?.eslint?.rules) {
-    return null; // No ESLint rules defined, skip verification
-  }
-  if (target === "ruff" && !config.rulesets?.ruff) {
-    return null; // No Ruff config defined, skip verification
-  }
-  if (target === "tsc" && !config.rulesets?.tsc) {
-    return null; // No tsc config defined, skip verification
+  if (!isRulesetDefined(config, target)) {
+    return null;
   }
 
-  // Check if linter config file exists
   if (!existsSync(configPath)) {
     throw new LinterConfigNotFoundError(filename);
   }
 
-  if (target === "eslint") {
-    return verifyESLintConfig(projectRoot, config, filename);
-  } else if (target === "ruff") {
-    return verifyRuffConfig(projectRoot, config, filename);
-  } else {
-    return verifyTscConfig(projectRoot, config, filename);
-  }
+  const verifiers = {
+    eslint: verifyESLintConfig,
+    ruff: verifyRuffConfig,
+    tsc: verifyTscConfig,
+  };
+
+  return verifiers[target](projectRoot, config, filename);
 }
 
 async function verifyESLintConfig(
@@ -191,28 +217,7 @@ async function verifyESLintConfig(
   const expectedRules = config.rulesets?.eslint?.rules ?? {};
   const actualRules = extractESLintRules(content);
 
-  const mismatches: Mismatch[] = [];
-
-  // Check for missing and different rules
-  for (const [rule, expectedValue] of Object.entries(expectedRules)) {
-    if (!(rule in actualRules)) {
-      mismatches.push({ type: "missing", rule, expected: expectedValue });
-    } else if (!deepEqual(expectedValue, actualRules[rule])) {
-      mismatches.push({
-        type: "different",
-        rule,
-        expected: expectedValue,
-        actual: actualRules[rule],
-      });
-    }
-  }
-
-  // Check for extra rules (rules in config but not in cmc.toml)
-  for (const [rule, actualValue] of Object.entries(actualRules)) {
-    if (!(rule in expectedRules)) {
-      mismatches.push({ type: "extra", rule, actual: actualValue });
-    }
-  }
+  const mismatches = compareESLintRules(expectedRules, actualRules);
 
   return {
     linter: "eslint",
@@ -220,6 +225,35 @@ async function verifyESLintConfig(
     matches: mismatches.length === 0,
     mismatches,
   };
+}
+
+/** Compare expected vs actual ESLint rules */
+function compareESLintRules(
+  expected: Record<string, ESLintRuleValue>,
+  actual: Record<string, ESLintRuleValue>,
+): Mismatch[] {
+  const mismatches: Mismatch[] = [];
+
+  for (const [rule, expectedValue] of Object.entries(expected)) {
+    if (!(rule in actual)) {
+      mismatches.push({ type: "missing", rule, expected: expectedValue });
+    } else if (!deepEqual(expectedValue, actual[rule])) {
+      mismatches.push({
+        type: "different",
+        rule,
+        expected: expectedValue,
+        actual: actual[rule],
+      });
+    }
+  }
+
+  for (const [rule, actualValue] of Object.entries(actual)) {
+    if (!(rule in expected)) {
+      mismatches.push({ type: "extra", rule, actual: actualValue });
+    }
+  }
+
+  return mismatches;
 }
 
 async function verifyRuffConfig(
@@ -235,33 +269,12 @@ async function verifyRuffConfig(
   try {
     actualConfig = TOML.parse(content) as RuffConfig;
   } catch (error) {
-    throw new Error(
-      `Failed to parse ${filename}: ${error instanceof Error ? error.message : "Parse error"}`,
-    );
+    const msg = error instanceof Error ? error.message : "Parse error";
+    throw new Error(`Failed to parse ${filename}: ${msg}`);
   }
 
   const expectedConfig = config.rulesets?.ruff ?? {};
-  const mismatches: Mismatch[] = [];
-
-  // Check each Ruff config option
-  compareRuffOption(
-    mismatches,
-    "line-length",
-    expectedConfig["line-length"],
-    actualConfig["line-length"],
-  );
-  compareRuffOption(
-    mismatches,
-    "select",
-    expectedConfig.lint?.select,
-    actualConfig.lint?.select,
-  );
-  compareRuffOption(
-    mismatches,
-    "ignore",
-    expectedConfig.lint?.ignore,
-    actualConfig.lint?.ignore,
-  );
+  const mismatches = compareRuffConfig(expectedConfig, actualConfig);
 
   return {
     linter: "ruff",
@@ -269,6 +282,35 @@ async function verifyRuffConfig(
     matches: mismatches.length === 0,
     mismatches,
   };
+}
+
+/** Compare Ruff configurations */
+function compareRuffConfig(
+  expected: RuffConfig,
+  actual: RuffConfig,
+): Mismatch[] {
+  const mismatches: Mismatch[] = [];
+
+  compareOption(
+    mismatches,
+    "line-length",
+    expected["line-length"],
+    actual["line-length"],
+  );
+  compareOption(
+    mismatches,
+    "select",
+    expected.lint?.select,
+    actual.lint?.select,
+  );
+  compareOption(
+    mismatches,
+    "ignore",
+    expected.lint?.ignore,
+    actual.lint?.ignore,
+  );
+
+  return mismatches;
 }
 
 async function verifyTscConfig(
@@ -279,55 +321,11 @@ async function verifyTscConfig(
   const configPath = join(projectRoot, filename);
   const content = await readFile(configPath, "utf-8");
 
-  let actualConfig: { compilerOptions?: Record<string, unknown> };
-  try {
-    actualConfig = JSON.parse(content);
-  } catch (error) {
-    throw new Error(
-      `Failed to parse ${filename}: ${error instanceof Error ? error.message : "Parse error"}`,
-    );
-  }
-
+  const actualConfig = parseTscConfig(content, filename);
   const expectedConfig = config.rulesets?.tsc ?? {};
   const actualCompilerOptions = actualConfig.compilerOptions ?? {};
-  const mismatches: Mismatch[] = [];
 
-  // Get the list of tsc options to check (excluding 'enabled' which is cmc-specific)
-  const tscOptions: (keyof TscConfig)[] = [
-    "strict",
-    "noImplicitAny",
-    "strictNullChecks",
-    "strictFunctionTypes",
-    "strictBindCallApply",
-    "strictPropertyInitialization",
-    "noImplicitThis",
-    "alwaysStrict",
-    "noUncheckedIndexedAccess",
-    "noImplicitReturns",
-    "noFallthroughCasesInSwitch",
-    "noUnusedLocals",
-    "noUnusedParameters",
-    "exactOptionalPropertyTypes",
-    "noImplicitOverride",
-    "allowUnusedLabels",
-    "allowUnreachableCode",
-  ];
-
-  // Check each tsc option
-  for (const option of tscOptions) {
-    const expected = expectedConfig[option];
-    const actual = actualCompilerOptions[option];
-
-    if (expected !== undefined) {
-      if (actual === undefined) {
-        mismatches.push({ type: "missing", rule: option, expected });
-      } else if (!deepEqual(expected, actual)) {
-        mismatches.push({ type: "different", rule: option, expected, actual });
-      }
-    }
-    // Note: We don't report extra options in tsconfig.json as projects often have
-    // many other compiler options not managed by cmc (target, module, outDir, etc.)
-  }
+  const mismatches = compareTscOptions(expectedConfig, actualCompilerOptions);
 
   return {
     linter: "tsc",
@@ -337,10 +335,49 @@ async function verifyTscConfig(
   };
 }
 
-/**
- * Compare a single Ruff config option and add mismatches if found
- */
-function compareRuffOption(
+/** Parse tsconfig.json content */
+function parseTscConfig(
+  content: string,
+  filename: string,
+): { compilerOptions?: Record<string, unknown> } {
+  try {
+    return JSON.parse(content);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Parse error";
+    throw new Error(`Failed to parse ${filename}: ${msg}`);
+  }
+}
+
+/** Compare TSC compiler options */
+function compareTscOptions(
+  expected: TscConfig,
+  actual: Record<string, unknown>,
+): Mismatch[] {
+  const mismatches: Mismatch[] = [];
+
+  for (const option of TSC_OPTIONS) {
+    const expectedVal = expected[option];
+    const actualVal = actual[option];
+
+    if (expectedVal === undefined) continue;
+
+    if (actualVal === undefined) {
+      mismatches.push({ type: "missing", rule: option, expected: expectedVal });
+    } else if (!deepEqual(expectedVal, actualVal)) {
+      mismatches.push({
+        type: "different",
+        rule: option,
+        expected: expectedVal,
+        actual: actualVal,
+      });
+    }
+  }
+
+  return mismatches;
+}
+
+/** Compare a single config option and add mismatches if found */
+function compareOption(
   mismatches: Mismatch[],
   rule: string,
   expected: unknown,
@@ -357,57 +394,39 @@ function compareRuffOption(
   }
 }
 
-/**
- * Extract rules from ESLint config file content.
- * This is a simple regex-based parser that extracts the rules object.
- */
+/** Extract rules from ESLint config file content. */
 function extractESLintRules(content: string): Record<string, ESLintRuleValue> {
-  // Look for rules: { ... } pattern
-  // This handles both single-line and multi-line rules objects
   const rulesMatch = /rules\s*:\s*(\{[\s\S]*?\})\s*[,}]/.exec(content);
 
-  if (!rulesMatch) {
+  if (!rulesMatch?.[1]) {
     return {};
   }
 
-  const rulesBlock = rulesMatch[1];
-  if (!rulesBlock) {
-    return {};
-  }
-
-  // Parse the rules object using a simple approach
-  // Convert JavaScript object literal to JSON-compatible format
   try {
-    // Replace single quotes with double quotes for JSON parsing
-    // Handle trailing commas by removing them
-    let jsonStr = rulesBlock
-      .replace(/'/g, '"') // Single quotes to double quotes
-      .replace(/,(\s*[}\]])/g, "$1") // Remove trailing commas
-      .replace(/(\w+):/g, '"$1":') // Unquoted keys to quoted keys
-      .replace(/"@/g, '"@') // Keep @ in rule names
-      .replace(/""/g, '"'); // Fix double quote issues
-
-    // Handle already quoted keys (e.g., "@typescript-eslint/no-explicit-any")
-    // This regex replaces ""key"" with "key"
-    jsonStr = jsonStr.replace(/"+"([^"]+)"+:/g, '"$1":');
-
-    return JSON.parse(jsonStr);
+    return parseRulesAsJson(rulesMatch[1]);
   } catch {
-    // If JSON parsing fails, try a more lenient approach
-    return parseRulesManually(rulesBlock);
+    return parseRulesManually(rulesMatch[1]);
   }
 }
 
-/**
- * Manual parser for ESLint rules when JSON parsing fails.
- * Handles common patterns like 'rule-name': 'error' and "rule-name": ["error", "always"]
- */
+/** Parse rules block as JSON */
+function parseRulesAsJson(rulesBlock: string): Record<string, ESLintRuleValue> {
+  let jsonStr = rulesBlock
+    .replace(/'/g, '"')
+    .replace(/,(\s*[}\]])/g, "$1")
+    .replace(/(\w+):/g, '"$1":')
+    .replace(/"@/g, '"@')
+    .replace(/""/g, '"');
+
+  jsonStr = jsonStr.replace(/"+"([^"]+)"+:/g, '"$1":');
+  return JSON.parse(jsonStr);
+}
+
+/** Manual parser for ESLint rules when JSON parsing fails. */
 function parseRulesManually(
   rulesBlock: string,
 ): Record<string, ESLintRuleValue> {
   const rules: Record<string, ESLintRuleValue> = {};
-
-  // Match patterns like: 'rule-name': 'error' or "rule-name": ["error", "always"]
   const rulePattern = /['"]([^'"]+)['"]\s*:\s*(['"][^'"]+['"]|\[[^\]]+\])/g;
   let match;
 
@@ -417,39 +436,12 @@ function parseRulesManually(
     if (!ruleName || !ruleValue) continue;
 
     try {
-      // Convert single quotes to double quotes for JSON parsing
       const normalizedValue = ruleValue.replace(/'/g, '"');
       rules[ruleName] = JSON.parse(normalizedValue);
     } catch {
-      // If parsing fails, store as-is (removing quotes)
       rules[ruleName] = ruleValue.replace(/['"]/g, "") as ESLintRuleValue;
     }
   }
 
   return rules;
-}
-
-/**
- * Deep equality check for comparing rule values
- */
-function deepEqual(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
-  if (typeof a !== typeof b) return false;
-  if (a === null || b === null) return a === b;
-
-  if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) return false;
-    return a.every((val, i) => deepEqual(val, b[i]));
-  }
-
-  if (typeof a === "object" && typeof b === "object") {
-    const aObj = a as Record<string, unknown>;
-    const bObj = b as Record<string, unknown>;
-    const aKeys = Object.keys(aObj);
-    const bKeys = Object.keys(bObj);
-    if (aKeys.length !== bKeys.length) return false;
-    return aKeys.every((key) => deepEqual(aObj[key], bObj[key]));
-  }
-
-  return false;
 }

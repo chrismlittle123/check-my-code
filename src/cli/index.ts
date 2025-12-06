@@ -11,7 +11,7 @@ import { contextCommand } from "./commands/context.js";
 import { generateCommand } from "./commands/generate.js";
 import { infoCommand } from "./commands/info.js";
 import { mcpServerCommand } from "./commands/mcp-server.js";
-import { registryCommand } from "./commands/registry.js";
+import { registryCommand } from "./commands/registry/index.js";
 import { validateCommand } from "./commands/validate.js";
 
 // Read version from package.json

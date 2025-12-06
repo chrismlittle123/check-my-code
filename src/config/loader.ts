@@ -129,6 +129,27 @@ export const configSchema = z.object({
     .optional(),
 });
 
+async function parseTomlFile(configPath: string): Promise<unknown> {
+  const content = await readFile(configPath, "utf-8");
+  const TOML = await import("@iarna/toml");
+
+  try {
+    return stripSymbolKeys(TOML.parse(content));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Parse error";
+    throw new ConfigError(`Invalid TOML: ${message}`);
+  }
+}
+
+function formatZodErrors(issues: z.ZodIssue[]): string {
+  return issues
+    .map((issue) => {
+      const pathStr = issue.path.map((p) => String(p)).join(".");
+      return `  - ${pathStr}: ${issue.message}`;
+    })
+    .join("\n");
+}
+
 export async function loadConfig(projectRoot: string): Promise<Config> {
   const configPath = join(projectRoot, "cmc.toml");
 
@@ -138,31 +159,13 @@ export async function loadConfig(projectRoot: string): Promise<Config> {
     );
   }
 
-  const content = await readFile(configPath, "utf-8");
-  const TOML = await import("@iarna/toml");
-
-  let parsed: unknown;
-  try {
-    parsed = TOML.parse(content);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Parse error";
-    throw new ConfigError(`Invalid TOML: ${message}`);
-  }
-
-  // Strip Symbol keys added by @iarna/toml (metadata like Symbol(type), Symbol(declared))
-  parsed = stripSymbolKeys(parsed);
-
-  // Validate against schema
+  const parsed = await parseTomlFile(configPath);
   const result = configSchema.safeParse(parsed);
+
   if (!result.success) {
-    const errors = result.error.issues
-      .map((issue) => {
-        // Convert path elements to strings (handles Symbol keys from @iarna/toml)
-        const pathStr = issue.path.map((p) => String(p)).join(".");
-        return `  - ${pathStr}: ${issue.message}`;
-      })
-      .join("\n");
-    throw new ConfigError(`Invalid cmc.toml:\n${errors}`);
+    throw new ConfigError(
+      `Invalid cmc.toml:\n${formatZodErrors(result.error.issues)}`,
+    );
   }
 
   return result.data as Config;
@@ -238,6 +241,43 @@ function formatAjvError(error: AjvErrorObject): string {
   }
 }
 
+async function parseTomlContent(
+  content: string,
+): Promise<{ parsed: unknown } | { errors: string[] }> {
+  const TOML = await import("@iarna/toml");
+  try {
+    return { parsed: stripSymbolKeys(TOML.parse(content)) };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Parse error";
+    return { errors: [`Invalid TOML syntax: ${message}`] };
+  }
+}
+
+function loadJsonSchema(): object {
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const schemaPath = join(__dirname, "../../schemas/cmc.schema.json");
+  const schemaContent = readFileSync(schemaPath, "utf-8");
+  return JSON.parse(schemaContent);
+}
+
+async function validateWithAjv(
+  parsed: unknown,
+  schema: object,
+): Promise<string[]> {
+  const ajvModule = await import("ajv/dist/2020.js");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const Ajv2020 = ajvModule.default as any;
+  const ajv = new Ajv2020({ allErrors: true, verbose: true, strict: false });
+  const validate = ajv.compile(schema);
+
+  if (validate(parsed)) return [];
+
+  const ajvErrors = (validate as { errors?: AjvErrorObject[] }).errors ?? [];
+  return ajvErrors.map(
+    (err) => `${err.instancePath || "/"}: ${formatAjvError(err)}`,
+  );
+}
+
 /**
  * Validate TOML content against the cmc.toml JSON schema.
  * Uses the same JSON Schema validation as the CLI validate command.
@@ -246,54 +286,18 @@ function formatAjvError(error: AjvErrorObject): string {
 export async function validateConfigContent(
   tomlContent: string,
 ): Promise<ValidationResult> {
-  const TOML = await import("@iarna/toml");
+  const parseResult = await parseTomlContent(tomlContent);
 
-  let parsed: unknown;
-  try {
-    parsed = TOML.parse(tomlContent);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Parse error";
-    return {
-      valid: false,
-      errors: [`Invalid TOML syntax: ${message}`],
-    };
+  if ("errors" in parseResult) {
+    return { valid: false, errors: parseResult.errors };
   }
 
-  // Strip Symbol keys added by @iarna/toml
-  parsed = stripSymbolKeys(parsed);
+  const schema = loadJsonSchema();
+  const errors = await validateWithAjv(parseResult.parsed, schema);
 
-  // Load JSON schema from package
-  const __dirname = dirname(fileURLToPath(import.meta.url));
-  const schemaPath = join(__dirname, "../../schemas/cmc.schema.json");
-  const schemaContent = readFileSync(schemaPath, "utf-8");
-  const schema = JSON.parse(schemaContent);
-
-  // Validate against JSON schema using Ajv 2020-12 (for JSON Schema draft 2020-12)
-  const ajvModule = await import("ajv/dist/2020.js");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const Ajv2020 = ajvModule.default as any;
-  const ajv = new Ajv2020({ allErrors: true, verbose: true, strict: false });
-  const validate = ajv.compile(schema);
-  const valid = validate(parsed);
-
-  if (valid) {
-    return {
-      valid: true,
-      config: parsed as Config,
-    };
+  if (errors.length === 0) {
+    return { valid: true, config: parseResult.parsed as Config };
   }
 
-  // Convert Ajv errors to our format
-  const errors = (
-    ((validate as { errors?: AjvErrorObject[] }).errors ??
-      []) as AjvErrorObject[]
-  ).map((err) => {
-    const path = err.instancePath || "/";
-    return `${path}: ${formatAjvError(err)}`;
-  });
-
-  return {
-    valid: false,
-    errors,
-  };
+  return { valid: false, errors };
 }
