@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.7] - 2024-12-06
+
+### Fixed
+
+- **MCP `check_files` cross-directory path resolution** - The MCP server now correctly handles file paths when running from a parent directory. Previously, relative paths like `nested-paths/file.ts` would fail with "No valid files found" because paths were resolved incorrectly.
+- `findProjectRoot()` now always returns absolute paths (was returning relative paths in some cases)
+- `validateFiles()` now resolves relative paths from the MCP server's working directory, not the project root
+- Fallback path resolution now correctly returns directories instead of file paths
+
 ## [1.5.6] - 2024-12-06
 
 ### Fixed
