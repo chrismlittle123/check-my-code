@@ -78,6 +78,8 @@ node dist/cli/index.js audit
 node dist/cli/index.js validate
 node dist/cli/index.js registry validate
 node dist/cli/index.js mcp-server
+node dist/cli/index.js info              # Show supported languages/tools
+node dist/cli/index.js info --json       # JSON output
 
 # Run a single test file
 npm test -- tests/unit/config.test.ts
@@ -170,6 +172,11 @@ noUncheckedIndexedAccess = true
 # Optional: Ruff configuration
 [rulesets.ruff]
 line-length = 100
+
+# Optional: Inherit rulesets from remote (schema only - runtime not implemented yet)
+[extends]
+eslint = "github:owner/repo/rulesets/path@version"
+tsc = "github:owner/repo/rulesets/path@version"
 ```
 
 ### TypeScript Type Checking
@@ -277,3 +284,13 @@ Standards for internal tools, services, and team-facing applications.
 
 - Use native fetch API (no need for node-fetch).
 - Use ES modules (`"type": "module"` in package.json).
+
+## Related Documentation
+
+| Document             | Purpose                                                    |
+| -------------------- | ---------------------------------------------------------- |
+| `docs/PROCESS.md`    | Full development workflow                                  |
+| `docs/ROADMAP.md`    | Feature planning and tracking                              |
+| `docs/STANDARDS.md`  | Coding standards                                           |
+| `CHANGELOG.md`       | Version history                                            |
+| `compatibility.yaml` | Supported languages/tools (source of truth for `cmc info`) |
