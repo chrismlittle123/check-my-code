@@ -413,6 +413,19 @@ describe("findProjectRoot", () => {
 
     expect(isAbsolute(result)).toBe(true);
   });
+
+  it("returns directory (not file) when startPath is a file and no cmc.toml found", () => {
+    // Create a file but no cmc.toml
+    const filePath = join(nestedDir, "somefile.ts");
+    writeFileSync(filePath, "const x = 1;");
+
+    const result = findProjectRoot(filePath);
+
+    // Should return the directory containing the file, not the file itself
+    expect(isAbsolute(result)).toBe(true);
+    expect(result).toBe(nestedDir);
+    expect(result).not.toBe(filePath);
+  });
 });
 
 describe("validateConfigContent", () => {

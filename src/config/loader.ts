@@ -172,6 +172,19 @@ export async function loadConfig(projectRoot: string): Promise<Config> {
 }
 
 /**
+ * Resolve a path to an absolute directory path.
+ * If the path is a file, returns its parent directory.
+ */
+function resolveToDirectory(inputPath: string): string {
+  const absolutePath = resolve(inputPath);
+  if (existsSync(absolutePath)) {
+    const stats = statSync(absolutePath);
+    return stats.isDirectory() ? absolutePath : dirname(absolutePath);
+  }
+  return absolutePath;
+}
+
+/**
  * Find the project root by searching for cmc.toml.
  * @param startPath - Optional starting path to search from. Defaults to process.cwd().
  *                    If provided, searches from this path upward. Supports both file and directory paths.
@@ -179,21 +192,7 @@ export async function loadConfig(projectRoot: string): Promise<Config> {
  */
 export function findProjectRoot(startPath?: string): string {
   // Determine starting directory - always resolve to absolute path
-  let dir: string;
-  if (startPath) {
-    // Resolve relative paths from cwd to get absolute path
-    const absoluteStart = resolve(startPath);
-    // If startPath is a file, start from its directory
-    if (existsSync(absoluteStart)) {
-      const stats = statSync(absoluteStart);
-      dir = stats.isDirectory() ? absoluteStart : dirname(absoluteStart);
-    } else {
-      // Path doesn't exist, assume it's a directory path
-      dir = absoluteStart;
-    }
-  } else {
-    dir = process.cwd();
-  }
+  let dir = startPath ? resolveToDirectory(startPath) : process.cwd();
 
   while (dir !== dirname(dir)) {
     if (existsSync(join(dir, "cmc.toml"))) {
@@ -207,8 +206,8 @@ export function findProjectRoot(startPath?: string): string {
     return dir;
   }
 
-  // Fallback: return absolute path
-  return startPath ? resolve(startPath) : process.cwd();
+  // Fallback: return absolute directory path
+  return startPath ? resolveToDirectory(startPath) : process.cwd();
 }
 
 export interface ValidationResult {

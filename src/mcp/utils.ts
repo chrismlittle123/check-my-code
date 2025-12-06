@@ -82,7 +82,8 @@ export async function validateFiles(
   projectRoot: string,
   cwd?: string,
 ): Promise<string[]> {
-  const baseCwd = cwd ?? process.cwd();
+  // Normalize cwd to absolute path to avoid subtle resolution bugs
+  const baseCwd = cwd ? resolve(cwd) : process.cwd();
   const validFiles: string[] = [];
   const checkPromises = files.map(async (file) => {
     // Resolve relative paths from cwd, not projectRoot
