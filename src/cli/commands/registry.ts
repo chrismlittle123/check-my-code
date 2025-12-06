@@ -5,14 +5,15 @@
 
 import { Command } from "commander";
 import {
+  copyFileSync,
   existsSync,
+  mkdirSync,
   readFileSync,
   writeFileSync,
-  mkdirSync,
-  copyFileSync,
 } from "fs";
-import { join, dirname } from "path";
 import { glob } from "glob";
+import { dirname, join } from "path";
+
 import { ExitCode } from "../../types.js";
 
 // Types for registry entries

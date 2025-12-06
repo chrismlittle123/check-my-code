@@ -3,11 +3,12 @@
  * BUG-002: Tests for findProjectRoot path parameter
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { findProjectRoot } from "../../src/config/loader.js";
-import { mkdirSync, writeFileSync, rmSync } from "fs";
-import { join } from "path";
+import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
+import { join } from "path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { findProjectRoot } from "../../src/config/loader.js";
 
 describe("findProjectRoot", () => {
   const testDir = join(tmpdir(), "cmc-test-" + Date.now());

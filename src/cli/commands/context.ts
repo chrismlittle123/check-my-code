@@ -1,20 +1,21 @@
 import { Command } from "commander";
+import { createHash } from "crypto";
 import { existsSync, mkdirSync } from "fs";
 import { readFile, writeFile } from "fs/promises";
-import { join, dirname } from "path";
-import { createHash } from "crypto";
+import { dirname, join } from "path";
+
 import {
-  loadConfig,
-  findProjectRoot,
   ConfigError,
+  findProjectRoot,
+  loadConfig,
 } from "../../config/loader.js";
 import { fetchRemoteFile, RemoteFetchError } from "../../remote/fetcher.js";
 import {
-  ExitCode,
   AI_TARGET_FILES,
-  DEFAULT_AI_CONTEXT_SOURCE,
   type AiTarget,
   type Config,
+  DEFAULT_AI_CONTEXT_SOURCE,
+  ExitCode,
 } from "../../types.js";
 
 const VALID_TARGETS: AiTarget[] = ["claude", "cursor", "copilot"];

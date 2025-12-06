@@ -2,9 +2,10 @@
  * E2E tests for `cmc check` command
  */
 
-import { describe, it, expect } from "vitest";
 import { symlink, unlink } from "fs/promises";
 import { join } from "path";
+import { describe, expect, it } from "vitest";
+
 import { run } from "./runner.js";
 
 const PROJECTS_DIR = join(process.cwd(), "tests", "e2e", "projects");

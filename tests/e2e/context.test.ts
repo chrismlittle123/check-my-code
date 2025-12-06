@@ -2,10 +2,11 @@
  * E2E tests for `cmc context` command
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { run } from "./runner.js";
-import { writeFile, readFile } from "fs/promises";
+import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { run } from "./runner.js";
 
 const PROJECTS_DIR = join(process.cwd(), "tests", "e2e", "projects");
 

@@ -1,8 +1,9 @@
-import { readFile } from "fs/promises";
 import { existsSync, readFileSync, statSync } from "fs";
+import { readFile } from "fs/promises";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { z } from "zod";
+
 import type { Config } from "../types.js";
 
 // Custom error class for configuration errors (exit code 2)

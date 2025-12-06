@@ -1,14 +1,15 @@
 import { Command } from "commander";
-import { glob } from "glob";
 import { stat } from "fs/promises";
-import { resolve, relative } from "path";
+import { glob } from "glob";
+import { relative, resolve } from "path";
+
 import {
-  loadConfig,
-  findProjectRoot,
   ConfigError,
+  findProjectRoot,
+  loadConfig,
 } from "../../config/loader.js";
-import { runLinters, LinterError, type LinterOptions } from "../../linter.js";
-import { ExitCode, type CheckResult, type Config } from "../../types.js";
+import { LinterError, type LinterOptions, runLinters } from "../../linter.js";
+import { type CheckResult, type Config, ExitCode } from "../../types.js";
 
 export const checkCommand = new Command("check")
   .description("Run ESLint, Ruff, and TypeScript type checks on project files")

@@ -1,8 +1,9 @@
 import { Command } from "commander";
-import { readFile } from "fs/promises";
 import { existsSync } from "fs";
+import { readFile } from "fs/promises";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
+
 import { findProjectRoot, stripSymbolKeys } from "../../config/loader.js";
 import { ExitCode } from "../../types.js";
 

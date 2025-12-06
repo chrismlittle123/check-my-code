@@ -1,4 +1,5 @@
 import { Command } from "commander";
+
 import { startServer } from "../../mcp/server.js";
 
 export const mcpServerCommand = new Command("mcp-server")

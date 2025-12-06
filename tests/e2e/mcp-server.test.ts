@@ -2,7 +2,8 @@
  * E2E tests for `cmc mcp-server` command
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import { runMcp, runMcpListTools } from "./runner.js";
 
 function parseToolContent(response: unknown): unknown {

@@ -3,7 +3,8 @@
  * BUG-003: Tests for linter error propagation
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import { LinterError } from "../../src/linter.js";
 
 describe("LinterError", () => {

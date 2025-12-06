@@ -2,10 +2,10 @@
  * Unit tests for validate command
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { join } from "path";
-import { mkdtemp, writeFile, rm } from "fs/promises";
+import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
+import { join } from "path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock process.exit to prevent test process from exiting
 vi.mock("process", async () => {

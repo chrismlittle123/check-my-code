@@ -1,6 +1,7 @@
 import { spawn } from "child_process";
 import { existsSync } from "fs";
 import { join, relative } from "path";
+
 import type { Violation } from "./types.js";
 
 // Custom error class for linter runtime errors (exit code 3)

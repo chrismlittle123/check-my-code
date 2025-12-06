@@ -2,7 +2,8 @@
  * E2E tests for `cmc audit` command
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import { runInDocker } from "./docker-runner.js";
 import { dockerAvailable, images, setupImages } from "./setup.js";
 

@@ -3,27 +3,28 @@
  * Exposes linting functionality to AI agents via MCP protocol.
  */
 
-import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { glob } from "glob";
 import { stat } from "fs/promises";
-import { resolve, relative } from "path";
-import { runLinters, runLintersFix, type LinterOptions } from "../linter.js";
+import { glob } from "glob";
+import { relative, resolve } from "path";
+import { z } from "zod";
+
 import {
-  loadConfig,
-  findProjectRoot,
   ConfigError,
+  findProjectRoot,
+  loadConfig,
   validateConfigContent,
 } from "../config/loader.js";
+import { type LinterOptions, runLinters, runLintersFix } from "../linter.js";
 import { fetchRemoteFile, RemoteFetchError } from "../remote/fetcher.js";
-import { DEFAULT_AI_CONTEXT_SOURCE, type Config } from "../types.js";
+import { type Config, DEFAULT_AI_CONTEXT_SOURCE } from "../types.js";
 import {
   getState,
-  setProjectRoot,
-  setConfigFound,
   recordFilesChecked,
-  recordViolationsFound,
   recordFixesApplied,
+  recordViolationsFound,
+  setConfigFound,
+  setProjectRoot,
 } from "./state.js";
 
 // Error codes for structured error responses
