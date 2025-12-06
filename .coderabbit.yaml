@@ -6,10 +6,6 @@ tone_instructions: "Be concise and direct. Focus on actionable feedback."
 
 early_access: false
 
-notifications:
-  email:
-    enabled: false
-
 reviews:
   profile: "assertive"
   request_changes_workflow: true

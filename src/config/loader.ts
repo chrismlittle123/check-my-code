@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, statSync } from "fs";
 import { readFile } from "fs/promises";
-import { dirname, join } from "path";
+import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { z } from "zod";
 
@@ -175,18 +175,21 @@ export async function loadConfig(projectRoot: string): Promise<Config> {
  * Find the project root by searching for cmc.toml.
  * @param startPath - Optional starting path to search from. Defaults to process.cwd().
  *                    If provided, searches from this path upward. Supports both file and directory paths.
+ * @returns Absolute path to the project root directory
  */
 export function findProjectRoot(startPath?: string): string {
-  // Determine starting directory
+  // Determine starting directory - always resolve to absolute path
   let dir: string;
   if (startPath) {
+    // Resolve relative paths from cwd to get absolute path
+    const absoluteStart = resolve(startPath);
     // If startPath is a file, start from its directory
-    if (existsSync(startPath)) {
-      const stats = statSync(startPath);
-      dir = stats.isDirectory() ? startPath : dirname(startPath);
+    if (existsSync(absoluteStart)) {
+      const stats = statSync(absoluteStart);
+      dir = stats.isDirectory() ? absoluteStart : dirname(absoluteStart);
     } else {
       // Path doesn't exist, assume it's a directory path
-      dir = startPath;
+      dir = absoluteStart;
     }
   } else {
     dir = process.cwd();
@@ -204,7 +207,8 @@ export function findProjectRoot(startPath?: string): string {
     return dir;
   }
 
-  return startPath ?? process.cwd();
+  // Fallback: return absolute path
+  return startPath ? resolve(startPath) : process.cwd();
 }
 
 export interface ValidationResult {

@@ -1,0 +1,6 @@
+[project]
+name = "nested-paths-test"
+
+[rulesets.eslint.rules]
+"no-var" = "error"
+"no-console" = "warn"

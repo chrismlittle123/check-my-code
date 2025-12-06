@@ -2,9 +2,12 @@
  * E2E tests for `cmc mcp-server` command
  */
 
+import { join } from "path";
 import { describe, expect, it } from "vitest";
 
-import { runMcp, runMcpListTools } from "./runner.js";
+import { runMcp, runMcpFromCwd, runMcpListTools } from "./runner.js";
+
+const ROOT_DIR = process.cwd();
 
 function parseToolContent(response: unknown): unknown {
   const r = response as {
@@ -260,6 +263,162 @@ describe("cmc mcp-server - check_files absolute paths", () => {
 
     const result = await runMcp("mcp-server/default", "check_files", {
       files: [absolutePath],
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      error?: { code: string };
+    };
+
+    expect(content.success).toBe(false);
+    expect(content.error?.code).toBe("FILE_NOT_FOUND");
+  });
+});
+
+// =============================================================================
+// BUG: check_files fails when MCP server cwd differs from project root
+// This reproduces the real-world scenario where:
+// 1. MCP server is started from a parent directory (e.g., user's home or workspace root)
+// 2. User provides relative paths to files in a project subdirectory
+// 3. The paths should be resolved correctly to find cmc.toml and lint files
+// =============================================================================
+describe("cmc mcp-server - check_files cross-directory paths (BUG FIX)", () => {
+  const nestedProjectDir = join(
+    ROOT_DIR,
+    "tests/e2e/projects/mcp-server/nested-paths",
+  );
+
+  it("finds files with relative path when MCP runs from project root", async () => {
+    // Run MCP from the nested project directory, use relative path
+    const result = await runMcpFromCwd(nestedProjectDir, "check_files", {
+      files: ["root-file.ts"],
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      violations: { rule: string; file: string }[];
+      has_violations: boolean;
+      error?: { code: string; message: string };
+    };
+
+    expect(content).not.toBeNull();
+    expect(content.success).toBe(true);
+    expect(content.has_violations).toBe(true);
+    expect(content.violations.some((v) => v.rule === "no-var")).toBe(true);
+  });
+
+  it("finds files in subdirectory with relative path", async () => {
+    const result = await runMcpFromCwd(nestedProjectDir, "check_files", {
+      files: ["subdir/nested-file.ts"],
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      violations: { rule: string; file: string }[];
+      has_violations: boolean;
+    };
+
+    expect(content).not.toBeNull();
+    expect(content.success).toBe(true);
+    expect(content.has_violations).toBe(true);
+    expect(content.violations.some((v) => v.rule === "no-var")).toBe(true);
+    // File path in result should be relative
+    expect(content.violations[0].file).toBe("subdir/nested-file.ts");
+  });
+
+  it("finds files with absolute path", async () => {
+    const absolutePath = join(nestedProjectDir, "root-file.ts");
+    const result = await runMcpFromCwd(nestedProjectDir, "check_files", {
+      files: [absolutePath],
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      violations: { rule: string; file: string }[];
+      has_violations: boolean;
+    };
+
+    expect(content).not.toBeNull();
+    expect(content.success).toBe(true);
+    expect(content.has_violations).toBe(true);
+    // Result should have relative path, not absolute
+    expect(content.violations[0].file).toBe("root-file.ts");
+    expect(content.violations[0].file).not.toMatch(/^\//);
+  });
+
+  it("finds files when MCP runs from PARENT directory with relative project path", async () => {
+    // This is the KEY bug scenario:
+    // MCP server runs from tests/e2e/projects/mcp-server (parent of nested-paths)
+    // User provides path relative to that parent: nested-paths/root-file.ts
+    const parentDir = join(ROOT_DIR, "tests/e2e/projects/mcp-server");
+
+    const result = await runMcpFromCwd(parentDir, "check_files", {
+      files: ["nested-paths/root-file.ts"],
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      violations: { rule: string; file: string }[];
+      has_violations: boolean;
+      error?: { code: string; message: string };
+    };
+
+    expect(content).not.toBeNull();
+    // This is the bug: should succeed but currently fails with FILE_NOT_FOUND
+    expect(content.success).toBe(true);
+    expect(content.has_violations).toBe(true);
+    expect(content.violations.some((v) => v.rule === "no-var")).toBe(true);
+  });
+
+  it("finds nested subdir files when MCP runs from parent directory", async () => {
+    const parentDir = join(ROOT_DIR, "tests/e2e/projects/mcp-server");
+
+    const result = await runMcpFromCwd(parentDir, "check_files", {
+      files: ["nested-paths/subdir/nested-file.ts"],
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      violations: { rule: string; file: string }[];
+      has_violations: boolean;
+      error?: { code: string; message: string };
+    };
+
+    expect(content).not.toBeNull();
+    expect(content.success).toBe(true);
+    expect(content.has_violations).toBe(true);
+  });
+
+  it("finds files with absolute path when MCP runs from different directory", async () => {
+    // MCP runs from parent, but file path is absolute
+    const parentDir = join(ROOT_DIR, "tests/e2e/projects/mcp-server");
+    const absolutePath = join(nestedProjectDir, "root-file.ts");
+
+    const result = await runMcpFromCwd(parentDir, "check_files", {
+      files: [absolutePath],
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      violations: { rule: string; file: string }[];
+      has_violations: boolean;
+      error?: { code: string; message: string };
+    };
+
+    expect(content).not.toBeNull();
+    expect(content.success).toBe(true);
+    expect(content.has_violations).toBe(true);
+    // File path should NOT have leading slash stripped causing "No such file" error
+    expect(
+      content.violations.every(
+        (v) => !v.file.includes("No such file or directory"),
+      ),
+    ).toBe(true);
+  });
+
+  it("returns proper FILE_NOT_FOUND for actually nonexistent relative paths", async () => {
+    const result = await runMcpFromCwd(nestedProjectDir, "check_files", {
+      files: ["nonexistent.ts"],
     });
 
     const content = parseToolContent(result.response) as {
