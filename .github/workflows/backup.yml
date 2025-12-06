@@ -41,11 +41,17 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
 
+          # Remove workflow files from the commit (deploy keys can't push them)
+          # This creates a temporary commit without workflows for the backup
+          rm -rf .github/workflows
+          git add -A
+          git commit -m "Backup ${BACKUP_DATE} (workflows excluded for deploy key compatibility)" --allow-empty
+
           # Add backup remote
           git remote add backup git@github-backup:chrismlittle123/check-my-code-backup.git
 
-          # Push all branches (deploy keys can't push workflow files via --mirror)
-          git push backup --all --force
+          # Push main branch
+          git push backup HEAD:main --force
 
           # Push all tags
           git push backup --tags --force
@@ -54,4 +60,4 @@ jobs:
           git tag -f "backup-${BACKUP_DATE}"
           git push backup "backup-${BACKUP_DATE}" --force
 
-          echo "✅ Backup completed: all branches and tags pushed"
+          echo "✅ Backup completed for ${BACKUP_DATE}"
