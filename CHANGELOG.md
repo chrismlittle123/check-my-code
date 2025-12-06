@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.6] - 2024-12-06
+
+### Fixed
+
+- **MCP `check_files` path resolution bug** - The MCP server's `check_files` tool now correctly handles absolute file paths. Previously, absolute paths would fail with "No valid files found" or cause linter errors due to malformed path resolution.
+- Use `path.isAbsolute()` for cross-platform path detection (Windows + Unix compatibility)
+
 ## [1.5.5] - 2024-12-06
 
 ### Changed
