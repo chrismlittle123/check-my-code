@@ -56,20 +56,19 @@ reviews:
     drafts: false
     base_branches:
       - main
+  tools:
+    eslint:
+      enabled: true
+    shellcheck:
+      enabled: true
+    yamllint:
+      enabled: true
+    markdownlint:
+      enabled: true
+    gitleaks:
+      enabled: true
+    actionlint:
+      enabled: true
 
 chat:
   auto_reply: true
-
-tools:
-  eslint:
-    enabled: true
-  shellcheck:
-    enabled: true
-  yamllint:
-    enabled: true
-  markdownlint:
-    enabled: true
-  gitleaks:
-    enabled: true
-  actionlint:
-    enabled: true
