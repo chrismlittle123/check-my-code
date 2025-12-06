@@ -522,7 +522,7 @@ ${description}
 SCHEMA REQUIREMENTS:
 - [project] section with "name" field (required, non-empty string)
 - [prompts] section (optional) with "templates" array for AI coding guidelines
-  - Available templates: "typescript/5.5", "python/3.12"
+  - Available templates: "internal/typescript/5.5", "internal/python/3.12"
 - [rulesets.eslint.rules] section (optional) for ESLint rules
   - Rule values: "off", "warn", "error", or array like ["error", "always"]
 - [rulesets.ruff] section (optional) for Ruff Python linter config
