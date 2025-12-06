@@ -1,13 +1,5 @@
 # Changelog
 
-## 1.5.2
-
-### Patch Changes
-
-- [#14](https://github.com/chrismlittle123/check-my-code/pull/14) [`feffbca`](https://github.com/chrismlittle123/check-my-code/commit/feffbca4329b089512b1626eaaf50ba652af2794) Thanks [@chrismlittle123](https://github.com/chrismlittle123)! - Fix schemas directory missing from npm package and correct template name format in documentation
-  - **BUG-004**: `cmc validate` no longer crashes with "ENOENT: no such file or directory" - the `schemas/` directory is now included in the npm package distribution
-  - **BUG-005**: Fixed incorrect template name format in documentation and help text. Templates now correctly show the full path format `<tier>/<language>/<version>` (e.g., `internal/typescript/5.5`) instead of the abbreviated format
-
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
@@ -15,12 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- `tsc` support in `[extends]` schema for remote TypeScript config inheritance
-- `cmc info` command to display supported languages, runtimes, and linters
-- `compatibility.yaml` as single source of truth for supported tools
-- Comprehensive roadmap tracking in `docs/ROADMAP.md`
+## [1.5.2] - 2024-12-06
 
 ### Fixed
 
@@ -147,7 +134,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standard exit codes (0, 1, 2, 3)
 - `--json`, `--force`, `--stdout` flags
 
-[Unreleased]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.1...HEAD
+[Unreleased]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.2...HEAD
+[1.5.2]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/chrismlittle123/check-my-code/compare/v1.4.5...v1.5.1
 [1.4.5]: https://github.com/chrismlittle123/check-my-code/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/chrismlittle123/check-my-code/compare/v1.4.3...v1.4.4
