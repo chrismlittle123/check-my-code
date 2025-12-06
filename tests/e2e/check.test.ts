@@ -431,3 +431,54 @@ describe("cmc check - TypeScript type checking", () => {
     expect(result.stdout).toContain("type");
   });
 });
+
+// =============================================================================
+// Check: --quiet flag
+// =============================================================================
+describe("cmc check - --quiet flag", () => {
+  it("suppresses all output when --quiet is set", async () => {
+    const result = await run("check/typescript/default", ["check", "--quiet"]);
+
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(1); // Still has violations
+  });
+
+  it("suppresses output with -q short flag", async () => {
+    const result = await run("check/typescript/default", ["check", "-q"]);
+
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(1);
+  });
+
+  it("returns exit code 0 for clean project in quiet mode", async () => {
+    const result = await run("check/typescript/clean-project", [
+      "check",
+      "--quiet",
+    ]);
+
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("--quiet takes precedence over --json", async () => {
+    const result = await run("check/typescript/default", [
+      "check",
+      "--quiet",
+      "--json",
+    ]);
+
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(1);
+  });
+
+  it("works with path argument", async () => {
+    const result = await run("check/typescript/default", [
+      "check",
+      "violation.ts",
+      "--quiet",
+    ]);
+
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(1);
+  });
+});

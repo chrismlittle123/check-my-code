@@ -14,6 +14,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `compatibility.yaml` as single source of truth for supported tools
 - Comprehensive roadmap tracking in `docs/ROADMAP.md`
 
+## [1.5.1] - 2024-12-06
+
+### Added
+
+- **Colored terminal output** - Visual distinction for errors (red), warnings (yellow), success messages (green), file paths (cyan), and linter/rule names (dim gray)
+- **`--quiet` / `-q` flag** for `cmc check` - Suppresses all output, communicates results only through exit codes. Useful for CI/CD pipelines and scripting.
+- `src/cli/output.ts` - Centralized color formatting utilities
+- Environment variable support:
+  - `NO_COLOR` - Disable all color output (per https://no-color.org/)
+  - `FORCE_COLOR` - Force color output even when not a TTY
+- TTY detection - Colors automatically disabled when output is piped
+
+### Changed
+
+- All commands now use colored output for better readability:
+  - `check` - Violations in red, success in green, file paths in cyan, linter/rule in dim
+  - `audit` - Mismatches in red, matches in green
+  - `validate` - Errors in red, success in green
+  - `generate` - Success in green, overwrites warning in yellow
+  - `context` - Success in green
+
 ## [1.4.5] - 2024-12-06
 
 ### Fixed
@@ -113,7 +134,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standard exit codes (0, 1, 2, 3)
 - `--json`, `--force`, `--stdout` flags
 
-[Unreleased]: https://github.com/chrismlittle123/check-my-code/compare/v1.4.4...HEAD
+[Unreleased]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/chrismlittle123/check-my-code/compare/v1.4.5...v1.5.1
+[1.4.5]: https://github.com/chrismlittle123/check-my-code/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/chrismlittle123/check-my-code/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/chrismlittle123/check-my-code/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/chrismlittle123/check-my-code/compare/v1.4.1...v1.4.2
