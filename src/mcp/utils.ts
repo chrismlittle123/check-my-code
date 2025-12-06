@@ -4,7 +4,7 @@
 
 import { stat } from "fs/promises";
 import { glob } from "glob";
-import { relative, resolve } from "path";
+import { isAbsolute, relative, resolve } from "path";
 
 import { ConfigError, findProjectRoot, loadConfig } from "../config/loader.js";
 import { type Config } from "../types.js";
@@ -80,8 +80,8 @@ export async function validateFiles(
 ): Promise<string[]> {
   const validFiles: string[] = [];
   const checkPromises = files.map(async (file) => {
-    // Handle both absolute and relative paths
-    const fullPath = file.startsWith("/") ? file : resolve(projectRoot, file);
+    // Handle both absolute and relative paths (cross-platform)
+    const fullPath = isAbsolute(file) ? file : resolve(projectRoot, file);
     const stats = await stat(fullPath).catch(() => null);
     if (stats?.isFile()) {
       // Always return relative path from projectRoot
