@@ -113,12 +113,13 @@ async function discoverFiles(
 
 /**
  * Load and validate project configuration
+ * @param searchPath - Optional path to start searching for cmc.toml from
  */
-async function loadProjectConfig(): Promise<
-  { projectRoot: string; config: Config } | ErrorResponse
-> {
+async function loadProjectConfig(
+  searchPath?: string,
+): Promise<{ projectRoot: string; config: Config } | ErrorResponse> {
   try {
-    const projectRoot = findProjectRoot();
+    const projectRoot = findProjectRoot(searchPath);
     setProjectRoot(projectRoot);
 
     const config = await loadConfig(projectRoot);
@@ -309,7 +310,9 @@ function buildLinterOptions(config: Config): LinterOptions {
 
 // Tool handler for check_files
 async function handleCheckFiles({ files }: { files: string[] }) {
-  const configResult = await loadProjectConfig();
+  // Use the first file path to find the project root
+  const searchPath = files.length > 0 ? files[0] : undefined;
+  const configResult = await loadProjectConfig(searchPath);
   if ("error" in configResult) {
     return toTextContent(configResult);
   }
@@ -344,13 +347,18 @@ async function handleCheckFiles({ files }: { files: string[] }) {
 
 // Tool handler for check_project
 async function handleCheckProject({ path }: { path?: string }) {
-  const configResult = await loadProjectConfig();
+  // Use the provided path to find the project root
+  const configResult = await loadProjectConfig(path);
   if ("error" in configResult) {
     return toTextContent(configResult);
   }
 
   const { projectRoot, config } = configResult;
-  const targetPath = path ? resolve(projectRoot, path) : projectRoot;
+  // If path is absolute, use it; otherwise resolve relative to projectRoot
+  let targetPath = projectRoot;
+  if (path) {
+    targetPath = path.startsWith("/") ? path : resolve(projectRoot, path);
+  }
 
   const files = await discoverFiles(targetPath, projectRoot);
 
@@ -382,7 +390,9 @@ async function handleCheckProject({ path }: { path?: string }) {
 
 // Tool handler for fix_files
 async function handleFixFiles({ files }: { files: string[] }) {
-  const configResult = await loadProjectConfig();
+  // Use the first file path to find the project root
+  const searchPath = files.length > 0 ? files[0] : undefined;
+  const configResult = await loadProjectConfig(searchPath);
   if ("error" in configResult) {
     return toTextContent(configResult);
   }

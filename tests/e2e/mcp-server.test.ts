@@ -179,3 +179,23 @@ name = "missing bracket"`;
     expect(content.error?.code).toBe("VALIDATION_ERROR");
   });
 });
+
+// =============================================================================
+// BUG-002: Path context for config discovery
+// =============================================================================
+describe("cmc mcp-server - path-based config discovery", () => {
+  it("check_project accepts subdirectory path", async () => {
+    // When path is provided, the tool should look for cmc.toml from that path
+    const result = await runMcp("mcp-server/default", "check_project", {
+      path: ".",
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      files_checked: number;
+    };
+
+    expect(content.success).toBe(true);
+    expect(content.files_checked).toBeGreaterThan(0);
+  });
+});

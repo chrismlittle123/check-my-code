@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `compatibility.yaml` as single source of truth for supported tools
 - Comprehensive roadmap tracking in `docs/ROADMAP.md`
 
+## [1.4.5] - 2024-12-06
+
+### Fixed
+
+- **BUG-001**: `cmc context` no longer duplicates content on repeated runs. Content is now wrapped in markers and replaced if already present.
+- **BUG-002**: MCP server tools (`check_project`, `check_files`, `fix_files`) now accept path parameters for config discovery, allowing cmc.toml to be found from the specified path instead of only CWD.
+- **BUG-003**: `cmc check` now properly reports errors when ESLint or Ruff fail to run (e.g., due to broken config files). Previously it would silently report "No violations found" when linters crashed.
+
 ## [1.4.4] - 2024-12-06
 
 ### Added

@@ -351,6 +351,18 @@ describe("cmc check - ignored directories", () => {
 });
 
 // =============================================================================
+// BUG-003: Linter execution errors
+// =============================================================================
+describe("cmc check - linter execution errors", () => {
+  it("exits with code 3 when ESLint config is broken", async () => {
+    const result = await run("check/config-errors/broken-eslint", ["check"]);
+
+    expect(result.exitCode).toBe(3);
+    expect(result.stderr).toContain("ESLint failed");
+  });
+});
+
+// =============================================================================
 // Check: TypeScript type checking (tsc)
 // =============================================================================
 describe("cmc check - TypeScript type checking", () => {
