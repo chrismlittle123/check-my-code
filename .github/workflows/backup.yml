@@ -1,0 +1,72 @@
+name: Daily Backup
+
+on:
+  schedule:
+    # Run at midnight UTC every day
+    - cron: "0 0 * * *"
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for complete backup
+
+      - name: Setup SSH for backup repo
+        env:
+          BACKUP_DEPLOY_KEY: ${{ secrets.BACKUP_DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${BACKUP_DEPLOY_KEY}" > ~/.ssh/backup_key
+          chmod 600 ~/.ssh/backup_key
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+          # Configure SSH to use this key for the backup repo
+          cat >> ~/.ssh/config << EOF
+          Host github-backup
+            HostName github.com
+            User git
+            IdentityFile ~/.ssh/backup_key
+            IdentitiesOnly yes
+          EOF
+
+      - name: Create backup archive
+        run: |
+          BACKUP_DATE=$(date +%Y-%m-%d)
+          BACKUP_FILE="backup-${BACKUP_DATE}.tar.gz"
+
+          # Create tarball of entire repo including .git
+          tar -czf "${BACKUP_FILE}" .
+
+          echo "BACKUP_FILE=${BACKUP_FILE}" >> $GITHUB_ENV
+          echo "BACKUP_DATE=${BACKUP_DATE}" >> $GITHUB_ENV
+
+      - name: Push to backup repository
+        run: |
+          # Clone backup repo using deploy key
+          git clone git@github-backup:chrismlittle123/check-my-code-backup.git backup-repo
+          cd backup-repo
+
+          # Configure git
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          # Copy backup file
+          cp ../${BACKUP_FILE} .
+
+          # Keep only last 30 backups to manage storage
+          ls -t backup-*.tar.gz 2>/dev/null | tail -n +31 | xargs -r rm
+
+          # Commit and push
+          git add .
+          git commit -m "Backup ${BACKUP_DATE}" || echo "No changes to commit"
+          git push
+
+      - name: Mirror repository
+        run: |
+          # Also do a full mirror push for easy restoration
+          git remote add backup git@github-backup:chrismlittle123/check-my-code-backup.git
+          git push backup --mirror --force
