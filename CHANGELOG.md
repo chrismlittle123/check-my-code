@@ -1,29 +1,30 @@
 # Changelog
 
-## 1.5.5
-
-### Patch Changes
-
-- [#21](https://github.com/chrismlittle123/check-my-code/pull/21) [`5f19a1f`](https://github.com/chrismlittle123/check-my-code/commit/5f19a1f87f2b1d716744a44f5c546aa531e72fc8) Thanks [@chrismlittle123](https://github.com/chrismlittle123)! - Split release workflow into separate jobs for changesets and publish
-
-## 1.5.4
-
-### Patch Changes
-
-- [#19](https://github.com/chrismlittle123/check-my-code/pull/19) [`bcf3ad8`](https://github.com/chrismlittle123/check-my-code/commit/bcf3ad80b5c95a2c6c4de7428ceeb657b23cd269) Thanks [@chrismlittle123](https://github.com/chrismlittle123)! - Fix release workflow to use Node.js LTS for npm OIDC compatibility
-
-## 1.5.3
-
-### Patch Changes
-
-- [#17](https://github.com/chrismlittle123/check-my-code/pull/17) [`e8f4e9b`](https://github.com/chrismlittle123/check-my-code/commit/e8f4e9b3043bac4e43cda30af60a7e9b993a9eed) Thanks [@chrismlittle123](https://github.com/chrismlittle123)! - Fix CHANGELOG.md format and consolidate release workflow
-
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.5.5] - 2024-12-06
+
+### Changed
+
+- Split release workflow into separate jobs for changesets and publish for better OIDC isolation
+
+## [1.5.4] - 2024-12-06
+
+### Fixed
+
+- Fix release workflow to use Node.js LTS for npm OIDC compatibility
+
+## [1.5.3] - 2024-12-06
+
+### Fixed
+
+- Fix CHANGELOG.md format
+- Consolidate release workflow to single location
 
 ## [1.5.2] - 2024-12-06
 
@@ -152,7 +153,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standard exit codes (0, 1, 2, 3)
 - `--json`, `--force`, `--stdout` flags
 
-[Unreleased]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.2...HEAD
+[Unreleased]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.5...HEAD
+[1.5.5]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.2...v1.5.5
+[1.5.4]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.2...v1.5.4
+[1.5.3]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.2...v1.5.3
 [1.5.2]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/chrismlittle123/check-my-code/compare/v1.4.5...v1.5.1
 [1.4.5]: https://github.com/chrismlittle123/check-my-code/compare/v1.4.4...v1.4.5
