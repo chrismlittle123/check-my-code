@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.2
+
+### Patch Changes
+
+- [#14](https://github.com/chrismlittle123/check-my-code/pull/14) [`feffbca`](https://github.com/chrismlittle123/check-my-code/commit/feffbca4329b089512b1626eaaf50ba652af2794) Thanks [@chrismlittle123](https://github.com/chrismlittle123)! - Fix schemas directory missing from npm package and correct template name format in documentation
+  - **BUG-004**: `cmc validate` no longer crashes with "ENOENT: no such file or directory" - the `schemas/` directory is now included in the npm package distribution
+  - **BUG-005**: Fixed incorrect template name format in documentation and help text. Templates now correctly show the full path format `<tier>/<language>/<version>` (e.g., `internal/typescript/5.5`) instead of the abbreviated format
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
