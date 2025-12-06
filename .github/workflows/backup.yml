@@ -33,22 +33,25 @@ jobs:
             IdentitiesOnly yes
           EOF
 
-      - name: Mirror repository
+      - name: Push to backup repository
         run: |
-          # Full mirror push - this is the primary backup mechanism
-          # It preserves all branches, tags, and complete history
-          git remote add backup git@github-backup:chrismlittle123/check-my-code-backup.git
-          git push backup --mirror --force
-          echo "BACKUP_DATE=$(date +%Y-%m-%d)" >> $GITHUB_ENV
+          BACKUP_DATE=$(date +%Y-%m-%d)
 
-      - name: Tag the backup
-        run: |
-          # Create a dated tag in the backup repo for easy reference
-          git clone git@github-backup:chrismlittle123/check-my-code-backup.git backup-repo
-          cd backup-repo
+          # Configure git
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
 
-          # Create lightweight tag for this backup
-          git tag -f "backup-${BACKUP_DATE}" HEAD
-          git push origin "backup-${BACKUP_DATE}" --force || true
+          # Add backup remote
+          git remote add backup git@github-backup:chrismlittle123/check-my-code-backup.git
+
+          # Push all branches (deploy keys can't push workflow files via --mirror)
+          git push backup --all --force
+
+          # Push all tags
+          git push backup --tags --force
+
+          # Create a dated backup tag
+          git tag -f "backup-${BACKUP_DATE}"
+          git push backup "backup-${BACKUP_DATE}" --force
+
+          echo "✅ Backup completed: all branches and tags pushed"
