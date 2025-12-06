@@ -2,17 +2,15 @@
 
 This document tracks planned features from the [PRD](../docs/check-my-code-prd.md). Check off items as they're completed.
 
-**Current Version:** 1.4.3
-**Last Updated:** December 2025
-
 ---
 
 ## Version Guide
 
 | Version | Focus Area                                        |
 | ------- | ------------------------------------------------- |
-| v1.5.x  | CLI polish, output improvements                   |
+| v1.5.x  | Colored output, `--quiet` flag                    |
 | v1.6.x  | `cmc sync` command (config merging)               |
+| v1.7.x  | CLI polish (verbose, progress, error messages)    |
 | v2.0.x  | Remote config inheritance                         |
 | v2.1.x  | Environment enforcers                             |
 | v2.2.x  | CI/CD integration                                 |
@@ -29,14 +27,19 @@ This document tracks planned features from the [PRD](../docs/check-my-code-prd.m
 ### Output Formatting
 
 - [ ] Colored output for terminal (violations in red, success in green)
-- [ ] Progress indicators for large projects
-- [ ] File count in violation output (e.g., `10 files checked`)
 
 ### CLI Enhancements
 
-- [ ] `--verbose` flag for `cmc check` with detailed linter execution info
 - [ ] `--quiet` flag for minimal output (exit code only)
-- [ ] Better error messages with actionable suggestions
+
+### Deferred to v1.6.x
+
+The following features were originally planned for v1.5.x but moved to later versions:
+
+- Progress indicators for large projects → v1.7.x
+- File count in violation output → v1.7.x
+- `--verbose` flag → v1.7.x
+- Better error messages with actionable suggestions → v1.7.x
 
 ---
 
@@ -74,13 +77,6 @@ This document tracks planned features from the [PRD](../docs/check-my-code-prd.m
 - [ ] Enforcement in `cmc generate`
 - [ ] Enforcement in `cmc sync`
 - [ ] Enforcement in `cmc audit`
-
-### Community Presets
-
-- [ ] Document community repository structure (`rulesets/` directory)
-- [ ] `rulesets.json` manifest support
-- [ ] Version resolution via manifest (like prompts)
-- [ ] Default community source: `github:chrismlittle123/check-my-code-community/rulesets@latest`
 
 ---
 
