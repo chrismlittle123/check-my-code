@@ -14,7 +14,7 @@ describe("cmc context - stdout", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("TypeScript 5.5 Coding Standards");
-    expect(result.stdout).toContain("NEVER use `var`");
+    expect(result.stdout).toContain("Remove all unused imports");
   });
 
   it("concatenates multiple templates", async () => {
@@ -30,25 +30,25 @@ describe("cmc context - stdout", () => {
 });
 
 describe("cmc context - template content", () => {
-  it("includes TypeScript variable and type safety rules", async () => {
+  it("includes TypeScript type safety and tooling rules", async () => {
     const result = await run("context/no-language/single", [
       "context",
       "--stdout",
     ]);
 
-    expect(result.stdout).toContain("NEVER use `var`");
-    expect(result.stdout).toContain("NEVER use `any` type");
-    expect(result.stdout).toContain("strict equality");
+    expect(result.stdout).toContain("Remove all unused imports");
+    expect(result.stdout).toContain("Avoid `any`");
+    expect(result.stdout).toContain("strict: true");
   });
 
-  it("includes Python import and style rules", async () => {
+  it("includes Python import and tooling rules", async () => {
     const result = await run("context/no-language/multiple", [
       "context",
       "--stdout",
     ]);
 
     expect(result.stdout).toContain("Remove all unused imports");
-    expect(result.stdout).toContain("f-strings");
+    expect(result.stdout).toContain("Use `ruff` for linting");
   });
 });
 
