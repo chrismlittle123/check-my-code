@@ -22,15 +22,15 @@ This document tracks planned features from the [PRD](../docs/check-my-code-prd.m
 
 ---
 
-## v1.5.x - CLI Polish & Output Improvements
+## v1.5.x - CLI Polish & Output Improvements ✓
 
 ### Output Formatting
 
-- [ ] Colored output for terminal (violations in red, success in green)
+- [x] Colored output for terminal (violations in red, success in green)
 
 ### CLI Enhancements
 
-- [ ] `--quiet` flag for minimal output (exit code only)
+- [x] `--quiet` flag for minimal output (exit code only)
 
 ### Deferred to v1.6.x
 
