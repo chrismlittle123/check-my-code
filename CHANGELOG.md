@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.3
+
+### Patch Changes
+
+- [#17](https://github.com/chrismlittle123/check-my-code/pull/17) [`e8f4e9b`](https://github.com/chrismlittle123/check-my-code/commit/e8f4e9b3043bac4e43cda30af60a7e9b993a9eed) Thanks [@chrismlittle123](https://github.com/chrismlittle123)! - Fix CHANGELOG.md format and consolidate release workflow
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
