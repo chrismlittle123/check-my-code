@@ -52,7 +52,7 @@ name = "test-project"
 name = "full-project"
 
 [prompts]
-templates = ["typescript/5.5"]
+templates = ["internal/typescript/5.5"]
 
 [rulesets.eslint.rules]
 "no-console" = "error"

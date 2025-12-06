@@ -64,7 +64,9 @@ function validateAiContextConfig(config: Config): {
     );
     console.error("\nAdd to your cmc.toml:");
     console.error("  [prompts]");
-    console.error('  templates = ["typescript/5.5"]');
+    console.error('  templates = ["internal/typescript/5.5"]');
+    console.error("\nTemplate format: <tier>/<language>/<version>");
+    console.error("Available tiers: prototype, internal, production");
     process.exit(ExitCode.CONFIG_ERROR);
   }
   return {
@@ -316,7 +318,10 @@ Examples:
 
 Requires prompts templates in cmc.toml:
   [prompts]
-  templates = ["typescript/5.5"]`,
+  templates = ["internal/typescript/5.5"]
+
+Template format: <tier>/<language>/<version>
+Available tiers: prototype, internal, production`,
   )
   .action(async (options: ContextOptions) => {
     try {

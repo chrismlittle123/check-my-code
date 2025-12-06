@@ -184,32 +184,46 @@ select = ["E", "F", "I", "UP"]
 name = "my-project"
 
 [prompts]
-templates = ["typescript/5.5", "python/3.12"]
+templates = ["internal/typescript/5.5", "internal/python/3.12"]
 ```
 
 ## AI Context Templates
 
 The `cmc context` command fetches templates from the [check-my-code-community](https://github.com/chrismlittle123/check-my-code-community) repository.
 
+**Template format:** `<tier>/<language>/<version>`
+
+**Available tiers:**
+
+| Tier         | Description                                              |
+| ------------ | -------------------------------------------------------- |
+| `prototype`  | Minimal standards for quick prototypes and experiments   |
+| `internal`   | Standards for internal tools and team-facing apps        |
+| `production` | Strict standards for production and customer-facing code |
+
 **Available templates:**
 
-| Template         | Description                                  |
-| ---------------- | -------------------------------------------- |
-| `typescript/5.5` | TypeScript 5.5 coding standards (Node.js 20) |
-| `python/3.12`    | Python 3.12 coding standards                 |
+| Template                    | Description                                  |
+| --------------------------- | -------------------------------------------- |
+| `internal/typescript/5.5`   | TypeScript 5.5 coding standards (Node.js 20) |
+| `internal/python/3.12`      | Python 3.12 coding standards                 |
+| `production/typescript/5.5` | Strict TypeScript 5.5 standards              |
+| `production/python/3.12`    | Strict Python 3.12 standards                 |
+| `prototype/typescript/5.5`  | Minimal TypeScript 5.5 standards             |
+| `prototype/python/3.12`     | Minimal Python 3.12 standards                |
 
 Use them in your `cmc.toml`:
 
 ```toml
 [prompts]
-templates = ["typescript/5.5", "python/3.12"]
+templates = ["internal/typescript/5.5", "internal/python/3.12"]
 ```
 
 You can pin a specific version:
 
 ```toml
 [prompts]
-templates = ["typescript/5.5@1.0.0"]
+templates = ["internal/typescript/5.5@1.0.0"]
 ```
 
 You can also use a custom source repository:

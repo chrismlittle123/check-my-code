@@ -155,9 +155,10 @@ Projects require a `cmc.toml` file:
 [project]
 name = "project-name"
 
-# Optional: AI context templates
+# Optional: AI context templates (format: <tier>/<language>/<version>)
+# Available tiers: prototype, internal, production
 [prompts]
-templates = ["typescript/5.5", "python/3.12"]
+templates = ["internal/typescript/5.5", "internal/python/3.12"]
 
 # Optional: ESLint rules
 [rulesets.eslint.rules]

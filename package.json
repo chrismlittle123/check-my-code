@@ -74,7 +74,8 @@
   },
   "files": [
     "dist",
-    "compatibility.yaml"
+    "compatibility.yaml",
+    "schemas"
   ],
   "type": "module",
   "lint-staged": {

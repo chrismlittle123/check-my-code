@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `compatibility.yaml` as single source of truth for supported tools
 - Comprehensive roadmap tracking in `docs/ROADMAP.md`
 
+### Fixed
+
+- **BUG-004**: `cmc validate` no longer crashes with "ENOENT: no such file or directory" - the `schemas/` directory is now included in the npm package distribution
+- **BUG-005**: Fixed incorrect template name format in documentation and help text. Templates now correctly show the full path format `<tier>/<language>/<version>` (e.g., `internal/typescript/5.5`) instead of the abbreviated format
+
 ## [1.5.1] - 2024-12-06
 
 ### Added
