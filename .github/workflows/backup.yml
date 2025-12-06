@@ -50,13 +50,10 @@ jobs:
           # Add backup remote
           git remote add backup git@github-backup:chrismlittle123/check-my-code-backup.git
 
-          # Push main branch
+          # Push main branch only (skip historical tags - they contain workflow files)
           git push backup HEAD:main --force
 
-          # Push all tags
-          git push backup --tags --force
-
-          # Create a dated backup tag
+          # Create a dated backup tag on the current (workflow-free) commit
           git tag -f "backup-${BACKUP_DATE}"
           git push backup "backup-${BACKUP_DATE}" --force
 
