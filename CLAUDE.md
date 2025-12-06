@@ -10,19 +10,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **NEVER commit directly to main** - main branch is protected
 - Create a branch for every feature, bugfix, or change
-- Branch naming patterns:
-  - `feature/<version>/<description>` - e.g., `feature/v1.5/colored-output`
-  - `fix/<version>/<description>` - e.g., `fix/v1.4/audit-bug`
-  - `refactor/<description>` - e.g., `refactor/loader-cleanup`
-  - `docs/<description>` - e.g., `docs/readme-update`
-  - `hotfix/<description>` - e.g., `hotfix/critical-bug`
+- Branch naming pattern: `(feature|fix|hotfix)/vX.Y.Z/description`
+  - `feature/v1.5.0/colored-output` - new features
+  - `fix/v1.4.2/audit-bug` - bug fixes
+  - `hotfix/v1.4.1/critical-security-fix` - urgent fixes
+- **Enforced by CI** - PRs with invalid branch names will fail
 
 ### Before Making Changes
 
 ```bash
 git checkout main
 git pull origin main
-git checkout -b feature/v1.5/my-feature
+git checkout -b feature/v1.5.0/my-feature
 ```
 
 ### Code Quality

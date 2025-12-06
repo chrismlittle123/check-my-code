@@ -46,22 +46,24 @@ PRD should include:
 - All changes go through pull requests
 - CodeRabbit reviews all PRs automatically
 
-### Branch Naming Patterns
+### Branch Naming Convention
 
-| Type     | Pattern                           | Example                       |
-| -------- | --------------------------------- | ----------------------------- |
-| Feature  | `feature/<version>/<description>` | `feature/v1.5/colored-output` |
-| Bug fix  | `fix/<version>/<description>`     | `fix/v1.4/audit-tsc-missing`  |
-| Refactor | `refactor/<description>`          | `refactor/loader-cleanup`     |
-| Docs     | `docs/<description>`              | `docs/process-update`         |
-| Hotfix   | `hotfix/<description>`            | `hotfix/critical-bug`         |
+**Pattern:** `(feature|fix|hotfix)/vX.Y.Z/description`
+
+| Type    | Example                               |
+| ------- | ------------------------------------- |
+| Feature | `feature/v1.5.0/colored-output`       |
+| Bug fix | `fix/v1.4.2/audit-tsc-missing`        |
+| Hotfix  | `hotfix/v1.4.1/critical-security-fix` |
+
+**Enforced by CI** - PRs with invalid branch names will fail the `PR Checks` workflow.
 
 ### Creating a Branch
 
 ```bash
 git checkout main
 git pull origin main
-git checkout -b feature/v1.5/my-feature
+git checkout -b feature/v1.5.0/my-feature
 ```
 
 ---
@@ -191,11 +193,14 @@ CodeRabbit automatically reviews all PRs for:
 
 Runs automatically on every PR and push to main:
 
-| Job       | What it does                                                     |
-| --------- | ---------------------------------------------------------------- |
-| `test`    | Type check, lint, build, unit tests, cmc check (Node 18, 20, 22) |
-| `e2e`     | Full e2e test suite (Node 20)                                    |
-| `publish` | Auto-publish to npm if version changed (main only)               |
+| Workflow    | Job         | What it does                                                     |
+| ----------- | ----------- | ---------------------------------------------------------------- |
+| `ci.yml`    | `test`      | Type check, lint, build, unit tests, cmc check (Node 18, 20, 22) |
+| `ci.yml`    | `e2e`       | Full e2e test suite (Node 20)                                    |
+| `ci.yml`    | `publish`   | Auto-publish to npm if version changed (main only)               |
+| `pr-checks` | `branch`    | **Enforces** branch naming convention (fails on invalid names)   |
+| `pr-checks` | `size`      | Warns if PR exceeds 500 lines changed                            |
+| `pr-checks` | `changelog` | Warns if CHANGELOG.md not updated for code changes               |
 
 ### Auto-Publishing
 
@@ -263,7 +268,7 @@ For critical bugs that need immediate fix:
 ```bash
 # Start new feature
 git checkout main && git pull
-git checkout -b feature/v1.5/my-feature
+git checkout -b feature/v1.5.0/my-feature
 
 # Development loop
 # (Claude auto-runs cmc check after edits)
@@ -271,8 +276,10 @@ npm run test:run
 npm run typecheck
 
 # Ready for PR
-git push -u origin feature/v1.5/my-feature
-# Open PR on GitHub - CodeRabbit reviews automatically
+git push -u origin feature/v1.5.0/my-feature
+# Open PR on GitHub
+# - CodeRabbit reviews automatically
+# - PR Checks enforce branch naming, warn on large PRs
 
 # Before merge - bump version if releasing
 npm version patch
