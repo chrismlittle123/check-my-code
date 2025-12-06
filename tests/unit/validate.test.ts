@@ -2,9 +2,11 @@
  * Unit tests for validate command
  */
 
+import { existsSync } from "fs";
 import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
-import { join } from "path";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock process.exit to prevent test process from exiting
@@ -238,5 +240,45 @@ line-length = -10
         validateConfig("/nonexistent/path/cmc.toml"),
       ).rejects.toThrow("not found");
     });
+  });
+});
+
+// =============================================================================
+// BUG-004: Schema file must exist in package
+// =============================================================================
+describe("schema file availability", () => {
+  it("schema file exists at expected path relative to source", () => {
+    // This tests that the schema file is accessible from the validate command's perspective
+    // The schema is loaded from ../../schemas/cmc.schema.json relative to the command file
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const schemaPath = join(__dirname, "../../schemas/cmc.schema.json");
+
+    expect(existsSync(schemaPath)).toBe(true);
+  });
+
+  it("schema file is valid JSON with required properties", async () => {
+    const { readFile } = await import("fs/promises");
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const schemaPath = join(__dirname, "../../schemas/cmc.schema.json");
+
+    const content = await readFile(schemaPath, "utf-8");
+    const schema = JSON.parse(content);
+
+    // Verify it's a valid JSON Schema
+    expect(schema.$schema).toBeDefined();
+    expect(schema.type).toBe("object");
+    expect(schema.properties).toBeDefined();
+    expect(schema.properties.project).toBeDefined();
+  });
+
+  it("schema is listed in package.json files array", async () => {
+    const { readFile } = await import("fs/promises");
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const packagePath = join(__dirname, "../../package.json");
+
+    const content = await readFile(packagePath, "utf-8");
+    const pkg = JSON.parse(content);
+
+    expect(pkg.files).toContain("schemas");
   });
 });

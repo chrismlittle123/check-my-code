@@ -95,6 +95,20 @@ describe("cmc context - error handling", () => {
     expect(result.stderr).toContain("No prompts templates configured");
   });
 
+  // BUG-005: Error message should show correct template format
+  it("shows correct template format in error message", async () => {
+    const result = await run("context/no-language/missing", [
+      "context",
+      "--stdout",
+    ]);
+
+    expect(result.exitCode).toBe(2);
+    // Should show the full tier/language/version format, not abbreviated
+    expect(result.stderr).toContain("internal/typescript/5.5");
+    expect(result.stderr).toContain("Template format:");
+    expect(result.stderr).toContain("Available tiers:");
+  });
+
   it("exits with error for invalid target", async () => {
     const result = await run("context/no-language/single", [
       "context",
@@ -113,6 +127,24 @@ describe("cmc context - error handling", () => {
     expect(result.stderr).toContain(
       "Either --target or --stdout must be specified",
     );
+  });
+});
+
+// =============================================================================
+// BUG-005: Help text should show correct template format
+// =============================================================================
+describe("cmc context - help text format", () => {
+  it("shows correct template format in help text", async () => {
+    const result = await run("context/no-language/single", [
+      "context",
+      "--help",
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    // Should show the full tier/language/version format in examples
+    expect(result.stdout).toContain("internal/typescript/5.5");
+    expect(result.stdout).toContain("Template format:");
+    expect(result.stdout).toContain("Available tiers:");
   });
 });
 
