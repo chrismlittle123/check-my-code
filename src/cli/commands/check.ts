@@ -40,7 +40,7 @@ Examples:
         process.exit(
           result.violations.length > 0 ? ExitCode.VIOLATIONS : ExitCode.SUCCESS,
         );
-      } catch (error) {
+      } catch (error: unknown) {
         handleCheckError(error, options.json ?? false, options.quiet ?? false);
       }
     },
@@ -219,10 +219,22 @@ function outputResults(
   );
 }
 
-function getErrorCode(error: unknown): string {
-  if (error instanceof ConfigError) return "CONFIG_ERROR";
-  if (error instanceof LinterError) return "RUNTIME_ERROR";
-  return "RUNTIME_ERROR";
+type ErrorCode = "CONFIG_ERROR" | "RUNTIME_ERROR";
+
+interface ErrorInfo {
+  code: ErrorCode;
+  exitCode: number;
+}
+
+function getErrorInfo(error: unknown): ErrorInfo {
+  if (error instanceof ConfigError) {
+    return { code: "CONFIG_ERROR", exitCode: ExitCode.CONFIG_ERROR };
+  }
+  // LinterError and all other errors are treated as runtime errors
+  if (error instanceof LinterError) {
+    return { code: "RUNTIME_ERROR", exitCode: ExitCode.RUNTIME_ERROR };
+  }
+  return { code: "RUNTIME_ERROR", exitCode: ExitCode.RUNTIME_ERROR };
 }
 
 function handleCheckError(
@@ -231,11 +243,7 @@ function handleCheckError(
   quiet: boolean,
 ): never {
   const errorMessage = error instanceof Error ? error.message : "Unknown error";
-  const errorCode = getErrorCode(error);
-  const exitCode =
-    error instanceof ConfigError
-      ? ExitCode.CONFIG_ERROR
-      : ExitCode.RUNTIME_ERROR;
+  const { code: errorCode, exitCode } = getErrorInfo(error);
 
   if (!quiet) {
     if (json) {
