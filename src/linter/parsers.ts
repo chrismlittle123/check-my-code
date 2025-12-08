@@ -6,11 +6,21 @@ import { relative } from "path";
 
 import { type Violation } from "../types.js";
 
+/** Result of parsing linter output */
+export interface ParseResult {
+  violations: Violation[];
+  parseError?: string;
+}
+
+/**
+ * Parse Ruff JSON output into violations.
+ * Returns parseError if the output is not valid JSON.
+ */
 export function parseRuffOutput(
   output: string,
   projectRoot: string,
-): Violation[] {
-  if (!output.trim()) return [];
+): ParseResult {
+  if (!output.trim()) return { violations: [] };
 
   try {
     const results = JSON.parse(output) as {
@@ -20,24 +30,34 @@ export function parseRuffOutput(
       message: string;
     }[];
 
-    return results.map((r) => ({
-      file: relative(projectRoot, r.filename),
-      line: r.location?.row ?? null,
-      column: r.location?.column ?? null,
-      rule: r.code,
-      message: r.message,
-      linter: "ruff" as const,
-    }));
-  } catch {
-    return [];
+    return {
+      violations: results.map((r) => ({
+        file: relative(projectRoot, r.filename),
+        line: r.location?.row ?? null,
+        column: r.location?.column ?? null,
+        rule: r.code,
+        message: r.message,
+        linter: "ruff" as const,
+      })),
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      violations: [],
+      parseError: `Failed to parse Ruff output: ${message}`,
+    };
   }
 }
 
+/**
+ * Parse ESLint JSON output into violations.
+ * Returns parseError if the output is not valid JSON.
+ */
 export function parseESLintOutput(
   output: string,
   projectRoot: string,
-): Violation[] {
-  if (!output.trim()) return [];
+): ParseResult {
+  if (!output.trim()) return { violations: [] };
 
   try {
     const results = JSON.parse(output) as {
@@ -63,9 +83,13 @@ export function parseESLintOutput(
         });
       }
     }
-    return violations;
-  } catch {
-    return [];
+    return { violations };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      violations: [],
+      parseError: `Failed to parse ESLint output: ${message}`,
+    };
   }
 }
 
