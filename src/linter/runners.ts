@@ -44,7 +44,7 @@ export async function runLinters(
 
   // Run TypeScript type checking if enabled and there are TS files
   if (tsFiles.length > 0 && options?.tscEnabled) {
-    const tscViolations = await runTsc(projectRoot);
+    const tscViolations = await runTsc(projectRoot, tsFiles);
     violations.push(...tscViolations);
   }
 
@@ -157,15 +157,36 @@ function handleESLintError(error: unknown, projectRoot: string): Violation[] {
   );
 }
 
-export async function runTsc(projectRoot: string): Promise<Violation[]> {
+/** Filter violations to only include files from the requested list */
+function filterViolationsByFiles(
+  violations: Violation[],
+  files?: string[],
+): Violation[] {
+  if (!files || files.length === 0) return violations;
+  const fileSet = new Set(files);
+  return violations.filter((v) => fileSet.has(v.file));
+}
+
+/**
+ * Run TypeScript type checking.
+ * TypeScript type checking is inherently project-wide since types from one file
+ * affect others. We run tsc on the full project but filter violations to only
+ * include files from the requested list.
+ *
+ * @param projectRoot - Project root directory
+ * @param files - List of files to report violations for (relative to projectRoot)
+ */
+export async function runTsc(
+  projectRoot: string,
+  files?: string[],
+): Promise<Violation[]> {
   const tscBin = await findTscBin(projectRoot);
   if (!tscBin) {
     console.error("Warning: TypeScript (tsc) not found, skipping type checks");
     return [];
   }
 
-  const projectTsconfigPath = join(projectRoot, "tsconfig.json");
-  if (!existsSync(projectTsconfigPath)) {
+  if (!existsSync(join(projectRoot, "tsconfig.json"))) {
     console.error("Warning: No tsconfig.json found, skipping type checks");
     return [];
   }
@@ -174,13 +195,33 @@ export async function runTsc(projectRoot: string): Promise<Violation[]> {
 
   try {
     const output = await runCommandWithStderr(tscBin, args, projectRoot);
-    return parseTscOutput(output, projectRoot);
+    return filterViolationsByFiles(parseTscOutput(output, projectRoot), files);
   } catch (error) {
-    if (error instanceof CommandErrorWithStderr) {
-      return parseTscOutput(error.stdout + error.stderr, projectRoot);
-    }
-    return [];
+    return handleTscError(error, projectRoot, files);
   }
+}
+
+function handleTscError(
+  error: unknown,
+  projectRoot: string,
+  files?: string[],
+): Violation[] {
+  if (error instanceof CommandErrorWithStderr) {
+    const violations = parseTscOutput(error.stdout + error.stderr, projectRoot);
+    if (violations.length > 0) {
+      return filterViolationsByFiles(violations, files);
+    }
+    // Non-zero exit with no violations indicates config error
+    throw new LinterError(
+      "TypeScript (tsc) failed to run. This may indicate a configuration error.\n" +
+        "Exit code was non-zero but no location-based diagnostics were parsed.\n" +
+        "Please check your tsconfig.json and referenced projects.",
+    );
+  }
+  // Unknown error - likely spawn failure
+  throw new LinterError(
+    `TypeScript (tsc) failed to execute: ${error instanceof Error ? error.message : String(error)}`,
+  );
 }
 
 async function findTscBin(projectRoot: string): Promise<string | null> {
