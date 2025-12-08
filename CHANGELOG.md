@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.9] - 2025-12-08
+
 ### Security
 
 - **Path traversal protection in MCP tools** - The MCP server's `check_files`, `check_project`, and `fix_files` tools now reject file paths that resolve outside the project root. Previously, paths like `../../../etc/passwd` or `/absolute/path/outside/project` could potentially be passed to linters. Now such paths are silently filtered out for security.
@@ -187,7 +189,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standard exit codes (0, 1, 2, 3)
 - `--json`, `--force`, `--stdout` flags
 
-[Unreleased]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.5...HEAD
+[Unreleased]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.9...HEAD
+[1.5.9]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.8...v1.5.9
+[1.5.8]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.7...v1.5.8
+[1.5.7]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.6...v1.5.7
+[1.5.6]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.5...v1.5.6
 [1.5.5]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.2...v1.5.5
 [1.5.4]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.2...v1.5.4
 [1.5.3]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.2...v1.5.3
