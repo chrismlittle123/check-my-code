@@ -64,10 +64,10 @@ Check your ruff.toml configuration.`;
 describe("parseRuffOutput", () => {
   const projectRoot = "/project";
 
-  it("returns empty array for empty output", () => {
-    expect(parseRuffOutput("", projectRoot)).toEqual([]);
-    expect(parseRuffOutput("   ", projectRoot)).toEqual([]);
-    expect(parseRuffOutput("\n\n", projectRoot)).toEqual([]);
+  it("returns empty violations for empty output", () => {
+    expect(parseRuffOutput("", projectRoot).violations).toEqual([]);
+    expect(parseRuffOutput("   ", projectRoot).violations).toEqual([]);
+    expect(parseRuffOutput("\n\n", projectRoot).violations).toEqual([]);
   });
 
   it("parses valid Ruff JSON output", () => {
@@ -80,10 +80,11 @@ describe("parseRuffOutput", () => {
       },
     ]);
 
-    const violations = parseRuffOutput(output, projectRoot);
+    const result = parseRuffOutput(output, projectRoot);
 
-    expect(violations).toHaveLength(1);
-    expect(violations[0]).toEqual({
+    expect(result.violations).toHaveLength(1);
+    expect(result.parseError).toBeUndefined();
+    expect(result.violations[0]).toEqual({
       file: "src/file.py",
       line: 10,
       column: 5,
@@ -109,11 +110,11 @@ describe("parseRuffOutput", () => {
       },
     ]);
 
-    const violations = parseRuffOutput(output, projectRoot);
+    const result = parseRuffOutput(output, projectRoot);
 
-    expect(violations).toHaveLength(2);
-    expect(violations[0].file).toBe("src/a.py");
-    expect(violations[1].file).toBe("src/b.py");
+    expect(result.violations).toHaveLength(2);
+    expect(result.violations[0].file).toBe("src/a.py");
+    expect(result.violations[1].file).toBe("src/b.py");
   });
 
   it("handles missing location", () => {
@@ -125,11 +126,11 @@ describe("parseRuffOutput", () => {
       },
     ]);
 
-    const violations = parseRuffOutput(output, projectRoot);
+    const result = parseRuffOutput(output, projectRoot);
 
-    expect(violations).toHaveLength(1);
-    expect(violations[0].line).toBeNull();
-    expect(violations[0].column).toBeNull();
+    expect(result.violations).toHaveLength(1);
+    expect(result.violations[0].line).toBeNull();
+    expect(result.violations[0].column).toBeNull();
   });
 
   it("handles partial location (row only)", () => {
@@ -142,20 +143,23 @@ describe("parseRuffOutput", () => {
       },
     ]);
 
-    const violations = parseRuffOutput(output, projectRoot);
+    const result = parseRuffOutput(output, projectRoot);
 
-    expect(violations[0].line).toBe(42);
-    expect(violations[0].column).toBeNull();
+    expect(result.violations[0].line).toBe(42);
+    expect(result.violations[0].column).toBeNull();
   });
 
-  it("returns empty array for invalid JSON", () => {
-    const violations = parseRuffOutput("not json", projectRoot);
-    expect(violations).toEqual([]);
+  it("returns parseError for invalid JSON", () => {
+    const result = parseRuffOutput("not json", projectRoot);
+    expect(result.violations).toEqual([]);
+    expect(result.parseError).toBeDefined();
+    expect(result.parseError).toContain("Failed to parse Ruff output");
   });
 
-  it("returns empty array for empty JSON array", () => {
-    const violations = parseRuffOutput("[]", projectRoot);
-    expect(violations).toEqual([]);
+  it("returns empty violations for empty JSON array", () => {
+    const result = parseRuffOutput("[]", projectRoot);
+    expect(result.violations).toEqual([]);
+    expect(result.parseError).toBeUndefined();
   });
 
   it("converts absolute paths to relative paths", () => {
@@ -168,18 +172,18 @@ describe("parseRuffOutput", () => {
       },
     ]);
 
-    const violations = parseRuffOutput(output, projectRoot);
-    expect(violations[0].file).toBe("deep/nested/file.py");
+    const result = parseRuffOutput(output, projectRoot);
+    expect(result.violations[0].file).toBe("deep/nested/file.py");
   });
 });
 
 describe("parseESLintOutput", () => {
   const projectRoot = "/project";
 
-  it("returns empty array for empty output", () => {
-    expect(parseESLintOutput("", projectRoot)).toEqual([]);
-    expect(parseESLintOutput("   ", projectRoot)).toEqual([]);
-    expect(parseESLintOutput("\n", projectRoot)).toEqual([]);
+  it("returns empty violations for empty output", () => {
+    expect(parseESLintOutput("", projectRoot).violations).toEqual([]);
+    expect(parseESLintOutput("   ", projectRoot).violations).toEqual([]);
+    expect(parseESLintOutput("\n", projectRoot).violations).toEqual([]);
   });
 
   it("parses valid ESLint JSON output", () => {
@@ -197,10 +201,11 @@ describe("parseESLintOutput", () => {
       },
     ]);
 
-    const violations = parseESLintOutput(output, projectRoot);
+    const result = parseESLintOutput(output, projectRoot);
 
-    expect(violations).toHaveLength(1);
-    expect(violations[0]).toEqual({
+    expect(result.violations).toHaveLength(1);
+    expect(result.parseError).toBeUndefined();
+    expect(result.violations[0]).toEqual({
       file: "src/file.ts",
       line: 5,
       column: 10,
@@ -221,11 +226,11 @@ describe("parseESLintOutput", () => {
       },
     ]);
 
-    const violations = parseESLintOutput(output, projectRoot);
+    const result = parseESLintOutput(output, projectRoot);
 
-    expect(violations).toHaveLength(2);
-    expect(violations[0].rule).toBe("no-var");
-    expect(violations[1].rule).toBe("semi");
+    expect(result.violations).toHaveLength(2);
+    expect(result.violations[0].rule).toBe("no-var");
+    expect(result.violations[1].rule).toBe("semi");
   });
 
   it("parses violations across multiple files", () => {
@@ -240,18 +245,18 @@ describe("parseESLintOutput", () => {
       },
     ]);
 
-    const violations = parseESLintOutput(output, projectRoot);
+    const result = parseESLintOutput(output, projectRoot);
 
-    expect(violations).toHaveLength(2);
-    expect(violations[0].file).toBe("a.ts");
-    expect(violations[1].file).toBe("b.ts");
+    expect(result.violations).toHaveLength(2);
+    expect(result.violations[0].file).toBe("a.ts");
+    expect(result.violations[1].file).toBe("b.ts");
   });
 
   it("handles missing messages array", () => {
     const output = JSON.stringify([{ filePath: "/project/file.ts" }]);
 
-    const violations = parseESLintOutput(output, projectRoot);
-    expect(violations).toEqual([]);
+    const result = parseESLintOutput(output, projectRoot);
+    expect(result.violations).toEqual([]);
   });
 
   it("handles empty messages array", () => {
@@ -259,8 +264,8 @@ describe("parseESLintOutput", () => {
       { filePath: "/project/file.ts", messages: [] },
     ]);
 
-    const violations = parseESLintOutput(output, projectRoot);
-    expect(violations).toEqual([]);
+    const result = parseESLintOutput(output, projectRoot);
+    expect(result.violations).toEqual([]);
   });
 
   it("handles missing line/column", () => {
@@ -271,11 +276,11 @@ describe("parseESLintOutput", () => {
       },
     ]);
 
-    const violations = parseESLintOutput(output, projectRoot);
+    const result = parseESLintOutput(output, projectRoot);
 
-    expect(violations).toHaveLength(1);
-    expect(violations[0].line).toBeNull();
-    expect(violations[0].column).toBeNull();
+    expect(result.violations).toHaveLength(1);
+    expect(result.violations[0].line).toBeNull();
+    expect(result.violations[0].column).toBeNull();
   });
 
   it("handles missing ruleId", () => {
@@ -286,20 +291,23 @@ describe("parseESLintOutput", () => {
       },
     ]);
 
-    const violations = parseESLintOutput(output, projectRoot);
+    const result = parseESLintOutput(output, projectRoot);
 
-    expect(violations).toHaveLength(1);
-    expect(violations[0].rule).toBe("eslint");
+    expect(result.violations).toHaveLength(1);
+    expect(result.violations[0].rule).toBe("eslint");
   });
 
-  it("returns empty array for invalid JSON", () => {
-    const violations = parseESLintOutput("not valid json", projectRoot);
-    expect(violations).toEqual([]);
+  it("returns parseError for invalid JSON", () => {
+    const result = parseESLintOutput("not valid json", projectRoot);
+    expect(result.violations).toEqual([]);
+    expect(result.parseError).toBeDefined();
+    expect(result.parseError).toContain("Failed to parse ESLint output");
   });
 
-  it("returns empty array for empty JSON array", () => {
-    const violations = parseESLintOutput("[]", projectRoot);
-    expect(violations).toEqual([]);
+  it("returns empty violations for empty JSON array", () => {
+    const result = parseESLintOutput("[]", projectRoot);
+    expect(result.violations).toEqual([]);
+    expect(result.parseError).toBeUndefined();
   });
 });
 

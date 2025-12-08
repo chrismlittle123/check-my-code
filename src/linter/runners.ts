@@ -66,8 +66,13 @@ export async function runRuff(
 
   try {
     const output = await runCommand("ruff", args, projectRoot);
-    return parseRuffOutput(output, projectRoot);
+    const result = parseRuffOutput(output, projectRoot);
+    if (result.parseError) {
+      throw new LinterError(result.parseError);
+    }
+    return result.violations;
   } catch (error) {
+    if (error instanceof LinterError) throw error;
     return handleRuffError(error, projectRoot);
   }
 }
@@ -75,9 +80,12 @@ export async function runRuff(
 function handleRuffError(error: unknown, projectRoot: string): Violation[] {
   if (error instanceof CommandError && error.stdout) {
     // Ruff exits with non-zero when it finds violations - parse the output
-    const violations = parseRuffOutput(error.stdout, projectRoot);
-    if (violations.length > 0) {
-      return violations;
+    const result = parseRuffOutput(error.stdout, projectRoot);
+    if (result.parseError) {
+      throw new LinterError(result.parseError);
+    }
+    if (result.violations.length > 0) {
+      return result.violations;
     }
     // If no violations but exit code was non-zero, check for config errors
     throw new LinterError(
@@ -115,8 +123,13 @@ export async function runESLint(
 
   try {
     const output = await runCommand(eslintBin, args, projectRoot);
-    return parseESLintOutput(output, projectRoot);
+    const result = parseESLintOutput(output, projectRoot);
+    if (result.parseError) {
+      throw new LinterError(result.parseError);
+    }
+    return result.violations;
   } catch (error) {
+    if (error instanceof LinterError) throw error;
     return handleESLintError(error, projectRoot);
   }
 }
@@ -133,24 +146,13 @@ async function findESLintBin(projectRoot: string): Promise<string | null> {
 
 function handleESLintError(error: unknown, projectRoot: string): Violation[] {
   if (error instanceof CommandError && error.stdout) {
-    const violations = parseESLintOutput(error.stdout, projectRoot);
-    if (violations.length > 0) {
-      return violations;
+    const result = parseESLintOutput(error.stdout, projectRoot);
+    if (result.parseError) {
+      throw new LinterError(result.parseError);
     }
-    // Check if the output looks like valid JSON (empty results array)
-    try {
-      const parsed = JSON.parse(error.stdout);
-      if (Array.isArray(parsed)) {
-        return [];
-      }
-    } catch {
-      // Not valid JSON - ESLint failed to run properly
-    }
-    throw new LinterError(
-      `ESLint failed to run. This may indicate a configuration error.\n` +
-        `Check your eslint.config.js and ensure all required packages are installed.\n` +
-        `Exit code was non-zero but no valid lint output was produced.`,
-    );
+    // Return violations if any were found, or empty array if output was valid JSON
+    // ESLint may exit non-zero for warnings-only cases with valid empty output
+    return result.violations;
   }
   throw new LinterError(
     `ESLint failed to execute: ${error instanceof Error ? error.message : String(error)}`,
