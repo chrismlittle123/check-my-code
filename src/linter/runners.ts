@@ -197,15 +197,31 @@ export async function runTsc(
     const output = await runCommandWithStderr(tscBin, args, projectRoot);
     return filterViolationsByFiles(parseTscOutput(output, projectRoot), files);
   } catch (error) {
-    if (error instanceof CommandErrorWithStderr) {
-      const violations = parseTscOutput(
-        error.stdout + error.stderr,
-        projectRoot,
-      );
+    return handleTscError(error, projectRoot, files);
+  }
+}
+
+function handleTscError(
+  error: unknown,
+  projectRoot: string,
+  files?: string[],
+): Violation[] {
+  if (error instanceof CommandErrorWithStderr) {
+    const violations = parseTscOutput(error.stdout + error.stderr, projectRoot);
+    if (violations.length > 0) {
       return filterViolationsByFiles(violations, files);
     }
-    return [];
+    // Non-zero exit with no violations indicates config error
+    throw new LinterError(
+      "TypeScript (tsc) failed to run. This may indicate a configuration error.\n" +
+        "Exit code was non-zero but no location-based diagnostics were parsed.\n" +
+        "Please check your tsconfig.json and referenced projects.",
+    );
   }
+  // Unknown error - likely spawn failure
+  throw new LinterError(
+    `TypeScript (tsc) failed to execute: ${error instanceof Error ? error.message : String(error)}`,
+  );
 }
 
 async function findTscBin(projectRoot: string): Promise<string | null> {
