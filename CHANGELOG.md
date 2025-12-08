@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **TSC file filtering** - TypeScript type checking (`tsc`) now filters violations to only include the requested files. Previously, when running `cmc check src/specific-file.ts`, TSC would report type errors from all files in the project, not just the requested file. This made the behavior inconsistent with ESLint and Ruff which correctly check only the specified files.
+
 ## [1.5.8] - 2024-12-08
 
 ### Fixed
