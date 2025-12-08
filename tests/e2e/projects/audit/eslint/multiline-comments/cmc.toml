@@ -1,0 +1,7 @@
+[project]
+name = "audit-eslint-multiline-comments"
+
+[rulesets.eslint.rules]
+"no-console" = "error"
+"no-var" = "error"
+"eqeqeq" = "error"
