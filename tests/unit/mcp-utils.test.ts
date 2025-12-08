@@ -118,7 +118,7 @@ describe("validateFiles", () => {
       expect(result[0]).toBe("file1.ts");
     });
 
-    it("handles files outside project root correctly", async () => {
+    it("rejects files outside project root (path traversal protection)", async () => {
       // Create a temp file outside project root
       const outsideDir = join(testDir, "..", ".outside-test");
       await mkdir(outsideDir, { recursive: true });
@@ -128,9 +128,29 @@ describe("validateFiles", () => {
         const outsidePath = resolve(join(outsideDir, "outside.ts"));
         const result = await validateFiles([outsidePath], projectRoot);
 
-        expect(result).toHaveLength(1);
-        // Path should be relative (may use ../ for outside paths)
-        expect(result[0]).toMatch(/\.\.\/\.outside-test\/outside\.ts$/);
+        // Security: Files outside project root should be rejected
+        expect(result).toHaveLength(0);
+      } finally {
+        await rm(outsideDir, { recursive: true, force: true });
+      }
+    });
+
+    it("rejects relative paths that traverse outside project root", async () => {
+      // Create a temp file outside project root
+      const outsideDir = join(testDir, "..", ".outside-test");
+      await mkdir(outsideDir, { recursive: true });
+      await writeFile(join(outsideDir, "outside.ts"), "const d = 4;");
+
+      try {
+        // Try path traversal via relative path
+        const result = await validateFiles(
+          ["../.outside-test/outside.ts"],
+          projectRoot,
+          projectRoot,
+        );
+
+        // Security: Path traversal should be rejected
+        expect(result).toHaveLength(0);
       } finally {
         await rm(outsideDir, { recursive: true, force: true });
       }

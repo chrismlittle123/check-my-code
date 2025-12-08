@@ -12,12 +12,31 @@ import { ErrorCode, type ErrorResponse, makeError } from "./response.js";
 import { setConfigFound, setProjectRoot } from "./state.js";
 
 /**
- * Discover files in a directory matching linter patterns
+ * Check if a path is within the project root (security check for path traversal)
+ * @param filePath - Resolved absolute file path
+ * @param projectRoot - The project root directory
+ * @returns true if the file is within the project root
+ */
+function isWithinProjectRoot(filePath: string, projectRoot: string): boolean {
+  const relativePath = relative(projectRoot, filePath);
+  // If the relative path starts with "..", the file is outside project root
+  return !relativePath.startsWith("..") && !isAbsolute(relativePath);
+}
+
+/**
+ * Discover files in a directory matching linter patterns.
+ * Rejects paths outside the project root for security (path traversal protection).
  */
 export async function discoverFiles(
   targetPath: string,
   projectRoot: string,
 ): Promise<string[]> {
+  // Security: Reject paths outside project root (path traversal protection)
+  const resolvedPath = resolve(targetPath);
+  if (!isWithinProjectRoot(resolvedPath, projectRoot)) {
+    return [];
+  }
+
   const stats = await stat(targetPath).catch(() => null);
 
   if (!stats) {
@@ -73,6 +92,7 @@ export async function loadProjectConfig(
 
 /**
  * Validate that files exist and return valid ones as relative paths.
+ * Rejects files outside the project root for security (path traversal protection).
  * @param files - Array of file paths (can be absolute or relative to cwd)
  * @param projectRoot - The project root directory (where cmc.toml is)
  * @param cwd - The current working directory to resolve relative paths from (defaults to process.cwd())
@@ -89,6 +109,12 @@ export async function validateFiles(
     // Resolve relative paths from cwd, not projectRoot
     // This ensures paths like "nested-paths/file.ts" work when MCP runs from parent directory
     const fullPath = isAbsolute(file) ? file : resolve(baseCwd, file);
+
+    // Security: Reject files outside project root (path traversal protection)
+    if (!isWithinProjectRoot(fullPath, projectRoot)) {
+      return null;
+    }
+
     const stats = await stat(fullPath).catch(() => null);
     if (stats?.isFile()) {
       // Always return relative path from projectRoot
