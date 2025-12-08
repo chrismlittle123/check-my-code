@@ -41,20 +41,7 @@ Examples:
           result.violations.length > 0 ? ExitCode.VIOLATIONS : ExitCode.SUCCESS,
         );
       } catch (error) {
-        if (!options.quiet) {
-          console.error(
-            colors.red(
-              `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-            ),
-          );
-        }
-        if (error instanceof ConfigError) {
-          process.exit(ExitCode.CONFIG_ERROR);
-        } else if (error instanceof LinterError) {
-          process.exit(ExitCode.RUNTIME_ERROR);
-        } else {
-          process.exit(ExitCode.RUNTIME_ERROR);
-        }
+        handleCheckError(error, options.json ?? false, options.quiet ?? false);
       }
     },
   );
@@ -230,4 +217,43 @@ function outputResults(
   console.log(
     colors.red(`\n✗ ${result.violations.length} violation${s} found`),
   );
+}
+
+function getErrorCode(error: unknown): string {
+  if (error instanceof ConfigError) return "CONFIG_ERROR";
+  if (error instanceof LinterError) return "RUNTIME_ERROR";
+  return "RUNTIME_ERROR";
+}
+
+function handleCheckError(
+  error: unknown,
+  json: boolean,
+  quiet: boolean,
+): never {
+  const errorMessage = error instanceof Error ? error.message : "Unknown error";
+  const errorCode = getErrorCode(error);
+  const exitCode =
+    error instanceof ConfigError
+      ? ExitCode.CONFIG_ERROR
+      : ExitCode.RUNTIME_ERROR;
+
+  if (!quiet) {
+    if (json) {
+      console.log(
+        JSON.stringify(
+          {
+            error: {
+              code: errorCode,
+              message: errorMessage,
+            },
+          },
+          null,
+          2,
+        ),
+      );
+    } else {
+      console.error(colors.red(`Error: ${errorMessage}`));
+    }
+  }
+  process.exit(exitCode);
 }
