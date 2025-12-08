@@ -106,6 +106,30 @@ describe("cmc mcp-server - check_project", () => {
     expect(eslintViolations.length).toBeGreaterThan(0);
     expect(ruffViolations.length).toBeGreaterThan(0);
   });
+
+  it("checks subdirectory when MCP runs from parent directory", async () => {
+    // Bug fix: check_project with relative subdirectory path was resolving
+    // the path relative to projectRoot instead of cwd, causing path doubling
+    const parentDir = join(ROOT_DIR, "tests/e2e/projects/mcp-server");
+
+    const result = await runMcpFromCwd(parentDir, "check_project", {
+      path: "nested-paths",
+    });
+
+    const content = parseToolContent(result.response) as {
+      success: boolean;
+      violations: { rule: string }[];
+      files_checked: number;
+      has_violations: boolean;
+    };
+
+    expect(content).not.toBeNull();
+    expect(content.success).toBe(true);
+    expect(content.files_checked).toBeGreaterThan(0);
+    expect(content.has_violations).toBe(true);
+    // Should find the no-var violation in nested-paths/root-file.ts
+    expect(content.violations.some((v) => v.rule === "no-var")).toBe(true);
+  });
 });
 
 describe("cmc mcp-server - get_status", () => {

@@ -18,26 +18,24 @@ import { colors } from "../output.js";
 
 export const checkCommand = new Command("check")
   .description("Run ESLint, Ruff, and TypeScript type checks on project files")
-  .argument("[path]", "Path to check (default: current directory)")
+  .argument("[paths...]", "Paths to check (default: current directory)")
   .option("--json", "Output results as JSON", false)
   .option("-q, --quiet", "Suppress all output (exit code only)", false)
   .addHelpText(
     "after",
     `
 Examples:
-  $ cmc check                Check entire project
-  $ cmc check src/           Check specific directory
-  $ cmc check src/main.ts    Check specific file
-  $ cmc check --json         Output as JSON for CI/tooling
-  $ cmc check --quiet        Silent mode (exit code only)`,
+  $ cmc check                      Check entire project
+  $ cmc check src/                 Check specific directory
+  $ cmc check src/main.ts          Check specific file
+  $ cmc check file1.ts file2.ts    Check multiple files
+  $ cmc check --json               Output as JSON for CI/tooling
+  $ cmc check --quiet              Silent mode (exit code only)`,
   )
   .action(
-    async (
-      path: string | undefined,
-      options: { json?: boolean; quiet?: boolean },
-    ) => {
+    async (paths: string[], options: { json?: boolean; quiet?: boolean }) => {
       try {
-        const result = await runCheck(path);
+        const result = await runCheck(paths);
         outputResults(result, options.json ?? false, options.quiet ?? false);
         process.exit(
           result.violations.length > 0 ? ExitCode.VIOLATIONS : ExitCode.SUCCESS,
@@ -61,12 +59,28 @@ Examples:
     },
   );
 
-async function runCheck(path?: string): Promise<CheckResult> {
+async function runCheck(paths: string[]): Promise<CheckResult> {
   const projectRoot = findProjectRoot();
   const config = await loadConfig(projectRoot);
 
-  const targetPath = path ? resolve(projectRoot, path) : projectRoot;
-  const files = await discoverFiles(targetPath, projectRoot);
+  // If no paths provided, check entire project
+  const targetPaths =
+    paths.length > 0
+      ? paths.map((p) => resolve(projectRoot, p))
+      : [projectRoot];
+
+  // Discover files from all paths in parallel
+  const discoveryResults = await Promise.all(
+    targetPaths.map((p) => discoverFiles(p, projectRoot)),
+  );
+
+  const { files, notFoundPaths } = processDiscoveryResults(
+    discoveryResults,
+    targetPaths,
+  );
+
+  // Validate that we found something when paths were explicitly provided
+  validateDiscoveryResults(files, notFoundPaths, paths, projectRoot);
 
   if (files.length === 0) {
     return { violations: [], filesChecked: 0 };
@@ -76,10 +90,44 @@ async function runCheck(path?: string): Promise<CheckResult> {
   const linterOptions = buildLinterOptions(config);
   const violations = await runLinters(projectRoot, files, linterOptions);
 
-  return {
-    violations,
-    filesChecked: files.length,
-  };
+  return { violations, filesChecked: files.length };
+}
+
+function processDiscoveryResults(
+  results: DiscoverResult[],
+  targetPaths: string[],
+): { files: string[]; notFoundPaths: string[] } {
+  const allFiles: string[] = [];
+  const notFoundPaths: string[] = [];
+
+  results.forEach((result, i) => {
+    const targetPath = targetPaths[i];
+    if (!result.found && targetPath !== undefined) {
+      notFoundPaths.push(targetPath);
+    }
+    allFiles.push(...result.files);
+  });
+
+  // Deduplicate files (in case overlapping paths were provided)
+  return { files: [...new Set(allFiles)], notFoundPaths };
+}
+
+function validateDiscoveryResults(
+  files: string[],
+  notFoundPaths: string[],
+  originalPaths: string[],
+  projectRoot: string,
+): void {
+  // If explicit paths were provided but none were found, throw an error
+  if (
+    originalPaths.length > 0 &&
+    files.length === 0 &&
+    notFoundPaths.length > 0
+  ) {
+    throw new ConfigError(
+      `Path not found: ${notFoundPaths.map((p) => relative(projectRoot, p) || p).join(", ")}`,
+    );
+  }
 }
 
 function buildLinterOptions(config: Config): LinterOptions {
@@ -93,19 +141,23 @@ function buildLinterOptions(config: Config): LinterOptions {
   return options;
 }
 
+interface DiscoverResult {
+  files: string[];
+  found: boolean;
+}
+
 async function discoverFiles(
   targetPath: string,
   projectRoot: string,
-): Promise<string[]> {
+): Promise<DiscoverResult> {
   const stats = await stat(targetPath).catch(() => null);
 
   if (!stats) {
-    console.error(colors.yellow(`Warning: Path not found: ${targetPath}`));
-    return [];
+    return { files: [], found: false };
   }
 
   if (stats.isFile()) {
-    return [relative(projectRoot, targetPath)];
+    return { files: [relative(projectRoot, targetPath)], found: true };
   }
 
   const pattern = `${targetPath}/**/*.{ts,tsx,js,jsx,mjs,cjs,py,pyi}`;
@@ -125,7 +177,10 @@ async function discoverFiles(
     ],
   });
 
-  return foundFiles.map((f) => relative(projectRoot, f)).sort();
+  return {
+    files: foundFiles.map((f) => relative(projectRoot, f)).sort(),
+    found: true,
+  };
 }
 
 function outputResults(
