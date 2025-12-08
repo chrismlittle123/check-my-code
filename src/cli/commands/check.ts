@@ -32,8 +32,8 @@ Examples:
     async (paths: string[], options: { json?: boolean; quiet?: boolean }) => {
       try {
         // Suppress linter warnings in JSON mode to avoid polluting JSON output
-        const suppressWarnings = options.json ?? options.quiet ?? false;
-        const result = await runCheck(paths, suppressWarnings);
+        const quiet = options.json ?? options.quiet ?? false;
+        const result = await runCheck(paths, quiet);
         outputResults(result, options.json ?? false, options.quiet ?? false);
         process.exit(
           result.violations.length > 0 ? ExitCode.VIOLATIONS : ExitCode.SUCCESS,
