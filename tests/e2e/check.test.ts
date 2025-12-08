@@ -433,6 +433,108 @@ describe("cmc check - TypeScript type checking", () => {
 });
 
 // =============================================================================
+// Check: Multiple file arguments
+// =============================================================================
+describe("cmc check - multiple file arguments", () => {
+  it("checks multiple files when provided as arguments", async () => {
+    const result = await run("check/typescript/multi-violations", [
+      "check",
+      "file-a.ts",
+      "file-b.ts",
+      "--json",
+    ]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+    expect(output.summary.files_checked).toBe(2);
+    // Should have violations from both files
+    const filesWithViolations = new Set(output.violations.map((v) => v.file));
+    expect(filesWithViolations.has("file-a.ts")).toBe(true);
+    expect(filesWithViolations.has("file-b.ts")).toBe(true);
+  });
+
+  it("deduplicates overlapping paths", async () => {
+    const result = await run("check/typescript/nested-dirs", [
+      "check",
+      "src/",
+      "src/index.ts",
+      "--json",
+    ]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    // src/ includes src/index.ts, so should not double-count
+    expect(output.summary.files_checked).toBe(2); // src/index.ts and src/utils/helpers.ts
+  });
+
+  it("checks mix of files and directories", async () => {
+    const result = await run("check/typescript/nested-dirs", [
+      "check",
+      "root.ts",
+      "src/",
+      "--json",
+    ]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+    // root.ts + src/index.ts + src/utils/helpers.ts
+    expect(output.summary.files_checked).toBe(3);
+  });
+});
+
+// =============================================================================
+// Check: Nonexistent paths
+// =============================================================================
+describe("cmc check - nonexistent paths", () => {
+  it("exits with code 2 for nonexistent file", async () => {
+    const result = await run("check/typescript/default", [
+      "check",
+      "does-not-exist.ts",
+    ]);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("Path not found");
+    expect(result.stderr).toContain("does-not-exist.ts");
+  });
+
+  it("exits with code 2 for nonexistent directory", async () => {
+    const result = await run("check/typescript/default", [
+      "check",
+      "nonexistent-dir/",
+    ]);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("Path not found");
+  });
+
+  it("lists all nonexistent paths in error", async () => {
+    const result = await run("check/typescript/default", [
+      "check",
+      "missing1.ts",
+      "missing2.ts",
+    ]);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("missing1.ts");
+    expect(result.stderr).toContain("missing2.ts");
+  });
+
+  it("still checks valid files if some exist", async () => {
+    const result = await run("check/typescript/default", [
+      "check",
+      "violation.ts",
+      "nonexistent.ts",
+      "--json",
+    ]);
+
+    // Should check the valid file and report violations
+    expect(result.exitCode).toBe(1);
+    const output: JsonOutput = JSON.parse(result.stdout);
+    expect(output.summary.files_checked).toBe(1);
+    expect(output.violations.length).toBeGreaterThan(0);
+  });
+});
+
+// =============================================================================
 // Check: --quiet flag
 // =============================================================================
 describe("cmc check - --quiet flag", () => {

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.8] - 2024-12-08
+
+### Fixed
+
+- **MCP `check_project` subdirectory path resolution** - The MCP server's `check_project` tool now correctly handles subdirectory paths when the MCP server runs from a parent directory. Previously, relative paths like `subdir/` would return "No lintable files found" because paths were resolved against the project root instead of the current working directory.
+- **CLI multiple file arguments** - `cmc check` now accepts multiple file/directory arguments (e.g., `cmc check file1.ts file2.ts src/`). Previously, only the first argument was processed and all subsequent arguments were silently ignored.
+- **CLI exit code for nonexistent paths** - `cmc check` now returns exit code 2 (config error) when explicitly specified files or directories don't exist. Previously, it showed a warning but returned exit code 0 with "No violations found", which could cause CI pipelines to pass incorrectly.
+- Use `path.isAbsolute()` for cross-platform path detection in MCP handlers (Windows + Unix compatibility)
+
 ## [1.5.7] - 2024-12-06
 
 ### Fixed
