@@ -8,11 +8,7 @@ import {
   findProjectRoot,
   loadConfig,
 } from "../../config/loader.js";
-import {
-  LinterError,
-  type LinterOptions,
-  runLinters,
-} from "../../linter/index.js";
+import { type LinterOptions, runLinters } from "../../linter/index.js";
 import { type CheckResult, type Config, ExitCode } from "../../types.js";
 import { colors } from "../output.js";
 
@@ -230,10 +226,7 @@ function getErrorInfo(error: unknown): ErrorInfo {
   if (error instanceof ConfigError) {
     return { code: "CONFIG_ERROR", exitCode: ExitCode.CONFIG_ERROR };
   }
-  // LinterError and all other errors are treated as runtime errors
-  if (error instanceof LinterError) {
-    return { code: "RUNTIME_ERROR", exitCode: ExitCode.RUNTIME_ERROR };
-  }
+  // All other errors (including LinterError) are treated as runtime errors
   return { code: "RUNTIME_ERROR", exitCode: ExitCode.RUNTIME_ERROR };
 }
 
