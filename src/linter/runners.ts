@@ -25,6 +25,7 @@ export async function runLinters(
   options?: LinterOptions,
 ): Promise<Violation[]> {
   const violations: Violation[] = [];
+  const quiet = options?.quiet ?? false;
 
   const pythonFiles = files.filter(
     (f) => f.endsWith(".py") || f.endsWith(".pyi"),
@@ -33,18 +34,18 @@ export async function runLinters(
   const jsFiles = files.filter((f) => /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(f));
 
   if (pythonFiles.length > 0) {
-    const ruffViolations = await runRuff(projectRoot, pythonFiles);
+    const ruffViolations = await runRuff(projectRoot, pythonFiles, quiet);
     violations.push(...ruffViolations);
   }
 
   if (jsFiles.length > 0) {
-    const eslintViolations = await runESLint(projectRoot, jsFiles);
+    const eslintViolations = await runESLint(projectRoot, jsFiles, quiet);
     violations.push(...eslintViolations);
   }
 
   // Run TypeScript type checking if enabled and there are TS files
   if (tsFiles.length > 0 && options?.tscEnabled) {
-    const tscViolations = await runTsc(projectRoot, tsFiles);
+    const tscViolations = await runTsc(projectRoot, tsFiles, quiet);
     violations.push(...tscViolations);
   }
 
@@ -54,10 +55,13 @@ export async function runLinters(
 export async function runRuff(
   projectRoot: string,
   files: string[],
+  quiet = false,
 ): Promise<Violation[]> {
   const hasRuff = await commandExists("ruff");
   if (!hasRuff) {
-    console.error("Warning: Ruff not found, skipping Python file checks");
+    if (!quiet) {
+      console.error("Warning: Ruff not found, skipping Python file checks");
+    }
     return [];
   }
 
@@ -103,12 +107,15 @@ function handleRuffError(error: unknown, projectRoot: string): Violation[] {
 export async function runESLint(
   projectRoot: string,
   files: string[],
+  quiet = false,
 ): Promise<Violation[]> {
   const eslintBin = await findESLintBin(projectRoot);
   if (!eslintBin) {
-    console.error(
-      "Warning: ESLint not found, skipping JavaScript/TypeScript file checks",
-    );
+    if (!quiet) {
+      console.error(
+        "Warning: ESLint not found, skipping JavaScript/TypeScript file checks",
+      );
+    }
     return [];
   }
 
@@ -177,19 +184,27 @@ function filterViolationsByFiles(
  *
  * @param projectRoot - Project root directory
  * @param files - List of files to report violations for (relative to projectRoot)
+ * @param quiet - Suppress warning messages
  */
 export async function runTsc(
   projectRoot: string,
   files?: string[],
+  quiet = false,
 ): Promise<Violation[]> {
   const tscBin = await findTscBin(projectRoot);
   if (!tscBin) {
-    console.error("Warning: TypeScript (tsc) not found, skipping type checks");
+    if (!quiet) {
+      console.error(
+        "Warning: TypeScript (tsc) not found, skipping type checks",
+      );
+    }
     return [];
   }
 
   if (!existsSync(join(projectRoot, "tsconfig.json"))) {
-    console.error("Warning: No tsconfig.json found, skipping type checks");
+    if (!quiet) {
+      console.error("Warning: No tsconfig.json found, skipping type checks");
+    }
     return [];
   }
 

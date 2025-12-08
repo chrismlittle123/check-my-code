@@ -22,6 +22,8 @@ export interface FixResult {
 // Options for running linters
 export interface LinterOptions {
   tscEnabled?: boolean;
+  /** Suppress warning messages (e.g., when linters are not found) */
+  quiet?: boolean;
 }
 
 // Internal error types for command execution

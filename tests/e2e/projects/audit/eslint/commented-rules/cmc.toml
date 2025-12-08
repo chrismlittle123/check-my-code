@@ -1,0 +1,6 @@
+[project]
+name = "audit-eslint-commented-rules"
+
+[rulesets.eslint.rules]
+"no-console" = "error"
+"no-var" = "error"

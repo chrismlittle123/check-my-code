@@ -1,10 +1,38 @@
 /**
- * E2E tests for `cmc audit` command (tsc)
+ * E2E tests for `cmc audit` command
  */
 
 import { describe, expect, it } from "vitest";
 
 import { run } from "./runner.js";
+
+// =============================================================================
+// Audit: ESLint - commented rules
+// =============================================================================
+describe("cmc audit eslint - commented rules", () => {
+  it("detects missing rules when commented out with single-line comment", async () => {
+    const result = await run("audit/eslint/commented-rules", [
+      "audit",
+      "eslint",
+    ]);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain("✗ eslint.config.js has mismatches");
+    expect(result.stdout).toContain("missing rule: no-console");
+  });
+
+  it("detects missing rules when commented out with multi-line comment", async () => {
+    const result = await run("audit/eslint/multiline-comments", [
+      "audit",
+      "eslint",
+    ]);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain("✗ eslint.config.js has mismatches");
+    expect(result.stdout).toContain("missing rule: no-console");
+    expect(result.stdout).toContain("missing rule: no-var");
+  });
+});
 
 // =============================================================================
 // Audit: TypeScript (tsc) - matching configs

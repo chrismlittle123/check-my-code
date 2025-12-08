@@ -31,7 +31,9 @@ Examples:
   .action(
     async (paths: string[], options: { json?: boolean; quiet?: boolean }) => {
       try {
-        const result = await runCheck(paths);
+        // Suppress linter warnings in JSON mode to avoid polluting JSON output
+        const quiet = options.json ?? options.quiet ?? false;
+        const result = await runCheck(paths, quiet);
         outputResults(result, options.json ?? false, options.quiet ?? false);
         process.exit(
           result.violations.length > 0 ? ExitCode.VIOLATIONS : ExitCode.SUCCESS,
@@ -42,7 +44,7 @@ Examples:
     },
   );
 
-async function runCheck(paths: string[]): Promise<CheckResult> {
+async function runCheck(paths: string[], quiet = false): Promise<CheckResult> {
   const projectRoot = findProjectRoot();
   const config = await loadConfig(projectRoot);
 
@@ -70,7 +72,7 @@ async function runCheck(paths: string[]): Promise<CheckResult> {
   }
 
   // Build linter options from config
-  const linterOptions = buildLinterOptions(config);
+  const linterOptions = buildLinterOptions(config, quiet);
   const violations = await runLinters(projectRoot, files, linterOptions);
 
   return { violations, filesChecked: files.length };
@@ -113,8 +115,8 @@ function validateDiscoveryResults(
   }
 }
 
-function buildLinterOptions(config: Config): LinterOptions {
-  const options: LinterOptions = {};
+function buildLinterOptions(config: Config, quiet = false): LinterOptions {
+  const options: LinterOptions = { quiet };
 
   // Enable tsc if configured and not explicitly disabled
   if (config.rulesets?.tsc && config.rulesets.tsc.enabled !== false) {

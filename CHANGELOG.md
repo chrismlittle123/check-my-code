@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.11] - 2025-12-08
+
+### Fixed
+
+- **Audit ignores commented ESLint rules** - `cmc audit eslint` now correctly strips JavaScript comments (single-line `//` and multi-line `/* */`) before parsing ESLint config files. Previously, commented-out rules were incorrectly detected as active rules, causing audit to pass when rules were actually missing.
+- **Suppress linter warnings in JSON mode** - When using `--json` or `--quiet` flags, warning messages like "Ruff not found" or "ESLint not found" are now suppressed. Previously, these warnings were printed to stderr even in JSON mode, potentially polluting JSON output in CI/CD pipelines.
+
 ## [1.5.10] - 2025-12-08
 
 ### Fixed
@@ -195,7 +202,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standard exit codes (0, 1, 2, 3)
 - `--json`, `--force`, `--stdout` flags
 
-[Unreleased]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.10...HEAD
+[Unreleased]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.11...HEAD
+[1.5.11]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.10...v1.5.11
 [1.5.10]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.9...v1.5.10
 [1.5.9]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.8...v1.5.9
 [1.5.8]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.7...v1.5.8

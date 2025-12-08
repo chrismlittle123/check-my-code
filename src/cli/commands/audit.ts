@@ -394,9 +394,41 @@ function compareOption(
   }
 }
 
+/**
+ * Strip JavaScript comments from content.
+ * Uses a simple regex-based approach that handles most cases correctly.
+ * Note: This may have edge cases with complex string literals containing comment-like patterns,
+ * but works reliably for typical ESLint config files.
+ */
+function stripJsComments(content: string): string {
+  // First, temporarily replace string literals to avoid matching comments inside strings
+  const stringPlaceholders: string[] = [];
+  const contentWithPlaceholders = content.replace(
+    /(["'`])(?:(?!\1)[^\\]|\\.)*\1/g,
+    (match) => {
+      const placeholder = `__STRING_${stringPlaceholders.length}__`;
+      stringPlaceholders.push(match);
+      return placeholder;
+    },
+  );
+
+  // Remove single-line comments
+  const withoutSingleLine = contentWithPlaceholders.replace(/\/\/[^\n]*/g, "");
+
+  // Remove multi-line comments
+  const withoutComments = withoutSingleLine.replace(/\/\*[\s\S]*?\*\//g, "");
+
+  // Restore string literals
+  return withoutComments.replace(/__STRING_(\d+)__/g, (_, index) => {
+    return stringPlaceholders[parseInt(index, 10)] ?? "";
+  });
+}
+
 /** Extract rules from ESLint config file content. */
 function extractESLintRules(content: string): Record<string, ESLintRuleValue> {
-  const rulesMatch = /rules\s*:\s*(\{[\s\S]*?\})\s*[,}]/.exec(content);
+  // Strip JavaScript comments before parsing to avoid matching commented-out rules
+  const strippedContent = stripJsComments(content);
+  const rulesMatch = /rules\s*:\s*(\{[\s\S]*?\})\s*[,}]/.exec(strippedContent);
 
   if (!rulesMatch?.[1]) {
     return {};
