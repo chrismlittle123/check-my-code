@@ -8,11 +8,7 @@ import {
   findProjectRoot,
   loadConfig,
 } from "../../config/loader.js";
-import {
-  LinterError,
-  type LinterOptions,
-  runLinters,
-} from "../../linter/index.js";
+import { type LinterOptions, runLinters } from "../../linter/index.js";
 import { type CheckResult, type Config, ExitCode } from "../../types.js";
 import { colors } from "../output.js";
 
@@ -40,21 +36,8 @@ Examples:
         process.exit(
           result.violations.length > 0 ? ExitCode.VIOLATIONS : ExitCode.SUCCESS,
         );
-      } catch (error) {
-        if (!options.quiet) {
-          console.error(
-            colors.red(
-              `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-            ),
-          );
-        }
-        if (error instanceof ConfigError) {
-          process.exit(ExitCode.CONFIG_ERROR);
-        } else if (error instanceof LinterError) {
-          process.exit(ExitCode.RUNTIME_ERROR);
-        } else {
-          process.exit(ExitCode.RUNTIME_ERROR);
-        }
+      } catch (error: unknown) {
+        handleCheckError(error, options.json ?? false, options.quiet ?? false);
       }
     },
   );
@@ -230,4 +213,48 @@ function outputResults(
   console.log(
     colors.red(`\n✗ ${result.violations.length} violation${s} found`),
   );
+}
+
+type ErrorCode = "CONFIG_ERROR" | "RUNTIME_ERROR";
+
+interface ErrorInfo {
+  code: ErrorCode;
+  exitCode: number;
+}
+
+function getErrorInfo(error: unknown): ErrorInfo {
+  if (error instanceof ConfigError) {
+    return { code: "CONFIG_ERROR", exitCode: ExitCode.CONFIG_ERROR };
+  }
+  // All other errors (including LinterError) are treated as runtime errors
+  return { code: "RUNTIME_ERROR", exitCode: ExitCode.RUNTIME_ERROR };
+}
+
+function handleCheckError(
+  error: unknown,
+  json: boolean,
+  quiet: boolean,
+): never {
+  const errorMessage = error instanceof Error ? error.message : "Unknown error";
+  const { code: errorCode, exitCode } = getErrorInfo(error);
+
+  if (!quiet) {
+    if (json) {
+      console.log(
+        JSON.stringify(
+          {
+            error: {
+              code: errorCode,
+              message: errorMessage,
+            },
+          },
+          null,
+          2,
+        ),
+      );
+    } else {
+      console.error(colors.red(`Error: ${errorMessage}`));
+    }
+  }
+  process.exit(exitCode);
 }

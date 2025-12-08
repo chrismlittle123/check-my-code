@@ -518,6 +518,23 @@ describe("cmc check - nonexistent paths", () => {
     expect(result.stderr).toContain("missing2.ts");
   });
 
+  it("outputs error as JSON when --json flag is used", async () => {
+    const result = await run("check/typescript/default", [
+      "check",
+      "--json",
+      "does-not-exist.ts",
+    ]);
+
+    expect(result.exitCode).toBe(2);
+    const output = JSON.parse(result.stdout) as {
+      error: { code: string; message: string };
+    };
+    expect(output.error).toBeDefined();
+    expect(output.error.code).toBe("CONFIG_ERROR");
+    expect(output.error.message).toContain("Path not found");
+    expect(output.error.message).toContain("does-not-exist.ts");
+  });
+
   it("still checks valid files if some exist", async () => {
     const result = await run("check/typescript/default", [
       "check",

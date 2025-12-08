@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.10] - 2025-12-08
+
+### Fixed
+
+- **JSON error output** - The `--json` flag now outputs errors as JSON instead of plain text. Previously, errors like "Path not found" were output as plain text even when `--json` was specified, breaking JSON consumers in CI/CD pipelines.
+
 ## [1.5.9] - 2025-12-08
 
 ### Security
@@ -189,7 +195,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standard exit codes (0, 1, 2, 3)
 - `--json`, `--force`, `--stdout` flags
 
-[Unreleased]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.9...HEAD
+[Unreleased]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.10...HEAD
+[1.5.10]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.9...v1.5.10
 [1.5.9]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.8...v1.5.9
 [1.5.8]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.7...v1.5.8
 [1.5.7]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.6...v1.5.7
