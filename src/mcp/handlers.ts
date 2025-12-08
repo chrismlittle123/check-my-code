@@ -2,7 +2,7 @@
  * MCP Tool handler implementations.
  */
 
-import { resolve } from "path";
+import { isAbsolute, resolve } from "path";
 
 import { validateConfigContent } from "../config/loader.js";
 import {
@@ -95,7 +95,9 @@ export async function handleCheckProject({ path }: { path?: string }) {
   const { projectRoot, config } = configResult;
   let targetPath = projectRoot;
   if (path) {
-    targetPath = path.startsWith("/") ? path : resolve(projectRoot, path);
+    // Resolve relative paths from cwd, not projectRoot
+    // This ensures paths like "subdir" work when MCP runs from parent directory
+    targetPath = isAbsolute(path) ? path : resolve(process.cwd(), path);
   }
 
   const files = await discoverFiles(targetPath, projectRoot);
