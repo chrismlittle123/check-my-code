@@ -12,11 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Remote config inheritance (`[extends]`)** - Projects can now inherit ESLint, Ruff, and TSC configurations from remote git repositories. Define `[extends]` in your `cmc.toml` to pull in base rulesets from a central standards repository:
+
   ```toml
   [extends]
   eslint = "github:myorg/standards/rulesets/internal/typescript/5.5/eslint@latest"
   tsc = "github:myorg/standards/rulesets/internal/typescript/5.5/tsc@latest"
   ```
+
 - **Version resolution via manifest** - Remote rulesets are resolved through a `rulesets.json` manifest, supporting `@latest` for newest version or `@1.0.0` for pinned versions
 - **Rule merging with conflict detection** - Local rules are merged with inherited rules. If a local rule conflicts with an inherited rule (different value for same setting), cmc will error with a clear message explaining the conflict
 - **Inheritance comments in generated configs** - `cmc generate` now includes an "Extends:" comment in generated config files when inheritance is active
