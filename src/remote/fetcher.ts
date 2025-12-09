@@ -17,6 +17,10 @@ import { join } from "path";
 // Cache directory for cloned repositories
 const CACHE_DIR = join(homedir(), ".cmc", "cache");
 
+// In-flight clone operations to prevent race conditions
+// Maps cache key to a promise that resolves when the clone is complete
+const inFlightClones = new Map<string, Promise<string>>();
+
 export interface RemoteRef {
   host: "github";
   owner: string;
@@ -165,9 +169,9 @@ async function tryCloneUrls(
 }
 
 /**
- * Clone or fetch a repository to cache
+ * Perform the actual clone or fetch operation (internal, not locked)
  */
-async function cloneOrFetch(ref: RemoteRef): Promise<string> {
+async function doCloneOrFetch(ref: RemoteRef): Promise<string> {
   if (!isGitAvailable()) {
     throw new RemoteFetchError("git is not installed or not in PATH");
   }
@@ -182,6 +186,32 @@ async function cloneOrFetch(ref: RemoteRef): Promise<string> {
 
   cleanupPath(cachePath);
   return tryCloneUrls(buildCloneUrls(ref), cachePath, ref.version, ref);
+}
+
+/**
+ * Clone or fetch a repository to cache.
+ *
+ * Uses a lock mechanism to prevent race conditions when multiple callers
+ * try to clone the same repository simultaneously.
+ */
+async function cloneOrFetch(ref: RemoteRef): Promise<string> {
+  const cacheKey = getCacheKey(ref);
+
+  // Check if there's already an in-flight clone for this repo
+  const existingClone = inFlightClones.get(cacheKey);
+  if (existingClone) {
+    // Wait for the existing clone to complete
+    return existingClone;
+  }
+
+  // Start the clone operation and track it
+  const clonePromise = doCloneOrFetch(ref).finally(() => {
+    // Clean up the in-flight tracking when done (success or failure)
+    inFlightClones.delete(cacheKey);
+  });
+
+  inFlightClones.set(cacheKey, clonePromise);
+  return clonePromise;
 }
 
 /**
@@ -324,4 +354,12 @@ export function getCacheInfo(): { path: string; exists: boolean } {
     path: CACHE_DIR,
     exists: existsSync(CACHE_DIR),
   };
+}
+
+/**
+ * Get count of in-flight clone operations (for testing)
+ * @internal
+ */
+export function getInFlightCount(): number {
+  return inFlightClones.size;
 }
