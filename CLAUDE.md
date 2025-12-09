@@ -66,8 +66,18 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 
 4. Merge the release PR → workflow publishes to npm and creates git tag
 
+**IMPORTANT: Two-step release process:**
+
+The release is NOT complete after merging your feature PR. You MUST also merge the "chore: release" PR:
+
+1. Merge feature PR → Triggers workflow that **creates** "chore: release" PR
+2. **Merge the "chore: release" PR** → Triggers workflow that **publishes** to npm
+
+If you skip step 2, the version will NOT be bumped and nothing will be published to npm.
+
 **Common mistakes:**
 
+- Do NOT forget to merge the "chore: release" PR after merging your feature PR. The release is not complete until this PR is merged.
 - Do NOT bump `package.json` version AND add a changeset. This causes a double version bump.
 - Do NOT forget to include a changeset file. **If you merge a PR without a changeset, no release will be created.** You will need to create a follow-up PR with just the changeset to trigger a release.
 
