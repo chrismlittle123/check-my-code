@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  countLintableFiles,
   LinterError,
   parseESLintOutput,
   parseRuffOutput,
@@ -390,5 +391,93 @@ Another info line`;
     expect(violations).toHaveLength(1);
     expect(violations[0].line).toBe(100);
     expect(violations[0].column).toBe(50);
+  });
+});
+
+describe("countLintableFiles", () => {
+  it("counts TypeScript files when eslint enabled", () => {
+    const files = ["app.ts", "component.tsx", "config.json", "readme.md"];
+    const count = countLintableFiles(files, { eslintDisabled: false });
+
+    expect(count).toBe(2);
+  });
+
+  it("counts Python files when ruff enabled", () => {
+    const files = ["main.py", "utils.pyi", "config.json", "readme.md"];
+    const count = countLintableFiles(files, { ruffDisabled: false });
+
+    expect(count).toBe(2);
+  });
+
+  it("counts JavaScript files when eslint enabled", () => {
+    const files = ["app.js", "util.mjs", "lib.cjs", "script.jsx"];
+    const count = countLintableFiles(files, { eslintDisabled: false });
+
+    expect(count).toBe(4);
+  });
+
+  it("excludes files when linters disabled", () => {
+    const files = ["app.ts", "main.py", "config.json"];
+    const count = countLintableFiles(files, {
+      eslintDisabled: true,
+      ruffDisabled: true,
+    });
+
+    expect(count).toBe(0);
+  });
+
+  it("does not double-count TypeScript files", () => {
+    // .ts files are in both typescript and javascript categories
+    const files = ["app.ts", "util.tsx"];
+    const count = countLintableFiles(files, {
+      eslintDisabled: false,
+      tscEnabled: true,
+    });
+
+    // Should be 2, not 4 (each file counted once, not twice)
+    expect(count).toBe(2);
+  });
+
+  it("counts mixed files correctly", () => {
+    const files = [
+      "app.ts",
+      "main.py",
+      "util.js",
+      "config.json",
+      "readme.md",
+      "noextension",
+    ];
+    const count = countLintableFiles(files, {
+      eslintDisabled: false,
+      ruffDisabled: false,
+    });
+
+    // app.ts, main.py, util.js = 3 lintable files
+    expect(count).toBe(3);
+  });
+
+  it("returns 0 for empty file list", () => {
+    const count = countLintableFiles([]);
+
+    expect(count).toBe(0);
+  });
+
+  it("returns 0 when all files have unrecognized extensions", () => {
+    const files = ["config.json", "readme.md", "data.xml", "noextension"];
+    const count = countLintableFiles(files);
+
+    expect(count).toBe(0);
+  });
+
+  it("counts TypeScript files when only tsc enabled", () => {
+    const files = ["app.ts", "component.tsx", "util.js", "config.json"];
+    const count = countLintableFiles(files, {
+      eslintDisabled: true,
+      ruffDisabled: true,
+      tscEnabled: true,
+    });
+
+    // Only .ts and .tsx files counted via tsc, not .js
+    expect(count).toBe(2);
   });
 });

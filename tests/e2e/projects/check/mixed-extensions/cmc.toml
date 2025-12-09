@@ -1,0 +1,6 @@
+[project]
+name = "test-mixed-extensions"
+
+[tools]
+eslint = false
+ruff = false

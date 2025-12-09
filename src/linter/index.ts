@@ -14,4 +14,4 @@ export {
 
 // Re-export main functions
 export { runLintersFix } from "./fix.js";
-export { runLinters } from "./runners.js";
+export { countLintableFiles, runLinters } from "./runners.js";
