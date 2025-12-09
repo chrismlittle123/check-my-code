@@ -99,18 +99,20 @@ describe("cmc validate - extends validation", () => {
       "validate",
       "--json",
     ]);
-    const output = JSON.parse(result.stdout);
+    const output = JSON.parse(result.stdout) as {
+      valid: boolean;
+      errors: ValidationError[];
+    };
 
     expect(result.exitCode).toBe(2);
     expect(output.valid).toBe(false);
     expect(output.errors.length).toBeGreaterThan(0);
     // Should have additionalProperties errors for unknown keys
-    expect(
-      output.errors.some(
-        (e: ValidationError) =>
-          e.keyword === "additionalProperties" ||
-          e.message?.includes("unknown property"),
-      ),
-    ).toBe(true);
+    const hasExpectedError = output.errors.some(
+      (e) =>
+        e.keyword === "additionalProperties" ||
+        e.message?.includes("unknown property"),
+    );
+    expect(hasExpectedError).toBe(true);
   });
 });
