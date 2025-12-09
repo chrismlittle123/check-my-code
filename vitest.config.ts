@@ -26,6 +26,8 @@ export default defineConfig({
         'src/linter/runners.ts',
         // Remote fetcher has process-spawning code tested via E2E
         'src/remote/fetcher.ts',
+        // Remote rulesets has network-dependent code tested via E2E
+        'src/remote/rulesets.ts',
         // Utility functions used by E2E-tested code
         'src/utils/**',
       ],
