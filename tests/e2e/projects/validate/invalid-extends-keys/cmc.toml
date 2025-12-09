@@ -1,0 +1,7 @@
+[project]
+name = "invalid-extends-test"
+
+# These keys should be rejected - only eslint, ruff, tsc are valid
+[extends]
+invalid = "github:owner/repo/path@v1.0.0"
+unknown = "github:owner/repo/path@v1.0.0"

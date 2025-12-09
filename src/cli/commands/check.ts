@@ -115,15 +115,26 @@ function validateDiscoveryResults(
   }
 }
 
+function shouldEnableTsc(config: Config): boolean {
+  // [tools] tsc = false explicitly disables tsc
+  if (config.tools?.tsc === false) return false;
+
+  // Enable if [tools] tsc = true OR [rulesets.tsc] is configured and not disabled
+  const enabledByTools = config.tools?.tsc === true;
+  const enabledByRulesets = Boolean(
+    config.rulesets?.tsc && config.rulesets.tsc.enabled !== false,
+  );
+
+  return enabledByTools || enabledByRulesets;
+}
+
 function buildLinterOptions(config: Config, quiet = false): LinterOptions {
-  const options: LinterOptions = { quiet };
-
-  // Enable tsc if configured and not explicitly disabled
-  if (config.rulesets?.tsc && config.rulesets.tsc.enabled !== false) {
-    options.tscEnabled = true;
-  }
-
-  return options;
+  return {
+    quiet,
+    eslintDisabled: config.tools?.eslint === false,
+    ruffDisabled: config.tools?.ruff === false,
+    tscEnabled: shouldEnableTsc(config),
+  };
 }
 
 interface DiscoverResult {
@@ -173,11 +184,7 @@ function outputResults(
   json: boolean,
   quiet: boolean,
 ): void {
-  // --quiet takes precedence over --json
-  if (quiet) {
-    return;
-  }
-
+  // --json takes precedence over --quiet (JSON output is still useful for CI)
   if (json) {
     console.log(
       JSON.stringify(
@@ -192,6 +199,11 @@ function outputResults(
         2,
       ),
     );
+    return;
+  }
+
+  // --quiet suppresses all non-JSON output
+  if (quiet) {
     return;
   }
 
@@ -240,23 +252,22 @@ function handleCheckError(
   const errorMessage = error instanceof Error ? error.message : "Unknown error";
   const { code: errorCode, exitCode } = getErrorInfo(error);
 
-  if (!quiet) {
-    if (json) {
-      console.log(
-        JSON.stringify(
-          {
-            error: {
-              code: errorCode,
-              message: errorMessage,
-            },
+  // --json takes precedence over --quiet (JSON output is still useful for CI)
+  if (json) {
+    console.log(
+      JSON.stringify(
+        {
+          error: {
+            code: errorCode,
+            message: errorMessage,
           },
-          null,
-          2,
-        ),
-      );
-    } else {
-      console.error(colors.red(`Error: ${errorMessage}`));
-    }
+        },
+        null,
+        2,
+      ),
+    );
+  } else if (!quiet) {
+    console.error(colors.red(`Error: ${errorMessage}`));
   }
   process.exit(exitCode);
 }

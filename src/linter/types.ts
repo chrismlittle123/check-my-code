@@ -20,10 +20,17 @@ export interface FixResult {
 }
 
 // Options for running linters
+// Note: eslint/ruff use "disabled" flags because they're enabled by default.
+// tsc uses "enabled" flag because it's disabled by default (requires explicit config).
 export interface LinterOptions {
+  /** Enable TypeScript type checking (disabled by default, requires [rulesets.tsc] config) */
   tscEnabled?: boolean;
   /** Suppress warning messages (e.g., when linters are not found) */
   quiet?: boolean;
+  /** Disable ESLint (enabled by default) */
+  eslintDisabled?: boolean;
+  /** Disable Ruff (enabled by default) */
+  ruffDisabled?: boolean;
 }
 
 // Internal error types for command execution

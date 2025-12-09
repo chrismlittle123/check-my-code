@@ -83,20 +83,32 @@ const aiContextSchema = z.object({
 });
 
 // Extends configuration schema (v2)
-const extendsSchema = z.object({
-  eslint: z
-    .string()
-    .regex(remoteRefPattern, "must be format: github:owner/repo/path@version")
-    .optional(),
-  ruff: z
-    .string()
-    .regex(remoteRefPattern, "must be format: github:owner/repo/path@version")
-    .optional(),
-  tsc: z
-    .string()
-    .regex(remoteRefPattern, "must be format: github:owner/repo/path@version")
-    .optional(),
-});
+// Uses strict() to reject unknown keys like "invalid", "nonexistent", etc.
+const extendsSchema = z
+  .object({
+    eslint: z
+      .string()
+      .regex(remoteRefPattern, "must be format: github:owner/repo/path@version")
+      .optional(),
+    ruff: z
+      .string()
+      .regex(remoteRefPattern, "must be format: github:owner/repo/path@version")
+      .optional(),
+    tsc: z
+      .string()
+      .regex(remoteRefPattern, "must be format: github:owner/repo/path@version")
+      .optional(),
+  })
+  .strict();
+
+// Tools configuration schema - enable/disable specific linters
+const toolsSchema = z
+  .object({
+    eslint: z.boolean().optional(),
+    ruff: z.boolean().optional(),
+    tsc: z.boolean().optional(),
+  })
+  .strict();
 
 // Strip Symbol keys from an object (recursively)
 // @iarna/toml adds Symbol keys for metadata that interfere with Zod validation
@@ -122,6 +134,7 @@ export const configSchema = z.object({
     name: z.string().min(1, "project name cannot be empty"),
   }),
   extends: extendsSchema.optional(),
+  tools: toolsSchema.optional(),
   prompts: aiContextSchema.optional(),
   rulesets: z
     .object({

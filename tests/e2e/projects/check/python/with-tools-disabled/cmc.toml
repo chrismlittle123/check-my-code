@@ -1,0 +1,13 @@
+[project]
+name = "python-tools-disabled-test"
+
+# Explicitly disable ruff
+[tools]
+ruff = false
+
+# Even though ruff is configured, it should not run
+[rulesets.ruff]
+line-length = 100
+
+[rulesets.ruff.lint]
+select = ["F"]

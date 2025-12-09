@@ -19,37 +19,61 @@ import {
   type LinterOptions,
 } from "./types.js";
 
+interface FilteredFiles {
+  python: string[];
+  typescript: string[];
+  javascript: string[];
+}
+
+function filterFiles(files: string[]): FilteredFiles {
+  return {
+    python: files.filter((f) => f.endsWith(".py") || f.endsWith(".pyi")),
+    typescript: files.filter((f) => /\.(ts|tsx)$/.test(f)),
+    javascript: files.filter((f) => /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(f)),
+  };
+}
+
+async function runRuffIfEnabled(
+  projectRoot: string,
+  files: string[],
+  options?: LinterOptions,
+): Promise<Violation[]> {
+  if (files.length === 0 || options?.ruffDisabled) return [];
+  return runRuff(projectRoot, files, options?.quiet ?? false);
+}
+
+async function runESLintIfEnabled(
+  projectRoot: string,
+  files: string[],
+  options?: LinterOptions,
+): Promise<Violation[]> {
+  if (files.length === 0 || options?.eslintDisabled) return [];
+  return runESLint(projectRoot, files, options?.quiet ?? false);
+}
+
+async function runTscIfEnabled(
+  projectRoot: string,
+  files: string[],
+  options?: LinterOptions,
+): Promise<Violation[]> {
+  if (files.length === 0 || !options?.tscEnabled) return [];
+  return runTsc(projectRoot, files, options?.quiet ?? false);
+}
+
 export async function runLinters(
   projectRoot: string,
   files: string[],
   options?: LinterOptions,
 ): Promise<Violation[]> {
-  const violations: Violation[] = [];
-  const quiet = options?.quiet ?? false;
+  const filtered = filterFiles(files);
 
-  const pythonFiles = files.filter(
-    (f) => f.endsWith(".py") || f.endsWith(".pyi"),
-  );
-  const tsFiles = files.filter((f) => /\.(ts|tsx)$/.test(f));
-  const jsFiles = files.filter((f) => /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(f));
+  const results = await Promise.all([
+    runRuffIfEnabled(projectRoot, filtered.python, options),
+    runESLintIfEnabled(projectRoot, filtered.javascript, options),
+    runTscIfEnabled(projectRoot, filtered.typescript, options),
+  ]);
 
-  if (pythonFiles.length > 0) {
-    const ruffViolations = await runRuff(projectRoot, pythonFiles, quiet);
-    violations.push(...ruffViolations);
-  }
-
-  if (jsFiles.length > 0) {
-    const eslintViolations = await runESLint(projectRoot, jsFiles, quiet);
-    violations.push(...eslintViolations);
-  }
-
-  // Run TypeScript type checking if enabled and there are TS files
-  if (tsFiles.length > 0 && options?.tscEnabled) {
-    const tscViolations = await runTsc(projectRoot, tsFiles, quiet);
-    violations.push(...tscViolations);
-  }
-
-  return violations;
+  return results.flat();
 }
 
 export async function runRuff(

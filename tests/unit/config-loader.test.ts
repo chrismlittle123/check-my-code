@@ -216,6 +216,97 @@ describe("configSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rejects unknown keys in extends section", () => {
+    const config = {
+      project: { name: "test" },
+      extends: {
+        invalid: "github:owner/repo/path@v1.0.0",
+        nonexistent: "./does-not-exist.toml",
+        unknown: "ftp://example.com/config.toml",
+      },
+    };
+
+    const result = configSchema.safeParse(config);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      // Should have errors for unrecognized keys
+      const errorMessages = result.error.issues.map((i) => i.message);
+      expect(errorMessages.some((m) => m.includes("Unrecognized key"))).toBe(
+        true,
+      );
+    }
+  });
+
+  it("rejects unknown keys in extends even with valid ones", () => {
+    const config = {
+      project: { name: "test" },
+      extends: {
+        eslint: "github:owner/repo/eslint@v1.0.0",
+        invalid: "github:owner/repo/invalid@v1.0.0",
+      },
+    };
+
+    const result = configSchema.safeParse(config);
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts valid tools configuration", () => {
+    const config = {
+      project: { name: "test" },
+      tools: {
+        eslint: true,
+        ruff: false,
+        tsc: true,
+      },
+    };
+
+    const result = configSchema.safeParse(config);
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts partial tools configuration", () => {
+    const config = {
+      project: { name: "test" },
+      tools: {
+        eslint: false,
+      },
+    };
+
+    const result = configSchema.safeParse(config);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects unknown keys in tools section", () => {
+    const config = {
+      project: { name: "test" },
+      tools: {
+        eslint: true,
+        unknownTool: true,
+      },
+    };
+
+    const result = configSchema.safeParse(config);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const errorMessages = result.error.issues.map((i) => i.message);
+      expect(errorMessages.some((m) => m.includes("Unrecognized key"))).toBe(
+        true,
+      );
+    }
+  });
+
+  it("rejects non-boolean values in tools section", () => {
+    const config = {
+      project: { name: "test" },
+      tools: {
+        eslint: "true", // string instead of boolean
+      },
+    };
+
+    const result = configSchema.safeParse(config);
+    expect(result.success).toBe(false);
+  });
+
   it("rejects empty templates array", () => {
     const config = {
       project: { name: "test" },

@@ -579,15 +579,33 @@ describe("cmc check - --quiet flag", () => {
     expect(result.exitCode).toBe(0);
   });
 
-  it("--quiet takes precedence over --json", async () => {
+  it("--json takes precedence over --quiet (outputs JSON)", async () => {
     const result = await run("check/typescript/default", [
       "check",
       "--quiet",
       "--json",
     ]);
 
-    expect(result.stdout).toBe("");
+    // --json should produce JSON output even when --quiet is also set
+    // This is useful for CI pipelines that want machine-readable output with no extra logs
+    expect(result.stdout).not.toBe("");
+    const output: JsonOutput = JSON.parse(result.stdout);
+    expect(output.violations).toBeDefined();
+    expect(output.summary).toBeDefined();
     expect(result.exitCode).toBe(1);
+  });
+
+  it("--json --quiet produces JSON for clean project", async () => {
+    const result = await run("check/typescript/clean-project", [
+      "check",
+      "--quiet",
+      "--json",
+    ]);
+
+    expect(result.stdout).not.toBe("");
+    const output: JsonOutput = JSON.parse(result.stdout);
+    expect(output.violations).toHaveLength(0);
+    expect(result.exitCode).toBe(0);
   });
 
   it("works with path argument", async () => {
@@ -599,5 +617,34 @@ describe("cmc check - --quiet flag", () => {
 
     expect(result.stdout).toBe("");
     expect(result.exitCode).toBe(1);
+  });
+});
+
+// =============================================================================
+// Check: [tools] section - disable specific linters
+// =============================================================================
+describe("cmc check - [tools] section", () => {
+  it("disables ESLint when tools.eslint = false", async () => {
+    const result = await run("check/typescript/with-tools-disabled", [
+      "check",
+      "--json",
+    ]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    // Should have no violations because ESLint is disabled
+    expect(result.exitCode).toBe(0);
+    expect(output.violations).toHaveLength(0);
+  });
+
+  it("disables Ruff when tools.ruff = false", async () => {
+    const result = await run("check/python/with-tools-disabled", [
+      "check",
+      "--json",
+    ]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    // Should have no violations because Ruff is disabled
+    expect(result.exitCode).toBe(0);
+    expect(output.violations).toHaveLength(0);
   });
 });

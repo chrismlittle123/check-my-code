@@ -1,8 +1,16 @@
+// Tools configuration - enable/disable specific linters
+export interface ToolsConfig {
+  eslint?: boolean;
+  ruff?: boolean;
+  tsc?: boolean;
+}
+
 export interface Config {
   project: {
     name: string;
   };
   extends?: ExtendsConfig;
+  tools?: ToolsConfig;
   prompts?: AiContextConfig;
   rulesets?: {
     eslint?: {
