@@ -113,12 +113,14 @@ export async function quickAuditCheck(
   }
 
   // Verify all configs in parallel
+  // This is a best-effort check - any errors (parse, I/O, etc.) are intentionally
+  // swallowed because they'll be properly surfaced during the actual linting phase.
+  // We've already verified files exist via existsSync above.
   const verifyResults = await Promise.all(
     lintersToVerify.map(async (target) => {
       try {
         return await verifyLinterConfig(projectRoot, config, target);
       } catch {
-        // Ignore parse errors during quick check - they'll be caught during linting
         return null;
       }
     }),
