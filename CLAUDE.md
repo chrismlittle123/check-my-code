@@ -35,9 +35,11 @@ git checkout -b feature/v1.5.0/my-feature
 
 This project uses [Changesets](https://github.com/changesets/changesets) for versioning. **Do NOT manually bump `package.json` version.**
 
+**CRITICAL: Every PR that changes functionality MUST include a changeset file.** Without a changeset, no release will be created when the PR is merged.
+
 **To release a new version:**
 
-1. Create a changeset file in `.changeset/` describing the change:
+1. **ALWAYS create a changeset file** in `.changeset/` describing the change:
 
    ```bash
    npx changeset
@@ -53,6 +55,8 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
    Description of the change
    ```
 
+   Use `patch` for bug fixes, `minor` for new features, `major` for breaking changes.
+
 2. Merge your PR to main (keep `package.json` version unchanged)
 
 3. The release workflow will automatically create a "chore: release" PR that:
@@ -62,7 +66,10 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 
 4. Merge the release PR → workflow publishes to npm and creates git tag
 
-**Common mistake:** Do NOT bump `package.json` version AND add a changeset. This causes a double version bump.
+**Common mistakes:**
+
+- Do NOT bump `package.json` version AND add a changeset. This causes a double version bump.
+- Do NOT forget to include a changeset file. **If you merge a PR without a changeset, no release will be created.** You will need to create a follow-up PR with just the changeset to trigger a release.
 
 ### Before Pushing
 
