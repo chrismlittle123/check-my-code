@@ -6,17 +6,13 @@ This document tracks planned features for check-my-code. Check off items as they
 
 ## Version Guide
 
-| Version | Focus Area                                        |
-| ------- | ------------------------------------------------- |
-| v1.5.x  | Colored output, `--quiet` flag                    |
-| v1.6.x  | Remote config inheritance                         |
-| v1.7.x  | Environment enforcers                             |
-| v1.8.x  | CI/CD integration                                 |
-| v1.9.x  | Security scanning                                 |
-| v2.0.x  | AI agent security & configuration                 |
-| v2.1.x  | Code quality & conventions                        |
-| v2.2.x  | Documentation requirements                        |
-| v3.0.x  | Extended linting, custom hooks, advanced features |
+| Version | Focus Area                      |
+| ------- | ------------------------------- |
+| v1.5.x  | Colored output, `--quiet` flag  |
+| v1.6.x  | Remote config inheritance       |
+| v1.7.x  | Requirements & tool enforcement |
+| v1.8.x  | Native code limits              |
+| v1.9.x  | Claude settings from remote     |
 
 ---
 
@@ -53,14 +49,24 @@ This document tracks planned features for check-my-code. Check off items as they
 
 ---
 
-## v1.7.x - Environment Requirements
+## v1.7.x - Requirements & Tool Enforcement
 
-### `[requirements]` Configuration
+### `[requirements.files]` Configuration
 
-- [ ] `file_exists` array option
-- [ ] Verify required configuration files exist
-- [ ] Common files: `.tool-versions`, `.nvmrc`, `Dockerfile`, `docker-compose.yml`
+- [ ] Array of files that must exist in the project
+- [ ] Examples: `CLAUDE.md`, `.coderabbit.yaml`, `.nvmrc`, `knip.json`, `CHANGELOG.md`
 - [ ] Report missing files with clear errors
+
+### `[requirements.tools]` Configuration
+
+Enforce that specific tools are configured (policy enforcer, not tool runner):
+
+- [ ] `ty` - Python type checking (Astral's type checker)
+- [ ] `gitleaks` - Secrets detection
+- [ ] `npm-audit` - TypeScript/JavaScript dependency vulnerabilities
+- [ ] `pip-audit` - Python dependency vulnerabilities
+- [ ] `knip` - TypeScript dead code detection
+- [ ] `vulture` - Python dead code detection
 
 ### CLI Support
 
@@ -70,75 +76,37 @@ This document tracks planned features for check-my-code. Check off items as they
 
 ---
 
-## v1.9.x - Security Scanning
+## v1.8.x - Native Code Limits
 
-### `[security.secrets]` Configuration
+cmc checks these directly (not via external tools) for both Python and TypeScript:
 
-- [ ] `secrets_scanner` option (
+### `[rulesets.limits]` Configuration
 
-### `[security.dependencies]` Configuration
+- [ ] `max_file_lines` - Maximum lines per file
+- [ ] `max_function_lines` - Maximum lines per function
+- [ ] `max_parameters` - Maximum function parameters
+- [ ] `max_nesting_depth` - Maximum nesting depth
 
-- [ ] `scanner` option (npm-audit, pip-audit, safety)
+### Implementation
 
-### Security Commands
-
-- [ ] `cmc security scan` - Run all security scans
-- [ ] `cmc security secrets` - Scan for secrets only
-- [ ] `cmc security deps` - Scan dependencies only
-
----
-
-## v2.0.x - AI Agent Security & Configuration
-
-### Agent-Specific Configuration
-
-- [ ] `[ai.claude]` - Claude Code settings
-
-### AI Commands
-
-- [ ] `cmc ai generate claude` - Generate `.claude/settings.json`
+- [ ] Python: Parse AST to count lines/params/nesting
+- [ ] TypeScript: Parse AST to count lines/params/nesting
+- [ ] Report violations in unified format (same as ESLint/Ruff)
 
 ---
 
-## v2.1.x - Code Quality & Conventions (WHat isn't covered by eslint)
+## v1.9.x - Claude Settings from Remote
 
-### `[code.limits]` Configuration
+### `[ai.claude]` Configuration
 
-- [ ] `max_file_lines` limit
-- [ ] `max_function_lines` limit
-- [ ] `max_class_lines` limit
-- [ ] `max_parameters` limit
-- [ ] `max_nesting_depth` limit
+- [ ] `extends` option - fetch settings from remote repo
+- [ ] Format: `github:owner/repo/path@version` (same as rulesets)
+- [ ] SSH authentication for private repos
 
-### `[code.metrics]` Configuration
+### CLI Support
 
-- [ ] `analyzer` option (radon, escomplex)
-- [ ] `max_cyclomatic` complexity threshold
-- [ ] `max_cognitive` complexity threshold
-- [ ] `maintainability_threshold` index
-- [ ] `halstead_threshold` difficulty
-
-### `[code.quality]` Configuration
-
-- [ ] `dead_code_scanner` option (vulture, ts-prune)
-- [ ] `dead_code_threshold` count
-- [ ] `duplication_scanner` option (jscpd, CPD)
-- [ ] `duplication_threshold` count
-- [ ] `min_duplicate_lines` threshold
-
-### Quality Commands
-
-- [ ] `cmc quality` - Run all quality checks
-- [ ] `cmc quality limits` - Check size limits only
-- [ ] `cmc quality metrics` - Check complexity metrics only
-- [ ] `cmc quality patterns` - Check forbidden/required patterns
-- [ ] `cmc quality duplication` - Check code duplication
-- [ ] `cmc conventions` - Check all conventions
-- [ ] `cmc conventions files` - Check file naming
-- [ ] `cmc conventions structure` - Check directory structure
-- [ ] `cmc score` - Aggregate quality score
-- [ ] `cmc score --details` - Detailed breakdown
-- [ ] `cmc score --json` - JSON output for CI
+- [ ] `cmc generate claude` - Generate `.claude/settings.json`
+- [ ] `cmc audit claude` - Verify settings match remote
 
 ---
 
