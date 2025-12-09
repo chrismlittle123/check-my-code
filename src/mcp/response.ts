@@ -43,7 +43,12 @@ export function makeSuccess(data: Record<string, unknown>): SuccessResponse {
   return { success: true, ...data };
 }
 
-export function toTextContent(response: ToolResponse) {
+export interface TextContent {
+  [x: string]: unknown;
+  content: { type: "text"; text: string }[];
+}
+
+export function toTextContent(response: ToolResponse): TextContent {
   return {
     content: [
       { type: "text" as const, text: JSON.stringify(response, null, 2) },

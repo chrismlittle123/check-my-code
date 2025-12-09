@@ -10,35 +10,20 @@ import {
 } from "../../config/loader.js";
 import {
   type Config,
-  type ESLintRuleValue,
   ExitCode,
   type RuffConfig,
   type TscConfig,
 } from "../../types.js";
 import { deepEqual } from "../../utils/deep-equal.js";
 import { colors } from "../output.js";
-
-type LinterTarget = "eslint" | "ruff" | "tsc";
-
-interface Mismatch {
-  type: "missing" | "different" | "extra";
-  rule: string;
-  expected?: unknown;
-  actual?: unknown;
-}
-
-interface VerifyResult {
-  linter: LinterTarget;
-  filename: string;
-  matches: boolean;
-  mismatches: Mismatch[];
-}
-
-const LINTER_CONFIGS: Record<LinterTarget, string> = {
-  eslint: "eslint.config.js",
-  ruff: "ruff.toml",
-  tsc: "tsconfig.json",
-};
+import { compareESLintRules, extractESLintRules } from "./audit-eslint.js";
+import {
+  LINTER_CONFIGS,
+  type LinterTarget,
+  type Mismatch,
+  SUPPORTED_LINTERS,
+  type VerifyResult,
+} from "./audit-types.js";
 
 // TypeScript compiler options to check
 const TSC_OPTIONS: (keyof TscConfig)[] = [
@@ -93,9 +78,7 @@ async function runAudit(linter?: string): Promise<void> {
   const projectRoot = findProjectRoot();
   const config = await loadConfig(projectRoot);
 
-  const targets = linter
-    ? [validateLinterTarget(linter)]
-    : (["eslint", "ruff", "tsc"] as LinterTarget[]);
+  const targets = linter ? [validateLinterTarget(linter)] : SUPPORTED_LINTERS;
 
   const allResults = await Promise.all(
     targets.map((target) => verifyLinterConfig(projectRoot, config, target)),
@@ -155,9 +138,9 @@ class LinterConfigNotFoundError extends Error {
 
 function validateLinterTarget(linter: string): LinterTarget {
   const normalized = linter.toLowerCase();
-  if (!["eslint", "ruff", "tsc"].includes(normalized)) {
+  if (!SUPPORTED_LINTERS.includes(normalized as LinterTarget)) {
     throw new ConfigError(
-      `Unknown linter: ${linter}. Supported linters: eslint, ruff, tsc`,
+      `Unknown linter: ${linter}. Supported linters: ${SUPPORTED_LINTERS.join(", ")}`,
     );
   }
   return normalized as LinterTarget;
@@ -225,35 +208,6 @@ async function verifyESLintConfig(
     matches: mismatches.length === 0,
     mismatches,
   };
-}
-
-/** Compare expected vs actual ESLint rules */
-function compareESLintRules(
-  expected: Record<string, ESLintRuleValue>,
-  actual: Record<string, ESLintRuleValue>,
-): Mismatch[] {
-  const mismatches: Mismatch[] = [];
-
-  for (const [rule, expectedValue] of Object.entries(expected)) {
-    if (!(rule in actual)) {
-      mismatches.push({ type: "missing", rule, expected: expectedValue });
-    } else if (!deepEqual(expectedValue, actual[rule])) {
-      mismatches.push({
-        type: "different",
-        rule,
-        expected: expectedValue,
-        actual: actual[rule],
-      });
-    }
-  }
-
-  for (const [rule, actualValue] of Object.entries(actual)) {
-    if (!(rule in expected)) {
-      mismatches.push({ type: "extra", rule, actual: actualValue });
-    }
-  }
-
-  return mismatches;
 }
 
 async function verifyRuffConfig(
@@ -392,88 +346,4 @@ function compareOption(
   } else if (actual !== undefined) {
     mismatches.push({ type: "extra", rule, actual });
   }
-}
-
-/**
- * Strip JavaScript comments from content.
- * Uses a simple regex-based approach that handles most cases correctly.
- * Note: This may have edge cases with complex string literals containing comment-like patterns,
- * but works reliably for typical ESLint config files.
- */
-function stripJsComments(content: string): string {
-  // First, temporarily replace string literals to avoid matching comments inside strings
-  const stringPlaceholders: string[] = [];
-  const contentWithPlaceholders = content.replace(
-    /(["'`])(?:(?!\1)[^\\]|\\.)*\1/g,
-    (match) => {
-      const placeholder = `__STRING_${stringPlaceholders.length}__`;
-      stringPlaceholders.push(match);
-      return placeholder;
-    },
-  );
-
-  // Remove single-line comments
-  const withoutSingleLine = contentWithPlaceholders.replace(/\/\/[^\n]*/g, "");
-
-  // Remove multi-line comments
-  const withoutComments = withoutSingleLine.replace(/\/\*[\s\S]*?\*\//g, "");
-
-  // Restore string literals
-  return withoutComments.replace(/__STRING_(\d+)__/g, (_, index) => {
-    return stringPlaceholders[parseInt(index, 10)] ?? "";
-  });
-}
-
-/** Extract rules from ESLint config file content. */
-function extractESLintRules(content: string): Record<string, ESLintRuleValue> {
-  // Strip JavaScript comments before parsing to avoid matching commented-out rules
-  const strippedContent = stripJsComments(content);
-  const rulesMatch = /rules\s*:\s*(\{[\s\S]*?\})\s*[,}]/.exec(strippedContent);
-
-  if (!rulesMatch?.[1]) {
-    return {};
-  }
-
-  try {
-    return parseRulesAsJson(rulesMatch[1]);
-  } catch {
-    return parseRulesManually(rulesMatch[1]);
-  }
-}
-
-/** Parse rules block as JSON */
-function parseRulesAsJson(rulesBlock: string): Record<string, ESLintRuleValue> {
-  let jsonStr = rulesBlock
-    .replace(/'/g, '"')
-    .replace(/,(\s*[}\]])/g, "$1")
-    .replace(/(\w+):/g, '"$1":')
-    .replace(/"@/g, '"@')
-    .replace(/""/g, '"');
-
-  jsonStr = jsonStr.replace(/"+"([^"]+)"+:/g, '"$1":');
-  return JSON.parse(jsonStr);
-}
-
-/** Manual parser for ESLint rules when JSON parsing fails. */
-function parseRulesManually(
-  rulesBlock: string,
-): Record<string, ESLintRuleValue> {
-  const rules: Record<string, ESLintRuleValue> = {};
-  const rulePattern = /['"]([^'"]+)['"]\s*:\s*(['"][^'"]+['"]|\[[^\]]+\])/g;
-  let match;
-
-  while ((match = rulePattern.exec(rulesBlock)) !== null) {
-    const ruleName = match[1];
-    const ruleValue = match[2];
-    if (!ruleName || !ruleValue) continue;
-
-    try {
-      const normalizedValue = ruleValue.replace(/'/g, '"');
-      rules[ruleName] = JSON.parse(normalizedValue);
-    } catch {
-      rules[ruleName] = ruleValue.replace(/['"]/g, "") as ESLintRuleValue;
-    }
-  }
-
-  return rules;
 }

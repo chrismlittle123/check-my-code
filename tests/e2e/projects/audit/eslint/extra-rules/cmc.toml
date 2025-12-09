@@ -1,0 +1,5 @@
+[project]
+name = "audit-eslint-extra-rules"
+
+[rulesets.eslint.rules]
+"no-var" = "error"

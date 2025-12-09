@@ -16,6 +16,7 @@ import {
   type ErrorResponse,
   makeError,
   makeSuccess,
+  type TextContent,
   toTextContent,
 } from "./response.js";
 import {
@@ -48,7 +49,11 @@ function buildLinterOptions(config: Config): LinterOptions {
 /**
  * Handler for check_files tool
  */
-export async function handleCheckFiles({ files }: { files: string[] }) {
+export async function handleCheckFiles({
+  files,
+}: {
+  files: string[];
+}): Promise<TextContent> {
   const searchPath = files.length > 0 ? files[0] : undefined;
   const configResult = await loadProjectConfig(searchPath);
   if ("error" in configResult) {
@@ -86,7 +91,11 @@ export async function handleCheckFiles({ files }: { files: string[] }) {
 /**
  * Handler for check_project tool
  */
-export async function handleCheckProject({ path }: { path?: string }) {
+export async function handleCheckProject({
+  path,
+}: {
+  path?: string;
+}): Promise<TextContent> {
   const configResult = await loadProjectConfig(path);
   if ("error" in configResult) {
     return toTextContent(configResult);
@@ -131,7 +140,11 @@ export async function handleCheckProject({ path }: { path?: string }) {
 /**
  * Handler for fix_files tool
  */
-export async function handleFixFiles({ files }: { files: string[] }) {
+export async function handleFixFiles({
+  files,
+}: {
+  files: string[];
+}): Promise<TextContent> {
   const searchPath = files.length > 0 ? files[0] : undefined;
   const configResult = await loadProjectConfig(searchPath);
   if ("error" in configResult) {
@@ -168,7 +181,7 @@ export async function handleGetGuidelines({
   templates: requestedTemplates,
 }: {
   templates?: string[];
-}) {
+}): Promise<TextContent> {
   const configResult = await loadProjectConfig();
   if ("error" in configResult) {
     return toTextContent(configResult);
@@ -208,7 +221,7 @@ export async function handleGetGuidelines({
 /**
  * Handler for get_status tool
  */
-export async function handleGetStatus() {
+export async function handleGetStatus(): Promise<TextContent> {
   const state = getState();
 
   if (!state.projectRoot) {
@@ -247,7 +260,7 @@ export async function handleSuggestConfig({
   description,
 }: {
   description: string;
-}) {
+}): Promise<TextContent> {
   if (!description || description.trim().length === 0) {
     return toTextContent(
       makeError(
@@ -331,7 +344,11 @@ Return ONLY the TOML content, no markdown code blocks or explanation.
 /**
  * Handler for validate_config tool
  */
-export async function handleValidateConfig({ config }: { config: string }) {
+export async function handleValidateConfig({
+  config,
+}: {
+  config: string;
+}): Promise<TextContent> {
   if (!config || config.trim().length === 0) {
     return toTextContent(
       makeError(ErrorCode.VALIDATION_ERROR, "Config cannot be empty", true),

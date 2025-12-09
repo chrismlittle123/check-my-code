@@ -1,0 +1,7 @@
+[project]
+name = "audit-eslint-multi-blocks"
+
+[rulesets.eslint.rules]
+"no-console" = "error"
+"no-var" = "error"
+"prefer-const" = "error"

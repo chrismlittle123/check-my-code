@@ -1,0 +1,6 @@
+[project]
+name = "audit-eslint-severity-stricter"
+
+[rulesets.eslint.rules]
+"no-console" = "warn"
+"prefer-const" = "warn"
