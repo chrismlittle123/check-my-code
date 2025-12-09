@@ -87,6 +87,9 @@ export default tseslint.config(
       // Prefer RegExp.exec() over String.match()
       '@typescript-eslint/prefer-regexp-exec': 'warn',
 
+      // Require explicit return types on functions
+      '@typescript-eslint/explicit-function-return-type': 'warn',
+
       // ============================================
       // File and function size limits
       // ============================================
@@ -125,6 +128,9 @@ export default tseslint.config(
 
       // No nested ternary
       'no-nested-ternary': 'error',
+
+      // No throwing literals (throw Error objects instead)
+      'no-throw-literal': 'error',
 
       // Limit cyclomatic complexity - lower is better for maintainability
       complexity: ['warn', 10],

@@ -1,0 +1,6 @@
+[project]
+name = "audit-eslint-severity-array"
+
+[rulesets.eslint.rules]
+"eqeqeq" = "error"
+"no-console" = "warn"

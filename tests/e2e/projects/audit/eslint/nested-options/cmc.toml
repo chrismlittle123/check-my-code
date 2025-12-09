@@ -1,0 +1,6 @@
+[project]
+name = "audit-eslint-nested-options"
+
+[rulesets.eslint.rules]
+"no-var" = "error"
+"prefer-const" = "error"
