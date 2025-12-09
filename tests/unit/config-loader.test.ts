@@ -330,7 +330,11 @@ describe("configSchema", () => {
     const result = configSchema.safeParse(config);
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.message).toContain("tier/language/version");
+      // Check issues array directly for robustness across Zod versions
+      const messages = result.error.issues.map((issue) => issue.message);
+      expect(messages.some((m) => m.includes("tier/language/version"))).toBe(
+        true,
+      );
     }
   });
 

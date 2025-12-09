@@ -6,6 +6,7 @@
 import { existsSync } from "fs";
 import { readFile } from "fs/promises";
 import { join } from "path";
+import stripJsonComments from "strip-json-comments";
 
 import { type Config, type RuffConfig, type TscConfig } from "../types.js";
 import { deepEqual } from "../utils/deep-equal.js";
@@ -260,13 +261,14 @@ async function verifyTscConfig(
   };
 }
 
-/** Parse tsconfig.json content */
+/** Parse tsconfig.json content (supports JSONC with comments) */
 function parseTscConfig(
   content: string,
   filename: string,
 ): { compilerOptions?: Record<string, unknown> } {
   try {
-    return JSON.parse(content);
+    // Strip JSON comments before parsing (tsconfig.json supports JSONC)
+    return JSON.parse(stripJsonComments(content));
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Parse error";
     throw new Error(`Failed to parse ${filename}: ${msg}`);
@@ -301,20 +303,24 @@ function compareTscOptions(
   return mismatches;
 }
 
-/** Compare a single config option and add mismatches if found */
+/** Compare a single config option and add mismatches if found.
+ * Only reports missing or different values - extra options in actual are allowed.
+ * This is consistent with ESLint behavior which allows additional rules.
+ */
 function compareOption(
   mismatches: Mismatch[],
   rule: string,
   expected: unknown,
   actual: unknown,
 ): void {
-  if (expected !== undefined) {
-    if (actual === undefined) {
-      mismatches.push({ type: "missing", rule, expected });
-    } else if (!deepEqual(expected, actual)) {
-      mismatches.push({ type: "different", rule, expected, actual });
-    }
-  } else if (actual !== undefined) {
-    mismatches.push({ type: "extra", rule, actual });
+  if (expected === undefined) {
+    // If expected is not defined in cmc.toml, we don't care what actual has
+    return;
+  }
+
+  if (actual === undefined) {
+    mismatches.push({ type: "missing", rule, expected });
+  } else if (!deepEqual(expected, actual)) {
+    mismatches.push({ type: "different", rule, expected, actual });
   }
 }

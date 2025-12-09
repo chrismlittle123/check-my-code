@@ -25,6 +25,13 @@ interface JsonOutput {
   };
 }
 
+interface JsonOutputWithWarnings extends JsonOutput {
+  warnings: {
+    missing_configs: { linter: string; filename: string; message: string }[];
+    mismatched_configs: { linter: string; filename: string; message: string }[];
+  };
+}
+
 // =============================================================================
 // Check: ESLint (TypeScript/JavaScript)
 // =============================================================================
@@ -722,7 +729,7 @@ describe("cmc check - audit warnings", () => {
     ]);
 
     expect(result.exitCode).toBe(0);
-    const output = JSON.parse(result.stdout);
+    const output = JSON.parse(result.stdout) as JsonOutputWithWarnings;
     expect(output.warnings).toBeDefined();
     expect(output.warnings.mismatched_configs).toHaveLength(1);
     expect(output.warnings.mismatched_configs[0].linter).toBe("eslint");
