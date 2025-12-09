@@ -1,0 +1,6 @@
+[project]
+name = "test-valid-files"
+
+[files]
+include = ["src/**/*.ts"]
+exclude = ["vendor/**/*"]

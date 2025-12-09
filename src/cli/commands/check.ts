@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { stat } from "fs/promises";
 import { glob } from "glob";
+import { minimatch } from "minimatch";
 import { relative, resolve } from "path";
 
 import {
@@ -9,7 +10,12 @@ import {
   loadConfig,
 } from "../../config/loader.js";
 import { type LinterOptions, runLinters } from "../../linter/index.js";
-import { type CheckResult, type Config, ExitCode } from "../../types.js";
+import {
+  type CheckResult,
+  type Config,
+  ExitCode,
+  type FilesConfig,
+} from "../../types.js";
 import { colors } from "../output.js";
 
 export const checkCommand = new Command("check")
@@ -56,7 +62,7 @@ async function runCheck(paths: string[], quiet = false): Promise<CheckResult> {
 
   // Discover files from all paths in parallel
   const discoveryResults = await Promise.all(
-    targetPaths.map((p) => discoverFiles(p, projectRoot)),
+    targetPaths.map((p) => discoverFiles(p, projectRoot, config.files)),
   );
 
   const { files, notFoundPaths } = processDiscoveryResults(
@@ -142,9 +148,75 @@ interface DiscoverResult {
   found: boolean;
 }
 
+// Default patterns when no [files] config is provided
+const DEFAULT_INCLUDE_PATTERNS = ["**/*.{ts,tsx,js,jsx,mjs,cjs,py,pyi}"];
+const DEFAULT_EXCLUDE_PATTERNS = [
+  "**/node_modules/**",
+  "**/.git/**",
+  "**/dist/**",
+  "**/build/**",
+  "**/__pycache__/**",
+  "**/.venv/**",
+  // Linter config files should not be linted
+  "**/eslint.config.*",
+  "**/ruff.toml",
+  "**/pyproject.toml",
+];
+
+/**
+ * Check if a file path matches any of the given glob patterns.
+ */
+function matchesPatterns(filePath: string, patterns: string[]): boolean {
+  return patterns.some((pattern) => minimatch(filePath, pattern));
+}
+
+/**
+ * Check if a single file should be included based on filesConfig patterns.
+ */
+function shouldIncludeFile(
+  relPath: string,
+  filesConfig?: FilesConfig,
+): boolean {
+  if (!filesConfig?.include && !filesConfig?.exclude) {
+    return true;
+  }
+  const matchesInclude = matchesPatterns(
+    relPath,
+    filesConfig.include ?? DEFAULT_INCLUDE_PATTERNS,
+  );
+  const matchesExclude = matchesPatterns(relPath, filesConfig.exclude ?? []);
+  return matchesInclude && !matchesExclude;
+}
+
+/**
+ * Discover files in a directory based on filesConfig patterns.
+ */
+async function discoverFilesInDirectory(
+  targetPath: string,
+  projectRoot: string,
+  filesConfig?: FilesConfig,
+): Promise<string[]> {
+  const includePatterns = filesConfig?.include ?? DEFAULT_INCLUDE_PATTERNS;
+  const excludePatterns = [
+    ...DEFAULT_EXCLUDE_PATTERNS,
+    ...(filesConfig?.exclude ?? []),
+  ];
+
+  const patterns = includePatterns.map((p) => `${targetPath}/${p}`);
+  const foundFiles = await glob(patterns, {
+    nodir: true,
+    ignore: excludePatterns.map((p) =>
+      p.startsWith("**/") ? p : `${targetPath}/${p}`,
+    ),
+  });
+
+  return foundFiles.map((f) => relative(projectRoot, f)).sort();
+}
+
 async function discoverFiles(
   targetPath: string,
   projectRoot: string,
+  filesConfig?: FilesConfig,
 ): Promise<DiscoverResult> {
   const stats = await stat(targetPath).catch(() => null);
 
@@ -153,30 +225,17 @@ async function discoverFiles(
   }
 
   if (stats.isFile()) {
-    return { files: [relative(projectRoot, targetPath)], found: true };
+    const relPath = relative(projectRoot, targetPath);
+    const included = shouldIncludeFile(relPath, filesConfig);
+    return { files: included ? [relPath] : [], found: true };
   }
 
-  const pattern = `${targetPath}/**/*.{ts,tsx,js,jsx,mjs,cjs,py,pyi}`;
-  const foundFiles = await glob(pattern, {
-    nodir: true,
-    ignore: [
-      "**/node_modules/**",
-      "**/.git/**",
-      "**/dist/**",
-      "**/build/**",
-      "**/__pycache__/**",
-      "**/.venv/**",
-      // Linter config files should not be linted
-      "**/eslint.config.*",
-      "**/ruff.toml",
-      "**/pyproject.toml",
-    ],
-  });
-
-  return {
-    files: foundFiles.map((f) => relative(projectRoot, f)).sort(),
-    found: true,
-  };
+  const files = await discoverFilesInDirectory(
+    targetPath,
+    projectRoot,
+    filesConfig,
+  );
+  return { files, found: true };
 }
 
 function outputResults(

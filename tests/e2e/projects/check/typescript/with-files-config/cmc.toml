@@ -1,0 +1,6 @@
+[project]
+name = "test-files-config"
+
+[files]
+include = ["src/**/*.ts"]
+exclude = ["vendor/**/*"]

@@ -59,6 +59,31 @@
       },
       "additionalProperties": false
     },
+    "files": {
+      "description": "Control which files to check",
+      "type": "object",
+      "properties": {
+        "include": {
+          "description": "Glob patterns for files to include (default: **/*.{ts,tsx,js,jsx,mjs,cjs,py,pyi})",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "exclude": {
+          "description": "Glob patterns for files to exclude (in addition to default excludes like node_modules)",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "prompts": {
       "description": "AI context configuration for coding assistants",
       "type": "object",
@@ -225,7 +250,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   "required": ["project"]
