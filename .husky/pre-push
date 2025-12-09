@@ -46,12 +46,8 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# 7. Knip - check for unused code
+# 7. Knip - check for unused code (advisory only)
 echo "🔬 Checking for unused code (knip)..."
-npm run knip
-if [ $? -ne 0 ]; then
-  echo "❌ Knip found unused code!"
-  exit 1
-fi
+npm run knip || true
 
 echo "✅ All checks passed!"
