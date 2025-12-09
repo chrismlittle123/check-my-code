@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.1] - 2025-12-09
+
+### Fixed
+
+- **Race condition when multiple extends reference same repository** - When `cmc.toml` has multiple `[extends]` entries that reference the same remote repository (e.g., both eslint and ruff configs from the same standards repo), they now share a single cache clone. Previously, both extends would try to clone the same repository simultaneously, causing `ENOTEMPTY` or `File exists` errors. The fix adds an in-flight lock mechanism to ensure only one clone operation runs per unique repository.
+
 ## [1.6.0] - 2025-12-09
 
 ### Added
@@ -223,7 +229,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standard exit codes (0, 1, 2, 3)
 - `--json`, `--force`, `--stdout` flags
 
-[Unreleased]: https://github.com/chrismlittle123/check-my-code/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/chrismlittle123/check-my-code/compare/v1.6.1...HEAD
+[1.6.1]: https://github.com/chrismlittle123/check-my-code/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.11...v1.6.0
 [1.5.11]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.10...v1.5.11
 [1.5.10]: https://github.com/chrismlittle123/check-my-code/compare/v1.5.9...v1.5.10

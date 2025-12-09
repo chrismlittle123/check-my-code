@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   clearCache,
   getCacheInfo,
+  getInFlightCount,
   parseRemoteRef,
   RemoteFetchError,
 } from "../../src/remote/fetcher.js";
@@ -250,5 +251,19 @@ describe("clearCache", () => {
     const info = getCacheInfo();
     // After clearing, cache should not exist
     expect(info.exists).toBe(false);
+  });
+});
+
+describe("getInFlightCount", () => {
+  it("returns 0 when no clones are in progress", () => {
+    // When no clones are happening, the count should be 0
+    expect(getInFlightCount()).toBe(0);
+  });
+
+  it("is exported for race condition prevention testing", () => {
+    // This test verifies the function exists and is callable
+    // The actual locking behavior is tested via E2E tests
+    expect(typeof getInFlightCount).toBe("function");
+    expect(typeof getInFlightCount()).toBe("number");
   });
 });
