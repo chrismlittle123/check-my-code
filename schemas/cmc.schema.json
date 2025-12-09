@@ -37,7 +37,27 @@
           "type": "string",
           "pattern": "^github:[^/]+\\/[^/@]+(?:\\/[^@]*)?@.+$"
         }
-      }
+      },
+      "additionalProperties": false
+    },
+    "tools": {
+      "description": "Enable/disable specific linters",
+      "type": "object",
+      "properties": {
+        "eslint": {
+          "description": "Enable ESLint for JavaScript/TypeScript files (default: true)",
+          "type": "boolean"
+        },
+        "ruff": {
+          "description": "Enable Ruff for Python files (default: true)",
+          "type": "boolean"
+        },
+        "tsc": {
+          "description": "Enable TypeScript type checking (default: false, requires [rulesets.tsc] to be configured)",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     },
     "prompts": {
       "description": "AI context configuration for coding assistants",

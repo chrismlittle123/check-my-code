@@ -79,3 +79,32 @@ describe("cmc validate - specific path", () => {
     expect(result.stdout).toContain("is valid");
   });
 });
+
+describe("cmc validate - extends validation", () => {
+  it("rejects unknown keys in extends section", async () => {
+    const result = await run("validate/invalid-extends-keys", ["validate"]);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stdout).toContain("validation error");
+  });
+
+  it("outputs JSON errors for unknown extends keys", async () => {
+    const result = await run("validate/invalid-extends-keys", [
+      "validate",
+      "--json",
+    ]);
+    const output = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(2);
+    expect(output.valid).toBe(false);
+    expect(output.errors.length).toBeGreaterThan(0);
+    // Should have additionalProperties errors for unknown keys
+    expect(
+      output.errors.some(
+        (e: { keyword?: string; message?: string }) =>
+          e.keyword === "additionalProperties" ||
+          e.message?.includes("unknown property"),
+      ),
+    ).toBe(true);
+  });
+});

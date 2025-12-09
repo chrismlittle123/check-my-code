@@ -7,7 +7,7 @@ import { join } from "path";
 
 import { commandExists, runCommand } from "./command.js";
 import { runLinters } from "./runners.js";
-import { CommandError, type FixResult } from "./types.js";
+import { CommandError, type FixResult, type LinterOptions } from "./types.js";
 
 /**
  * Run linters with --fix flag to auto-fix violations.
@@ -16,6 +16,7 @@ import { CommandError, type FixResult } from "./types.js";
 export async function runLintersFix(
   projectRoot: string,
   files: string[],
+  options?: LinterOptions,
 ): Promise<FixResult> {
   const pythonFiles = files.filter(
     (f) => f.endsWith(".py") || f.endsWith(".pyi"),
@@ -25,21 +26,21 @@ export async function runLintersFix(
   const filesModified: string[] = [];
   let totalFixed = 0;
 
-  // Run fixes
-  if (pythonFiles.length > 0) {
+  // Run fixes (respecting disabled flags)
+  if (pythonFiles.length > 0 && !options?.ruffDisabled) {
     const ruffResult = await runRuffFix(projectRoot, pythonFiles);
     totalFixed += ruffResult.fixedCount;
     filesModified.push(...ruffResult.filesModified);
   }
 
-  if (jsFiles.length > 0) {
+  if (jsFiles.length > 0 && !options?.eslintDisabled) {
     const eslintResult = await runESLintFix(projectRoot, jsFiles);
     totalFixed += eslintResult.fixedCount;
     filesModified.push(...eslintResult.filesModified);
   }
 
-  // Re-run linters to get remaining violations
-  const remainingViolations = await runLinters(projectRoot, files);
+  // Re-run linters to get remaining violations (pass options to respect disabled flags)
+  const remainingViolations = await runLinters(projectRoot, files, options);
 
   return {
     fixedCount: totalFixed,

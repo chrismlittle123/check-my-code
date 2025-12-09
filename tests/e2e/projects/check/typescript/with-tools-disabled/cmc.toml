@@ -1,0 +1,11 @@
+[project]
+name = "tools-disabled-test"
+
+# Explicitly disable eslint
+[tools]
+eslint = false
+
+# Even though rules are configured, eslint should not run
+[rulesets.eslint.rules]
+"no-var" = "error"
+"prefer-const" = "error"

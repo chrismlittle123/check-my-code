@@ -21,9 +21,14 @@ export interface FixResult {
 
 // Options for running linters
 export interface LinterOptions {
+  /** Enable TypeScript type checking */
   tscEnabled?: boolean;
   /** Suppress warning messages (e.g., when linters are not found) */
   quiet?: boolean;
+  /** Disable ESLint */
+  eslintDisabled?: boolean;
+  /** Disable Ruff */
+  ruffDisabled?: boolean;
 }
 
 // Internal error types for command execution
