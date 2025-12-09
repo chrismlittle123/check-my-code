@@ -308,29 +308,6 @@ export async function fetchRemoteFile(
 }
 
 /**
- * Fetch a directory listing from a remote repository
- *
- * @param remoteRef - Remote reference string
- * @returns Array of file names in the directory
- */
-export async function fetchRemoteDir(remoteRef: string): Promise<string[]> {
-  const ref = parseRemoteRef(remoteRef);
-  const repoPath = await cloneOrFetch(ref);
-
-  const dirPath = join(repoPath, ref.path);
-
-  if (!existsSync(dirPath)) {
-    throw new RemoteFetchError(
-      `Directory not found: ${ref.path}\n` +
-        `Looking in: ${ref.host}:${ref.owner}/${ref.repo}`,
-    );
-  }
-
-  const { readdirSync } = await import("fs");
-  return readdirSync(dirPath);
-}
-
-/**
  * Clear the remote cache
  */
 export function clearCache(): void {

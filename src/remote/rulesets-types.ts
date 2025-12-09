@@ -33,7 +33,6 @@ export const rulesetsManifestSchema = z.object({
 });
 
 export type RulesetsManifest = z.infer<typeof rulesetsManifestSchema>;
-export type RulesetEntry = z.infer<typeof rulesetEntrySchema>;
 
 // Resolved ruleset from remote
 export interface ResolvedRuleset {

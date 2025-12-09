@@ -26,6 +26,7 @@
     "lint:fix": "eslint src/ tests/ --fix",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "typecheck": "tsc --noEmit",
+    "knip": "knip",
     "generate:schema": "npx ts-node scripts/generate-schema.ts",
     "changeset": "changeset",
     "version": "changeset version",
@@ -45,7 +46,6 @@
   "author": "chrismlittle123",
   "license": "MIT",
   "devDependencies": {
-    "@changesets/changelog-github": "^0.5.2",
     "@changesets/cli": "^2.29.8",
     "@eslint/js": "^9.15.0",
     "@types/node": "^20.10.0",
@@ -54,6 +54,7 @@
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "globals": "^16.5.0",
     "husky": "^9.1.0",
+    "knip": "^5.72.0",
     "lint-staged": "^15.2.0",
     "prettier": "^3.4.0",
     "typescript": "^5.3.0",
