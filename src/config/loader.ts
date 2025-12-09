@@ -113,8 +113,8 @@ const toolsSchema = z
 // Files configuration schema - control which files to check
 const filesSchema = z
   .object({
-    include: z.array(z.string().min(1)).optional(),
-    exclude: z.array(z.string().min(1)).optional(),
+    include: z.array(z.string().min(1)).min(1).optional(),
+    exclude: z.array(z.string().min(1)).min(1).optional(),
   })
   .strict();
 

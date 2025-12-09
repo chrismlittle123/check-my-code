@@ -660,7 +660,10 @@ describe("cmc check - [files] section", () => {
     ]);
     const output: JsonOutput = JSON.parse(result.stdout);
 
-    // Should only check src/app.ts (clean file), not vendor/lib.ts or root.ts (both have violations)
+    // Config: include = ["src/**/*.ts"], exclude = ["vendor/**/*"]
+    // Should only check src/app.ts (clean file)
+    // root.ts is excluded because it doesn't match include pattern "src/**/*.ts"
+    // vendor/lib.ts would match via default patterns but is explicitly excluded
     expect(result.exitCode).toBe(0);
     expect(output.summary.files_checked).toBe(1);
     expect(output.violations).toHaveLength(0);
@@ -673,7 +676,7 @@ describe("cmc check - [files] section", () => {
     ]);
     const output: JsonOutput = JSON.parse(result.stdout);
 
-    // vendor/lib.ts has a no-var violation but should be excluded
+    // vendor/lib.ts has a no-var violation but is excluded by the exclude pattern
     const vendorViolations = output.violations.filter((v) =>
       v.file.includes("vendor"),
     );
