@@ -31,6 +31,39 @@ git checkout -b feature/v1.5.0/my-feature
 - One feature or fix per PR
 - Update `CHANGELOG.md` for any functionality changes
 
+### Releasing (Changesets)
+
+This project uses [Changesets](https://github.com/changesets/changesets) for versioning. **Do NOT manually bump `package.json` version.**
+
+**To release a new version:**
+
+1. Create a changeset file in `.changeset/` describing the change:
+
+   ```bash
+   npx changeset
+   ```
+
+   Or manually create `.changeset/<name>.md`:
+
+   ```md
+   ---
+   "check-my-code": patch
+   ---
+
+   Description of the change
+   ```
+
+2. Merge your PR to main (keep `package.json` version unchanged)
+
+3. The release workflow will automatically create a "chore: release" PR that:
+   - Consumes the changeset
+   - Bumps `package.json` version
+   - Updates `CHANGELOG.md`
+
+4. Merge the release PR → workflow publishes to npm and creates git tag
+
+**Common mistake:** Do NOT bump `package.json` version AND add a changeset. This causes a double version bump.
+
 ### Before Pushing
 
 Pre-push hooks run automatically, but you can verify manually:
