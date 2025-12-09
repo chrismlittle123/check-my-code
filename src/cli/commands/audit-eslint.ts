@@ -157,11 +157,18 @@ function extractBalancedBraces(
 
   for (let i = startPos; i < content.length; i++) {
     const char = content[i];
-    const prevChar = i > 0 ? content[i - 1] : "";
 
-    // Handle string state
-    const isQuote =
-      (char === '"' || char === "'" || char === "`") && prevChar !== "\\";
+    // Handle string state - check if quote is escaped by counting preceding backslashes
+    // An odd count means the quote is escaped, even count (including 0) means unescaped
+    const isQuote = char === '"' || char === "'" || char === "`";
+    if (isQuote) {
+      let backslashCount = 0;
+      for (let j = i - 1; j >= 0 && content[j] === "\\"; j--) {
+        backslashCount++;
+      }
+      const isEscaped = backslashCount % 2 === 1;
+      if (isEscaped) continue;
+    }
     if (isQuote) {
       if (!inString) {
         inString = true;
@@ -207,12 +214,16 @@ export function stripJsComments(content: string): string {
   });
 }
 
-/** Parse rules block as JSON */
+/** Parse rules block as JSON.
+ * Note: This handles most ESLint config patterns but may fail on complex
+ * JavaScript expressions. The manual parser is used as a fallback.
+ */
 function parseRulesAsJson(rulesBlock: string): Record<string, ESLintRuleValue> {
   let jsonStr = rulesBlock
     .replace(/'/g, '"')
     .replace(/,(\s*[}\]])/g, "$1")
-    .replace(/(\w+):/g, '"$1":')
+    // Match unquoted keys including @, -, /, . for plugin rule names like @typescript-eslint/no-unused-vars
+    .replace(/([\w@/.-]+):/g, '"$1":')
     .replace(/"@/g, '"@')
     .replace(/""/g, '"');
 
@@ -220,18 +231,24 @@ function parseRulesAsJson(rulesBlock: string): Record<string, ESLintRuleValue> {
   return JSON.parse(jsonStr);
 }
 
-/** Manual parser for ESLint rules when JSON parsing fails. */
+/** Manual parser for ESLint rules when JSON parsing fails.
+ * Handles nested arrays/objects in rule options by tracking bracket depth.
+ */
 function parseRulesManually(
   rulesBlock: string,
 ): Record<string, ESLintRuleValue> {
   const rules: Record<string, ESLintRuleValue> = {};
-  const rulePattern = /['"]([^'"]+)['"]\s*:\s*(['"][^'"]+['"]|\[[^\]]+\])/g;
+  // Match rule name followed by colon
+  const ruleNamePattern = /['"]([^'"]+)['"]\s*:/g;
   let match;
 
-  while ((match = rulePattern.exec(rulesBlock)) !== null) {
+  while ((match = ruleNamePattern.exec(rulesBlock)) !== null) {
     const ruleName = match[1];
-    const ruleValue = match[2];
-    if (!ruleName || !ruleValue) continue;
+    if (!ruleName) continue;
+
+    const valueStart = match.index + match[0].length;
+    const ruleValue = extractRuleValue(rulesBlock, valueStart);
+    if (!ruleValue) continue;
 
     try {
       const normalizedValue = ruleValue.replace(/'/g, '"');
@@ -242,4 +259,101 @@ function parseRulesManually(
   }
 
   return rules;
+}
+
+/** Count consecutive backslashes before position i in content. */
+function countPrecedingBackslashes(content: string, i: number): number {
+  let count = 0;
+  for (let j = i - 1; j >= 0 && content[j] === "\\"; j--) {
+    count++;
+  }
+  return count;
+}
+
+/** Check if a quote at position i is escaped (odd number of preceding backslashes). */
+function isEscapedQuote(content: string, i: number): boolean {
+  return countPrecedingBackslashes(content, i) % 2 === 1;
+}
+
+/** Extract a quoted string value starting at pos. */
+function extractStringValue(
+  content: string,
+  pos: number,
+  quote: string,
+): string | null {
+  for (let endPos = pos + 1; endPos < content.length; endPos++) {
+    if (content[endPos] === quote && !isEscapedQuote(content, endPos)) {
+      return content.substring(pos, endPos + 1);
+    }
+  }
+  return null;
+}
+
+/** Extract a bracketed value (array or object) starting at pos. */
+// eslint-disable-next-line complexity, max-statements
+function extractBracketedValue(
+  content: string,
+  pos: number,
+  openBracket: string,
+  closeBracket: string,
+): string | null {
+  let depth = 0;
+  let inString = false;
+  let stringChar = "";
+
+  for (let i = pos; i < content.length; i++) {
+    const char = content[i];
+
+    // Handle string state with proper escape detection
+    if ((char === '"' || char === "'") && !inString) {
+      if (!isEscapedQuote(content, i)) {
+        inString = true;
+        stringChar = char;
+      }
+    } else if (char === stringChar && inString) {
+      if (!isEscapedQuote(content, i)) {
+        inString = false;
+        stringChar = "";
+      }
+    }
+
+    if (!inString) {
+      if (char === openBracket) depth++;
+      if (char === closeBracket) {
+        depth--;
+        if (depth === 0) return content.substring(pos, i + 1);
+      }
+    }
+  }
+  return null;
+}
+
+/** Extract a rule value starting at the given position, handling nested brackets. */
+function extractRuleValue(content: string, startPos: number): string | null {
+  // Skip whitespace
+  let pos = startPos;
+  while (pos < content.length && /\s/.test(content[pos] ?? "")) {
+    pos++;
+  }
+
+  if (pos >= content.length) return null;
+
+  const firstChar = content[pos];
+
+  // Simple string value
+  if (firstChar === '"' || firstChar === "'") {
+    return extractStringValue(content, pos, firstChar);
+  }
+
+  // Array or object - track nested brackets
+  if (firstChar === "[") {
+    return extractBracketedValue(content, pos, "[", "]");
+  }
+  if (firstChar === "{") {
+    return extractBracketedValue(content, pos, "{", "}");
+  }
+
+  // Simple unquoted value (like error, warn, off, or numbers)
+  const simpleMatch = /^[\w-]+/.exec(content.substring(pos));
+  return simpleMatch ? simpleMatch[0] : null;
 }

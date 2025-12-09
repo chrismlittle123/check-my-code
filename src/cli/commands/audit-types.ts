@@ -2,7 +2,18 @@
  * Shared types for the audit command.
  */
 
-export type LinterTarget = "eslint" | "ruff" | "tsc";
+/** Map of linter targets to their config filenames - single source of truth */
+export const LINTER_CONFIGS = {
+  eslint: "eslint.config.js",
+  ruff: "ruff.toml",
+  tsc: "tsconfig.json",
+} as const;
+
+/** Valid linter targets derived from LINTER_CONFIGS */
+export type LinterTarget = keyof typeof LINTER_CONFIGS;
+
+/** All supported linter targets as an array */
+export const SUPPORTED_LINTERS = Object.keys(LINTER_CONFIGS) as LinterTarget[];
 
 export interface Mismatch {
   type: "missing" | "different" | "extra";
@@ -17,9 +28,3 @@ export interface VerifyResult {
   matches: boolean;
   mismatches: Mismatch[];
 }
-
-export const LINTER_CONFIGS: Record<LinterTarget, string> = {
-  eslint: "eslint.config.js",
-  ruff: "ruff.toml",
-  tsc: "tsconfig.json",
-};

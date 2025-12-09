@@ -21,6 +21,7 @@ import {
   LINTER_CONFIGS,
   type LinterTarget,
   type Mismatch,
+  SUPPORTED_LINTERS,
   type VerifyResult,
 } from "./audit-types.js";
 
@@ -77,9 +78,7 @@ async function runAudit(linter?: string): Promise<void> {
   const projectRoot = findProjectRoot();
   const config = await loadConfig(projectRoot);
 
-  const targets = linter
-    ? [validateLinterTarget(linter)]
-    : (["eslint", "ruff", "tsc"] as LinterTarget[]);
+  const targets = linter ? [validateLinterTarget(linter)] : SUPPORTED_LINTERS;
 
   const allResults = await Promise.all(
     targets.map((target) => verifyLinterConfig(projectRoot, config, target)),
@@ -139,9 +138,9 @@ class LinterConfigNotFoundError extends Error {
 
 function validateLinterTarget(linter: string): LinterTarget {
   const normalized = linter.toLowerCase();
-  if (!["eslint", "ruff", "tsc"].includes(normalized)) {
+  if (!SUPPORTED_LINTERS.includes(normalized as LinterTarget)) {
     throw new ConfigError(
-      `Unknown linter: ${linter}. Supported linters: eslint, ruff, tsc`,
+      `Unknown linter: ${linter}. Supported linters: ${SUPPORTED_LINTERS.join(", ")}`,
     );
   }
   return normalized as LinterTarget;

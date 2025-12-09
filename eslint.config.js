@@ -130,7 +130,9 @@ export default tseslint.config(
       'no-nested-ternary': 'error',
 
       // No throwing literals (throw Error objects instead)
+      // Use TypeScript-aware version which provides better type checking
       'no-throw-literal': 'error',
+      '@typescript-eslint/only-throw-error': 'error',
 
       // Limit cyclomatic complexity - lower is better for maintainability
       complexity: ['warn', 10],

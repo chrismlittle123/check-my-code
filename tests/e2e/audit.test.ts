@@ -10,20 +10,13 @@ import { run } from "./runner.js";
 // Audit: ESLint - multi-block configs
 // =============================================================================
 describe("cmc audit eslint - multi-block configs", () => {
-  it("extracts rules from multiple config blocks", async () => {
+  it("extracts rules from multiple config blocks and keeps stricter severity", async () => {
     const result = await run("audit/eslint/multi-blocks", ["audit", "eslint"]);
 
     // Should pass because all required rules are present across the blocks
+    // no-console is "error" in first block but "off" in second - audit should see "error" (the stricter one)
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("✓ eslint.config.js matches cmc.toml");
-  });
-
-  it("keeps stricter severity when rule appears in multiple blocks", async () => {
-    // no-console is "error" in first block but "off" in second
-    // audit should see "error" (the stricter one)
-    const result = await run("audit/eslint/multi-blocks", ["audit", "eslint"]);
-
-    expect(result.exitCode).toBe(0);
   });
 });
 
@@ -31,17 +24,12 @@ describe("cmc audit eslint - multi-block configs", () => {
 // Audit: ESLint - extra rules allowed
 // =============================================================================
 describe("cmc audit eslint - extra rules", () => {
-  it("allows extra rules beyond the required ruleset", async () => {
+  it("allows extra rules beyond the required ruleset without reporting them as mismatches", async () => {
     const result = await run("audit/eslint/extra-rules", ["audit", "eslint"]);
 
     // Should pass - extra rules are allowed
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("✓ eslint.config.js matches cmc.toml");
-  });
-
-  it("does not report extra rules as mismatches", async () => {
-    const result = await run("audit/eslint/extra-rules", ["audit", "eslint"]);
-
     expect(result.stdout).not.toContain("extra rule");
   });
 });
@@ -152,25 +140,15 @@ describe("cmc audit tsc - matching configs", () => {
 // Audit: TypeScript (tsc) - mismatching configs
 // =============================================================================
 describe("cmc audit tsc - mismatching configs", () => {
-  it("exits 1 when tsconfig.json has different values", async () => {
+  it("exits 1 and reports different values and missing options", async () => {
     const result = await run("audit/tsc/mismatch", ["audit", "tsc"]);
 
     expect(result.exitCode).toBe(1);
     expect(result.stdout).toContain("✗ tsconfig.json has mismatches");
-  });
-
-  it("reports different tsc values", async () => {
-    const result = await run("audit/tsc/mismatch", ["audit", "tsc"]);
-
     expect(result.stdout).toContain("different value: strict");
     expect(result.stdout).toContain(
       "different value: noUncheckedIndexedAccess",
     );
-  });
-
-  it("reports missing tsc options", async () => {
-    const result = await run("audit/tsc/mismatch", ["audit", "tsc"]);
-
     expect(result.stdout).toContain("missing rule: noImplicitReturns");
   });
 });
