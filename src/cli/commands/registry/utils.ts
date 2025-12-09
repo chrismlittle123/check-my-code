@@ -34,7 +34,7 @@ export function loadRegistry<T>(path: string): T | null {
 }
 
 // Parse semantic version
-export function parseVersion(
+function parseVersion(
   version: string,
 ): { major: number; minor: number; patch: number } | null {
   const versionRegex = /^(\d+)\.(\d+)\.(\d+)$/;

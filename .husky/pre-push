@@ -46,4 +46,10 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# 7. Knip - check for unused code (advisory only)
+echo "🔬 Checking for unused code (knip)..."
+if ! npm run knip; then
+  echo "⚠️  Knip reported unused code (non-blocking; please review before merging)"
+fi
+
 echo "✅ All checks passed!"

@@ -1,9 +1,10 @@
 [project]
 name = "check-my-code"
 
-[extends]
-eslint = "github:chrismlittle123/check-my-code-private/rulesets/internal/typescript/5.5/eslint@latest"
-tsc = "github:chrismlittle123/check-my-code-private/rulesets/internal/typescript/5.5/tsc@latest"
+# [extends]
+# Temporarily disabled until check-my-code-private has rulesets.json manifest
+# eslint = "github:chrismlittle123/check-my-code-private/rulesets/internal/typescript/5.5/eslint@latest"
+# tsc = "github:chrismlittle123/check-my-code-private/rulesets/internal/typescript/5.5/tsc@latest"
 
 [prompts]
 templates = ["internal/typescript/5.5"]

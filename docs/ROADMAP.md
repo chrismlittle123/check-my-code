@@ -32,24 +32,24 @@ This document tracks planned features for check-my-code. Check off items as they
 
 ---
 
-## v1.6.x - Remote Config Inheritance
+## v1.6.x - Remote Config Inheritance ✓
 
 ### Remote Ruleset Fetching
 
-- [ ] `[extends]` section support in cmc.toml
-- [ ] Parse `github:owner/repo/path@version` format for rulesets
-- [ ] Fetch remote `cmc.toml` from specified path
-- [ ] Merge remote rules with local rules
-- [ ] Version pinning (`@v1.0.0`, `@latest`, `@main`)
-- [ ] SSH authentication for private repos (already partial)
+- [x] `[extends]` section support in cmc.toml
+- [x] Parse `github:owner/repo/path@version` format for rulesets
+- [x] Fetch remote ruleset TOML files from specified path
+- [x] Merge remote rules with local rules
+- [x] Version pinning (`@v1.0.0`, `@latest`) via rulesets.json manifest
+- [x] SSH authentication for private repos (uses ambient git credentials)
 
 ### Additive-Only Inheritance
 
-- [ ] Block local rules from weakening base rules (`error` -> `warn`)
-- [ ] Block local rules from disabling base rules (`error` -> `off`)
-- [ ] Clear error messages when inheritance violations detected
-- [ ] Enforcement in `cmc generate`
-- [ ] Enforcement in `cmc audit`
+- [x] Block local rules from conflicting with inherited rules
+- [x] Clear error messages when inheritance violations detected
+- [x] Enforcement in `cmc generate` (uses merged config)
+- [x] Enforcement in `cmc audit` (uses merged config)
+- [x] Enforcement in `cmc check` (uses merged config)
 
 ---
 

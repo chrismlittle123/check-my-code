@@ -4,6 +4,13 @@ import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { z } from "zod";
 
+import {
+  type InheritedRules,
+  mergeRulesets,
+  resolveExtends,
+  RuleConflictError,
+  RulesetFetchError,
+} from "../remote/rulesets.js";
 import type { Config } from "../types.js";
 
 // Custom error class for configuration errors (exit code 2)
@@ -150,6 +157,45 @@ function formatZodErrors(issues: z.ZodIssue[]): string {
     .join("\n");
 }
 
+async function loadAndParseConfig(configPath: string): Promise<Config> {
+  const parsed = await parseTomlFile(configPath);
+  const result = configSchema.safeParse(parsed);
+
+  if (!result.success) {
+    throw new ConfigError(
+      `Invalid cmc.toml:\n${formatZodErrors(result.error.issues)}`,
+    );
+  }
+  return result.data as Config;
+}
+
+async function resolveInheritance(
+  config: Config,
+): Promise<Config & { _inherited?: InheritedRules }> {
+  if (!config.extends) return config;
+
+  try {
+    const inherited = await resolveExtends(config.extends);
+    return {
+      ...config,
+      rulesets: mergeRulesets(inherited, config.rulesets),
+      _inherited: inherited,
+    };
+  } catch (error) {
+    if (
+      error instanceof RuleConflictError ||
+      error instanceof RulesetFetchError
+    ) {
+      throw new ConfigError(error.message);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Load and resolve configuration from cmc.toml.
+ * If [extends] is configured, fetches remote rulesets and merges them with local rules.
+ */
 export async function loadConfig(projectRoot: string): Promise<Config> {
   const configPath = join(projectRoot, "cmc.toml");
 
@@ -159,16 +205,8 @@ export async function loadConfig(projectRoot: string): Promise<Config> {
     );
   }
 
-  const parsed = await parseTomlFile(configPath);
-  const result = configSchema.safeParse(parsed);
-
-  if (!result.success) {
-    throw new ConfigError(
-      `Invalid cmc.toml:\n${formatZodErrors(result.error.issues)}`,
-    );
-  }
-
-  return result.data as Config;
+  const config = await loadAndParseConfig(configPath);
+  return resolveInheritance(config);
 }
 
 /**

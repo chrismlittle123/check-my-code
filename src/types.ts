@@ -105,4 +105,5 @@ export const ExitCode = {
   RUNTIME_ERROR: 3, // Runtime error (linter failed)
 } as const;
 
-export type ExitCodeValue = (typeof ExitCode)[keyof typeof ExitCode];
+// Type for exit code values (for internal use)
+type _ExitCodeValue = (typeof ExitCode)[keyof typeof ExitCode];
