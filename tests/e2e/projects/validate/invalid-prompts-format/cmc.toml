@@ -1,0 +1,6 @@
+[project]
+name = "invalid-prompts-test"
+
+[prompts]
+# Invalid format - should be tier/language/version
+templates = ["typescript-strict"]

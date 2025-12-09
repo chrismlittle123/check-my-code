@@ -4,6 +4,7 @@ import { glob } from "glob";
 import { minimatch } from "minimatch";
 import { relative, resolve } from "path";
 
+import { type AuditCheckResult, quickAuditCheck } from "../../audit/index.js";
 import {
   ConfigError,
   findProjectRoot,
@@ -41,10 +42,28 @@ Examples:
   .action(
     async (paths: string[], options: { json?: boolean; quiet?: boolean }) => {
       try {
-        // Suppress linter warnings in JSON mode to avoid polluting JSON output
-        const quiet = options.json ?? options.quiet ?? false;
-        const result = await runCheck(paths, quiet);
-        outputResults(result, options.json ?? false, options.quiet ?? false);
+        // Suppress output in JSON mode (to avoid polluting JSON) or quiet mode
+        const json = options.json ?? false;
+        const quiet = json || (options.quiet ?? false);
+
+        // Load config and perform audit check first (shows warnings before linting)
+        const projectRoot = findProjectRoot();
+        const config = await loadConfig(projectRoot);
+        const auditWarnings = await performPreCheckAudit(
+          projectRoot,
+          config,
+          json,
+          quiet,
+        );
+
+        const result = await runCheck({
+          projectRoot,
+          config,
+          paths,
+          quiet,
+          auditWarnings,
+        });
+        outputResults(result, json, quiet);
         process.exit(
           result.violations.length > 0 ? ExitCode.VIOLATIONS : ExitCode.SUCCESS,
         );
@@ -54,10 +73,51 @@ Examples:
     },
   );
 
-async function runCheck(paths: string[], quiet = false): Promise<CheckResult> {
-  const projectRoot = findProjectRoot();
-  const config = await loadConfig(projectRoot);
+interface ExtendedCheckResult extends CheckResult {
+  auditWarnings?: AuditCheckResult;
+}
 
+/**
+ * Perform pre-check audit to detect config mismatches.
+ * This runs before linting to show warnings even if linting fails.
+ */
+async function performPreCheckAudit(
+  projectRoot: string,
+  config: Config,
+  json: boolean,
+  quiet: boolean,
+): Promise<AuditCheckResult | undefined> {
+  const auditResult = await quickAuditCheck(projectRoot, config);
+  const hasWarnings =
+    auditResult.missingConfigs.length > 0 ||
+    auditResult.mismatchedConfigs.length > 0;
+
+  if (!hasWarnings) {
+    return undefined;
+  }
+
+  // Output warnings immediately (before linting) unless in quiet mode
+  // For JSON mode, we'll include them in the final output
+  if (!json && !quiet) {
+    outputAuditWarnings(auditResult);
+    console.log(); // Empty line between warnings and linting output
+  }
+
+  return auditResult;
+}
+
+interface RunCheckOptions {
+  projectRoot: string;
+  config: Config;
+  paths: string[];
+  quiet?: boolean;
+  auditWarnings?: AuditCheckResult;
+}
+
+async function runCheck(
+  options: RunCheckOptions,
+): Promise<ExtendedCheckResult> {
+  const { projectRoot, config, paths, quiet = false, auditWarnings } = options;
   // If no paths provided, check entire project
   const targetPaths =
     paths.length > 0
@@ -78,7 +138,11 @@ async function runCheck(paths: string[], quiet = false): Promise<CheckResult> {
   validateDiscoveryResults(files, notFoundPaths, paths, projectRoot);
 
   if (files.length === 0) {
-    return { violations: [], filesChecked: 0 };
+    return {
+      violations: [],
+      filesChecked: 0,
+      auditWarnings,
+    };
   }
 
   // Build linter options from config
@@ -88,7 +152,11 @@ async function runCheck(paths: string[], quiet = false): Promise<CheckResult> {
   // Only count files that were actually linted (have recognized extensions)
   const filesChecked = countLintableFiles(files, linterOptions);
 
-  return { violations, filesChecked };
+  return {
+    violations,
+    filesChecked,
+    auditWarnings,
+  };
 }
 
 function processDiscoveryResults(
@@ -245,33 +313,61 @@ async function discoverFiles(
   return { files, found: true };
 }
 
-function outputResults(
-  result: CheckResult,
-  json: boolean,
-  quiet: boolean,
-): void {
-  // --json takes precedence over --quiet (JSON output is still useful for CI)
-  if (json) {
+function outputAuditWarnings(auditWarnings: AuditCheckResult): void {
+  // Output missing config warnings
+  for (const missing of auditWarnings.missingConfigs) {
     console.log(
-      JSON.stringify(
-        {
-          violations: result.violations,
-          summary: {
-            files_checked: result.filesChecked,
-            violations_count: result.violations.length,
-          },
-        },
-        null,
-        2,
+      colors.yellow(
+        `⚠ Config file ${missing.filename} not found. ` +
+          `Run 'cmc generate ${missing.linter}' to create it from cmc.toml rules.`,
       ),
     );
-    return;
   }
 
-  // --quiet suppresses all non-JSON output
-  if (quiet) {
-    return;
+  // Output mismatch warnings
+  for (const mismatch of auditWarnings.mismatchedConfigs) {
+    const mismatchCount = mismatch.mismatches.length;
+    const s = mismatchCount === 1 ? "" : "es";
+    console.log(
+      colors.yellow(
+        `⚠ ${mismatch.filename} has ${mismatchCount} mismatch${s} with cmc.toml. ` +
+          `Run 'cmc generate ${mismatch.linter} --force' to sync.`,
+      ),
+    );
   }
+}
+
+function buildJsonOutput(result: ExtendedCheckResult): Record<string, unknown> {
+  const jsonOutput: Record<string, unknown> = {
+    violations: result.violations,
+    summary: {
+      files_checked: result.filesChecked,
+      violations_count: result.violations.length,
+    },
+  };
+
+  // Include audit warnings in JSON output if present
+  if (result.auditWarnings) {
+    jsonOutput.warnings = {
+      missing_configs: result.auditWarnings.missingConfigs.map((m) => ({
+        linter: m.linter,
+        filename: m.filename,
+        message: `Run 'cmc generate ${m.linter}' to create from cmc.toml`,
+      })),
+      mismatched_configs: result.auditWarnings.mismatchedConfigs.map((m) => ({
+        linter: m.linter,
+        filename: m.filename,
+        mismatches: m.mismatches,
+        message: `Run 'cmc generate ${m.linter} --force' to sync`,
+      })),
+    };
+  }
+
+  return jsonOutput;
+}
+
+function outputTextResults(result: ExtendedCheckResult): void {
+  // Note: Audit warnings are already output before linting (in performPreCheckAudit)
 
   if (result.violations.length === 0) {
     console.log(
@@ -293,6 +389,23 @@ function outputResults(
   console.log(
     colors.red(`\n✗ ${result.violations.length} violation${s} found`),
   );
+}
+
+function outputResults(
+  result: ExtendedCheckResult,
+  json: boolean,
+  quiet: boolean,
+): void {
+  if (json) {
+    console.log(JSON.stringify(buildJsonOutput(result), null, 2));
+    return;
+  }
+
+  if (quiet) {
+    return;
+  }
+
+  outputTextResults(result);
 }
 
 type ErrorCode = "CONFIG_ERROR" | "RUNTIME_ERROR";

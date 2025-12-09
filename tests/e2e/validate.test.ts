@@ -183,3 +183,37 @@ describe("cmc validate - files validation", () => {
     expect(hasExpectedError).toBe(true);
   });
 });
+
+describe("cmc validate - prompts template validation", () => {
+  it("rejects invalid template format", async () => {
+    const result = await run("validate/invalid-prompts-format", ["validate"]);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stdout).toContain("validation error");
+    expect(result.stdout).toContain("pattern");
+  });
+
+  it("accepts valid template format", async () => {
+    const result = await run("validate/valid-prompts", ["validate"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("is valid");
+  });
+
+  it("provides helpful error message for invalid template", async () => {
+    const result = await run("validate/invalid-prompts-format", [
+      "validate",
+      "--json",
+    ]);
+    const output = JSON.parse(result.stdout) as ValidateJsonOutput;
+
+    expect(result.exitCode).toBe(2);
+    expect(output.valid).toBe(false);
+    expect(output.errors.length).toBeGreaterThan(0);
+    // Should have pattern error for invalid template format
+    const hasPatternError = output.errors.some(
+      (e) => e.keyword === "pattern" || e.message?.includes("pattern"),
+    );
+    expect(hasPatternError).toBe(true);
+  });
+});

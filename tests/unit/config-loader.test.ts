@@ -319,6 +319,65 @@ describe("configSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rejects invalid template format", () => {
+    const config = {
+      project: { name: "test" },
+      prompts: {
+        templates: ["invalid-template-name"],
+      },
+    };
+
+    const result = configSchema.safeParse(config);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      // Check issues array directly for robustness across Zod versions
+      const messages = result.error.issues.map((issue) => issue.message);
+      expect(messages.some((m) => m.includes("tier/language/version"))).toBe(
+        true,
+      );
+    }
+  });
+
+  it("rejects template with invalid tier", () => {
+    const config = {
+      project: { name: "test" },
+      prompts: {
+        templates: ["invalid/typescript/5.5"],
+      },
+    };
+
+    const result = configSchema.safeParse(config);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects template with invalid language", () => {
+    const config = {
+      project: { name: "test" },
+      prompts: {
+        templates: ["internal/javascript/5.5"],
+      },
+    };
+
+    const result = configSchema.safeParse(config);
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts valid template formats", () => {
+    const config = {
+      project: { name: "test" },
+      prompts: {
+        templates: [
+          "prototype/python/3.12",
+          "internal/typescript/5.5",
+          "production/python/3.11",
+        ],
+      },
+    };
+
+    const result = configSchema.safeParse(config);
+    expect(result.success).toBe(true);
+  });
+
   it("rejects negative ruff line-length", () => {
     const config = {
       project: { name: "test" },

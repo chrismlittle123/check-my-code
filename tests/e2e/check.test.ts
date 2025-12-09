@@ -25,6 +25,23 @@ interface JsonOutput {
   };
 }
 
+type LinterId = JsonOutput["violations"][number]["linter"];
+
+interface JsonOutputWithWarnings extends JsonOutput {
+  warnings: {
+    missing_configs: {
+      linter: LinterId;
+      filename: string;
+      message: string;
+    }[];
+    mismatched_configs: {
+      linter: LinterId;
+      filename: string;
+      message: string;
+    }[];
+  };
+}
+
 // =============================================================================
 // Check: ESLint (TypeScript/JavaScript)
 // =============================================================================
@@ -697,5 +714,44 @@ describe("cmc check - file count accuracy", () => {
     // With both eslint and ruff disabled, no files should be counted
     expect(result.exitCode).toBe(0);
     expect(output.summary.files_checked).toBe(0);
+  });
+});
+
+// =============================================================================
+// Check: audit warnings for config mismatches
+// =============================================================================
+describe("cmc check - audit warnings", () => {
+  it("warns when eslint.config.js has different rules than cmc.toml", async () => {
+    const result = await run("check/audit-warnings/eslint-mismatch", ["check"]);
+
+    // Should still run and show no violations, but with a warning
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("⚠");
+    expect(result.stdout).toContain("eslint.config.js");
+    expect(result.stdout).toContain("mismatch");
+    expect(result.stdout).toContain("cmc generate eslint --force");
+  });
+
+  it("includes audit warnings in JSON output", async () => {
+    const result = await run("check/audit-warnings/eslint-mismatch", [
+      "check",
+      "--json",
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    const output = JSON.parse(result.stdout) as JsonOutputWithWarnings;
+    expect(output.warnings).toBeDefined();
+    expect(output.warnings.mismatched_configs).toHaveLength(1);
+    expect(output.warnings.mismatched_configs[0].linter).toBe("eslint");
+  });
+
+  it("suppresses audit warnings in quiet mode", async () => {
+    const result = await run("check/audit-warnings/eslint-mismatch", [
+      "check",
+      "--quiet",
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe("");
   });
 });

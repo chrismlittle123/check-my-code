@@ -1,0 +1,6 @@
+[project]
+name = "valid-prompts-test"
+
+[prompts]
+# Valid format: tier/language/version
+templates = ["internal/typescript/5.5"]

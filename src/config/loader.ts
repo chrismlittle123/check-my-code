@@ -71,10 +71,23 @@ const tscConfigSchema = z.object({
 // Remote reference pattern: github:owner/repo[/path]@version
 const remoteRefPattern = /^github:[^/]+\/[^/@]+(?:\/[^@]*)?@.+$/;
 
+// Template name pattern: tier/language/version (e.g., "internal/typescript/5.5")
+const templatePattern =
+  /^(prototype|internal|production)\/(python|typescript)\/[0-9]+\.[0-9]+$/;
+
 // AI context configuration schema
 const aiContextSchema = z.object({
   templates: z
-    .array(z.string().min(1))
+    .array(
+      z
+        .string()
+        .min(1)
+        .regex(
+          templatePattern,
+          "must be format: tier/language/version (e.g., 'internal/typescript/5.5'). " +
+            "Valid tiers: prototype, internal, production. Valid languages: python, typescript.",
+        ),
+    )
     .min(1, "at least one template is required"),
   source: z
     .string()
