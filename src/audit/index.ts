@@ -261,14 +261,15 @@ async function verifyTscConfig(
   };
 }
 
-/** Parse tsconfig.json content (supports JSONC with comments) */
+/** Parse tsconfig.json content (supports JSONC with comments and trailing commas) */
 function parseTscConfig(
   content: string,
   filename: string,
 ): { compilerOptions?: Record<string, unknown> } {
   try {
-    // Strip JSON comments before parsing (tsconfig.json supports JSONC)
-    return JSON.parse(stripJsonComments(content));
+    // Strip JSON comments and trailing commas before parsing (tsconfig.json supports JSONC)
+    const sanitized = stripJsonComments(content, { trailingCommas: true });
+    return JSON.parse(sanitized);
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Parse error";
     throw new Error(`Failed to parse ${filename}: ${msg}`);

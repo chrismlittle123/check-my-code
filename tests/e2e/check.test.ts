@@ -25,10 +25,20 @@ interface JsonOutput {
   };
 }
 
+type LinterId = JsonOutput["violations"][number]["linter"];
+
 interface JsonOutputWithWarnings extends JsonOutput {
   warnings: {
-    missing_configs: { linter: string; filename: string; message: string }[];
-    mismatched_configs: { linter: string; filename: string; message: string }[];
+    missing_configs: {
+      linter: LinterId;
+      filename: string;
+      message: string;
+    }[];
+    mismatched_configs: {
+      linter: LinterId;
+      filename: string;
+      message: string;
+    }[];
   };
 }
 
