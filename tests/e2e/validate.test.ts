@@ -6,6 +6,12 @@ import { describe, expect, it } from "vitest";
 
 import { run } from "./runner.js";
 
+// Type for validation error objects returned by cmc validate --json
+interface ValidationError {
+  keyword?: string;
+  message?: string;
+}
+
 describe("cmc validate - valid configs", () => {
   it("validates minimal valid config and exits 0", async () => {
     const result = await run("validate/valid-minimal", ["validate"]);
@@ -101,7 +107,7 @@ describe("cmc validate - extends validation", () => {
     // Should have additionalProperties errors for unknown keys
     expect(
       output.errors.some(
-        (e: { keyword?: string; message?: string }) =>
+        (e: ValidationError) =>
           e.keyword === "additionalProperties" ||
           e.message?.includes("unknown property"),
       ),
