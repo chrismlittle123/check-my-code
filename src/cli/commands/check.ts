@@ -9,7 +9,11 @@ import {
   findProjectRoot,
   loadConfig,
 } from "../../config/loader.js";
-import { type LinterOptions, runLinters } from "../../linter/index.js";
+import {
+  countLintableFiles,
+  type LinterOptions,
+  runLinters,
+} from "../../linter/index.js";
 import {
   type CheckResult,
   type Config,
@@ -81,7 +85,10 @@ async function runCheck(paths: string[], quiet = false): Promise<CheckResult> {
   const linterOptions = buildLinterOptions(config, quiet);
   const violations = await runLinters(projectRoot, files, linterOptions);
 
-  return { violations, filesChecked: files.length };
+  // Only count files that were actually linted (have recognized extensions)
+  const filesChecked = countLintableFiles(files, linterOptions);
+
+  return { violations, filesChecked };
 }
 
 function processDiscoveryResults(

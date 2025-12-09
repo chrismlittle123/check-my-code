@@ -683,3 +683,20 @@ describe("cmc check - [files] section", () => {
     expect(vendorViolations).toHaveLength(0);
   });
 });
+
+// =============================================================================
+// Check: file count accuracy
+// =============================================================================
+describe("cmc check - file count accuracy", () => {
+  it("only counts lintable files in files_checked", async () => {
+    // This project has .ts, .py, .json, and .md files with linters disabled
+    // Only .ts and .py files should be counted (even though linters are disabled,
+    // they have recognized extensions)
+    const result = await run("check/mixed-extensions", ["check", "--json"]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    // With both eslint and ruff disabled, no files should be counted
+    expect(result.exitCode).toBe(0);
+    expect(output.summary.files_checked).toBe(0);
+  });
+});

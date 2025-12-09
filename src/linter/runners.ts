@@ -33,6 +33,38 @@ function filterFiles(files: string[]): FilteredFiles {
   };
 }
 
+/**
+ * Count the number of files that will actually be linted.
+ * Excludes files with unrecognized extensions.
+ */
+export function countLintableFiles(
+  files: string[],
+  options?: LinterOptions,
+): number {
+  const filtered = filterFiles(files);
+
+  // Use a Set to avoid double-counting files that match multiple categories
+  // (e.g., .ts files are in both typescript and javascript)
+  const lintableFiles = new Set<string>();
+
+  // Python files (if ruff not disabled)
+  if (!options?.ruffDisabled) {
+    filtered.python.forEach((f) => lintableFiles.add(f));
+  }
+
+  // JavaScript/TypeScript files (if eslint not disabled)
+  if (!options?.eslintDisabled) {
+    filtered.javascript.forEach((f) => lintableFiles.add(f));
+  }
+
+  // TypeScript files for tsc (if tsc enabled)
+  if (options?.tscEnabled) {
+    filtered.typescript.forEach((f) => lintableFiles.add(f));
+  }
+
+  return lintableFiles.size;
+}
+
 async function runRuffIfEnabled(
   projectRoot: string,
   files: string[],
