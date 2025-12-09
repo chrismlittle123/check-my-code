@@ -648,3 +648,35 @@ describe("cmc check - [tools] section", () => {
     expect(output.violations).toHaveLength(0);
   });
 });
+
+// =============================================================================
+// Check: [files] section - include/exclude patterns
+// =============================================================================
+describe("cmc check - [files] section", () => {
+  it("only checks files matching include patterns", async () => {
+    const result = await run("check/typescript/with-files-config", [
+      "check",
+      "--json",
+    ]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    // Should only check src/app.ts (clean file), not vendor/lib.ts or root.ts (both have violations)
+    expect(result.exitCode).toBe(0);
+    expect(output.summary.files_checked).toBe(1);
+    expect(output.violations).toHaveLength(0);
+  });
+
+  it("excludes files matching exclude patterns", async () => {
+    const result = await run("check/typescript/with-files-config", [
+      "check",
+      "--json",
+    ]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    // vendor/lib.ts has a no-var violation but should be excluded
+    const vendorViolations = output.violations.filter((v) =>
+      v.file.includes("vendor"),
+    );
+    expect(vendorViolations).toHaveLength(0);
+  });
+});

@@ -1,0 +1,5 @@
+[project]
+name = "test-invalid-rulesets"
+
+[rulesets.invalidlinter]
+enabled = true

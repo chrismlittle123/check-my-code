@@ -110,6 +110,14 @@ const toolsSchema = z
   })
   .strict();
 
+// Files configuration schema - control which files to check
+const filesSchema = z
+  .object({
+    include: z.array(z.string().min(1)).optional(),
+    exclude: z.array(z.string().min(1)).optional(),
+  })
+  .strict();
+
 // Strip Symbol keys from an object (recursively)
 // @iarna/toml adds Symbol keys for metadata that interfere with Zod validation
 export function stripSymbolKeys(obj: unknown): unknown {
@@ -135,6 +143,7 @@ export const configSchema = z.object({
   }),
   extends: extendsSchema.optional(),
   tools: toolsSchema.optional(),
+  files: filesSchema.optional(),
   prompts: aiContextSchema.optional(),
   rulesets: z
     .object({
@@ -146,6 +155,7 @@ export const configSchema = z.object({
       ruff: ruffConfigSchema.optional(),
       tsc: tscConfigSchema.optional(),
     })
+    .strict()
     .optional(),
 });
 

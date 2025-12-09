@@ -1,0 +1,5 @@
+[project]
+name = "test-invalid-files"
+
+[files]
+totally_invalid_key = ["test"]

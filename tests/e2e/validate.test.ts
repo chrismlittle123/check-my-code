@@ -119,3 +119,67 @@ describe("cmc validate - extends validation", () => {
     expect(hasExpectedError).toBe(true);
   });
 });
+
+describe("cmc validate - rulesets validation", () => {
+  it("rejects unknown linter names in rulesets section", async () => {
+    const result = await run("validate/invalid-rulesets-keys", ["validate"]);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stdout).toContain("validation error");
+  });
+
+  it("outputs JSON errors for unknown linter names", async () => {
+    const result = await run("validate/invalid-rulesets-keys", [
+      "validate",
+      "--json",
+    ]);
+    const output = JSON.parse(result.stdout) as ValidateJsonOutput;
+
+    expect(result.exitCode).toBe(2);
+    expect(output.valid).toBe(false);
+    expect(output.errors.length).toBeGreaterThan(0);
+    // Should have additionalProperties errors for unknown linter
+    const hasExpectedError = output.errors.some(
+      (e) =>
+        e.keyword === "additionalProperties" ||
+        e.message?.includes("unknown property") ||
+        e.message?.includes("invalidlinter"),
+    );
+    expect(hasExpectedError).toBe(true);
+  });
+});
+
+describe("cmc validate - files validation", () => {
+  it("accepts valid files section with include/exclude", async () => {
+    const result = await run("validate/valid-files", ["validate"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("is valid");
+  });
+
+  it("rejects unknown keys in files section", async () => {
+    const result = await run("validate/invalid-files-keys", ["validate"]);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stdout).toContain("validation error");
+  });
+
+  it("outputs JSON errors for unknown files keys", async () => {
+    const result = await run("validate/invalid-files-keys", [
+      "validate",
+      "--json",
+    ]);
+    const output = JSON.parse(result.stdout) as ValidateJsonOutput;
+
+    expect(result.exitCode).toBe(2);
+    expect(output.valid).toBe(false);
+    expect(output.errors.length).toBeGreaterThan(0);
+    // Should have additionalProperties errors for unknown keys
+    const hasExpectedError = output.errors.some(
+      (e) =>
+        e.keyword === "additionalProperties" ||
+        e.message?.includes("unknown property"),
+    );
+    expect(hasExpectedError).toBe(true);
+  });
+});

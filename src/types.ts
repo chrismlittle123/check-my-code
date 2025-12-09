@@ -5,12 +5,19 @@ export interface ToolsConfig {
   tsc?: boolean;
 }
 
+// Files configuration - control which files to check
+export interface FilesConfig {
+  include?: string[];
+  exclude?: string[];
+}
+
 export interface Config {
   project: {
     name: string;
   };
   extends?: ExtendsConfig;
   tools?: ToolsConfig;
+  files?: FilesConfig;
   prompts?: AiContextConfig;
   rulesets?: {
     eslint?: {
