@@ -72,7 +72,7 @@ async function fetchManifestContent(manifestRef: string): Promise<string> {
   } catch (error) {
     if (error instanceof RemoteFetchError) {
       throw new RulesetFetchError(
-        `Remote repository missing rulesets.json manifest\nLooking in: ${manifestRef}`,
+        `Failed to load rulesets.json manifest from ${manifestRef}: ${error.message}`,
       );
     }
     throw error;
@@ -175,7 +175,9 @@ async function fetchRulesetFile(
     content = await fetchRemoteFile(fileRef, filePath);
   } catch (error) {
     if (error instanceof RemoteFetchError) {
-      throw new RulesetFetchError(`Remote ruleset file not found: ${filePath}`);
+      throw new RulesetFetchError(
+        `Failed to load remote ruleset file ${filePath}: ${error.message}`,
+      );
     }
     throw error;
   }
@@ -189,28 +191,39 @@ async function fetchRulesetFile(
   }
 }
 
+/** Safely get nested object property */
+function getNestedObject(
+  obj: unknown,
+  ...keys: string[]
+): Record<string, unknown> | undefined {
+  let current: unknown = obj;
+  for (const key of keys) {
+    if (typeof current !== "object" || current === null) return undefined;
+    current = (current as Record<string, unknown>)[key];
+  }
+  if (typeof current !== "object" || current === null) return undefined;
+  return current as Record<string, unknown>;
+}
+
 /** Extract ESLint rules from parsed ruleset TOML */
 function extractEslintRules(
   parsed: unknown,
 ): Record<string, ESLintRuleValue> | undefined {
-  const obj = parsed as Record<string, unknown> | null;
-  const rulesets = obj?.rulesets as Record<string, unknown> | undefined;
-  const eslint = rulesets?.eslint as Record<string, unknown> | undefined;
-  return eslint?.rules as Record<string, ESLintRuleValue> | undefined;
+  const eslint = getNestedObject(parsed, "rulesets", "eslint");
+  if (!eslint) return undefined;
+  return eslint.rules as Record<string, ESLintRuleValue> | undefined;
 }
 
 /** Extract Ruff config from parsed ruleset TOML */
 function extractRuffConfig(parsed: unknown): RuffConfig | undefined {
-  const obj = parsed as Record<string, unknown> | null;
-  const rulesets = obj?.rulesets as Record<string, unknown> | undefined;
-  return rulesets?.ruff as RuffConfig | undefined;
+  const ruff = getNestedObject(parsed, "rulesets", "ruff");
+  return ruff as RuffConfig | undefined;
 }
 
 /** Extract TSC config from parsed ruleset TOML */
 function extractTscConfig(parsed: unknown): TscConfig | undefined {
-  const obj = parsed as Record<string, unknown> | null;
-  const rulesets = obj?.rulesets as Record<string, unknown> | undefined;
-  return rulesets?.tsc as TscConfig | undefined;
+  const tsc = getNestedObject(parsed, "rulesets", "tsc");
+  return tsc as TscConfig | undefined;
 }
 
 /**
