@@ -358,6 +358,7 @@ export function getCacheInfo(): { path: string; exists: boolean } {
 
 /**
  * Get count of in-flight clone operations (for testing)
+ * @internal
  */
 export function getInFlightCount(): number {
   return inFlightClones.size;
