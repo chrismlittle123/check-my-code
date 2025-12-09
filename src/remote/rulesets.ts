@@ -42,17 +42,9 @@ export {
 };
 
 /**
- * Build the base remote reference for manifest lookup.
+ * Build the base remote reference for manifest/file lookup.
  */
-function buildManifestRef(remoteRef: string): string {
-  const ref = parseRemoteRef(remoteRef);
-  return `github:${ref.owner}/${ref.repo}/rulesets@${ref.version}`;
-}
-
-/**
- * Build a remote reference for fetching a specific file from the repo.
- */
-function buildFileRef(remoteRef: string): string {
+function buildRemoteRef(remoteRef: string): string {
   const ref = parseRemoteRef(remoteRef);
   return `github:${ref.owner}/${ref.repo}/rulesets@${ref.version}`;
 }
@@ -69,7 +61,7 @@ function extractRulesetKey(remoteRef: string): string {
  * Fetch and parse the rulesets.json manifest from a remote repository.
  */
 async function fetchManifest(remoteRef: string): Promise<RulesetsManifest> {
-  const manifestRef = buildManifestRef(remoteRef);
+  const manifestRef = buildRemoteRef(remoteRef);
   const content = await fetchManifestContent(manifestRef);
   return parseManifestContent(content);
 }
@@ -176,7 +168,7 @@ async function fetchRulesetFile(
   remoteRef: string,
   filePath: string,
 ): Promise<unknown> {
-  const fileRef = buildFileRef(remoteRef);
+  const fileRef = buildRemoteRef(remoteRef);
 
   let content: string;
   try {
