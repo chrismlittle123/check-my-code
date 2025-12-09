@@ -2,8 +2,14 @@
  * ESLint audit utilities - parsing and comparing ESLint config files.
  */
 
-import { type ESLintRuleValue } from "../../types.js";
-import { type Mismatch } from "./audit-types.js";
+import { type ESLintRuleValue } from "../types.js";
+
+export interface Mismatch {
+  type: "missing" | "different" | "extra";
+  rule: string;
+  expected?: unknown;
+  actual?: unknown;
+}
 
 /** Compare expected vs actual ESLint rules.
  * Only reports missing or different rules - extra rules in the actual config are allowed.

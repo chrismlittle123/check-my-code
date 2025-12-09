@@ -1,0 +1,6 @@
+[project]
+name = "eslint-mismatch-test"
+
+# This rule is NOT in eslint.config.js, so there should be a mismatch warning
+[rulesets.eslint.rules]
+"no-console" = "error"

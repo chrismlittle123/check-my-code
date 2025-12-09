@@ -89,12 +89,13 @@
       "type": "object",
       "properties": {
         "templates": {
-          "description": "Template names to load (e.g., [\"typescript-strict\", \"python-prod\"])",
+          "description": "Template names to load (format: tier/language/version, e.g., \"internal/typescript/5.5\")",
           "minItems": 1,
           "type": "array",
           "items": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "pattern": "^(prototype|internal|production)/(python|typescript)/[0-9]+\\.[0-9]+$"
           }
         },
         "source": {

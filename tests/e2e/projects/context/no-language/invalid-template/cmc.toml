@@ -2,5 +2,5 @@
 name = "invalid-template-test"
 
 [prompts]
-# Valid source, but nonexistent template name
-templates = ["nonexistent-template-xyz"]
+# Valid format but nonexistent version - 99.99 doesn't exist in any manifest
+templates = ["internal/typescript/99.99"]
