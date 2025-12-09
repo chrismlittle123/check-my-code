@@ -10,10 +10,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **NEVER commit directly to main** - main branch is protected
 - Create a branch for every feature, bugfix, or change
-- Branch naming pattern: `(feature|fix|hotfix)/vX.Y.Z/description`
+- Branch naming pattern: `(feature|fix|hotfix|docs)/vX.Y.Z/description`
   - `feature/v1.5.0/colored-output` - new features
   - `fix/v1.4.2/audit-bug` - bug fixes
   - `hotfix/v1.4.1/critical-security-fix` - urgent fixes
+  - `docs/v1.6.5/update-readme` - documentation changes
 - **Enforced by CI** - PRs with invalid branch names will fail
 
 ### Before Making Changes
