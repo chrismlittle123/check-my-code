@@ -689,9 +689,8 @@ describe("cmc check - [files] section", () => {
 // =============================================================================
 describe("cmc check - file count accuracy", () => {
   it("only counts lintable files in files_checked", async () => {
-    // This project has .ts, .py, .json, and .md files with linters disabled
-    // Only .ts and .py files should be counted (even though linters are disabled,
-    // they have recognized extensions)
+    // This project has .ts, .py, .json, and .md files with all linters disabled
+    // Since eslint and ruff are both disabled, no files should be counted
     const result = await run("check/mixed-extensions", ["check", "--json"]);
     const output: JsonOutput = JSON.parse(result.stdout);
 

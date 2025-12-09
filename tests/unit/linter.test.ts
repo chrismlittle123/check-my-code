@@ -468,4 +468,16 @@ describe("countLintableFiles", () => {
 
     expect(count).toBe(0);
   });
+
+  it("counts TypeScript files when only tsc enabled", () => {
+    const files = ["app.ts", "component.tsx", "util.js", "config.json"];
+    const count = countLintableFiles(files, {
+      eslintDisabled: true,
+      ruffDisabled: true,
+      tscEnabled: true,
+    });
+
+    // Only .ts and .tsx files counted via tsc, not .js
+    expect(count).toBe(2);
+  });
 });
