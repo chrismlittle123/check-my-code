@@ -6,10 +6,16 @@ import { describe, expect, it } from "vitest";
 
 import { run } from "./runner.js";
 
-// Type for validation error objects returned by cmc validate --json
+// Types for cmc validate --json output
 interface ValidationError {
   keyword?: string;
   message?: string;
+}
+
+interface ValidateJsonOutput {
+  valid: boolean;
+  errors: ValidationError[];
+  configPath?: string;
 }
 
 describe("cmc validate - valid configs", () => {
@@ -29,7 +35,7 @@ describe("cmc validate - valid configs", () => {
 
   it("outputs JSON when --json flag is used", async () => {
     const result = await run("validate/valid-minimal", ["validate", "--json"]);
-    const output = JSON.parse(result.stdout);
+    const output = JSON.parse(result.stdout) as ValidateJsonOutput;
 
     expect(result.exitCode).toBe(0);
     expect(output.valid).toBe(true);
@@ -55,7 +61,7 @@ describe("cmc validate - invalid configs", () => {
 
   it("outputs JSON errors for invalid config", async () => {
     const result = await run("validate/invalid-schema", ["validate", "--json"]);
-    const output = JSON.parse(result.stdout);
+    const output = JSON.parse(result.stdout) as ValidateJsonOutput;
 
     expect(result.exitCode).toBe(2);
     expect(output.valid).toBe(false);
@@ -99,10 +105,7 @@ describe("cmc validate - extends validation", () => {
       "validate",
       "--json",
     ]);
-    const output = JSON.parse(result.stdout) as {
-      valid: boolean;
-      errors: ValidationError[];
-    };
+    const output = JSON.parse(result.stdout) as ValidateJsonOutput;
 
     expect(result.exitCode).toBe(2);
     expect(output.valid).toBe(false);
