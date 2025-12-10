@@ -12,14 +12,15 @@ import { ErrorCode, type ErrorResponse, makeError } from "./response.js";
 import { setConfigFound, setProjectRoot } from "./state.js";
 
 /**
- * Check if a path is within the project root (security check for path traversal)
- * @param filePath - Resolved absolute file path
- * @param projectRoot - The project root directory
- * @returns true if the file is within the project root
+ * Check if a resolved path is safe (within a base directory or its subdirectories).
+ * Prevents path traversal attacks where malicious paths like "../../etc" could
+ * escape the intended base directory.
  */
-function isWithinProjectRoot(filePath: string, projectRoot: string): boolean {
-  const relativePath = relative(projectRoot, filePath);
-  // If the relative path starts with "..", the file is outside project root
+function isSafePath(resolvedPath: string, basePath: string): boolean {
+  const relativePath = relative(basePath, resolvedPath);
+  // Safe if:
+  // 1. Not escaping upward (doesn't start with "..")
+  // 2. Not an absolute path on a different root
   return !relativePath.startsWith("..") && !isAbsolute(relativePath);
 }
 
@@ -33,7 +34,7 @@ export async function discoverFiles(
 ): Promise<string[]> {
   // Security: Reject paths outside project root (path traversal protection)
   const resolvedPath = resolve(targetPath);
-  if (!isWithinProjectRoot(resolvedPath, projectRoot)) {
+  if (!isSafePath(resolvedPath, projectRoot)) {
     return [];
   }
 
@@ -64,19 +65,6 @@ export async function discoverFiles(
   });
 
   return foundFiles.map((f) => relative(projectRoot, f)).sort();
-}
-
-/**
- * Check if a resolved path is safe (within cwd or its subdirectories).
- * Prevents path traversal attacks where malicious paths like "../../etc" could
- * escape the intended working directory.
- */
-function isSafePath(resolvedPath: string, basePath: string): boolean {
-  const relativePath = relative(basePath, resolvedPath);
-  // Safe if:
-  // 1. Not escaping upward (doesn't start with "..")
-  // 2. Not an absolute path on a different root
-  return !relativePath.startsWith("..") && !isAbsolute(relativePath);
 }
 
 /**
@@ -136,7 +124,7 @@ export async function validateFiles(
     const fullPath = isAbsolute(file) ? file : resolve(baseCwd, file);
 
     // Security: Reject files outside project root (path traversal protection)
-    if (!isWithinProjectRoot(fullPath, projectRoot)) {
+    if (!isSafePath(fullPath, projectRoot)) {
       return null;
     }
 
