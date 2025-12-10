@@ -28,6 +28,8 @@ export default defineConfig({
         'src/remote/fetcher.ts',
         // Remote rulesets has network-dependent code tested via E2E
         'src/remote/rulesets.ts',
+        // Audit module is tested via E2E tests (verifies linter configs)
+        'src/audit/**',
         // Utility functions used by E2E-tested code
         'src/utils/**',
       ],
