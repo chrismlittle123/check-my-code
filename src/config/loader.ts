@@ -76,24 +76,26 @@ const templatePattern =
   /^(prototype|internal|production)\/(python|typescript)\/[0-9]+\.[0-9]+$/;
 
 // AI context configuration schema
-const aiContextSchema = z.object({
-  templates: z
-    .array(
-      z
-        .string()
-        .min(1)
-        .regex(
-          templatePattern,
-          "must be format: tier/language/version (e.g., 'internal/typescript/5.5'). " +
-            "Valid tiers: prototype, internal, production. Valid languages: python, typescript.",
-        ),
-    )
-    .min(1, "at least one template is required"),
-  source: z
-    .string()
-    .regex(remoteRefPattern, "must be format: github:owner/repo/path@version")
-    .optional(),
-});
+const aiContextSchema = z
+  .object({
+    templates: z
+      .array(
+        z
+          .string()
+          .min(1)
+          .regex(
+            templatePattern,
+            "must be format: tier/language/version (e.g., 'internal/typescript/5.5'). " +
+              "Valid tiers: prototype, internal, production. Valid languages: python, typescript.",
+          ),
+      )
+      .min(1, "at least one template is required"),
+    source: z
+      .string()
+      .regex(remoteRefPattern, "must be format: github:owner/repo/path@version")
+      .optional(),
+  })
+  .strict();
 
 // Extends configuration schema (v2)
 // Uses strict() to reject unknown keys like "invalid", "nonexistent", etc.
@@ -150,27 +152,32 @@ export function stripSymbolKeys(obj: unknown): unknown {
 }
 
 // Full cmc.toml schema
-export const configSchema = z.object({
-  project: z.object({
-    name: z.string().min(1, "project name cannot be empty"),
-  }),
-  extends: extendsSchema.optional(),
-  tools: toolsSchema.optional(),
-  files: filesSchema.optional(),
-  prompts: aiContextSchema.optional(),
-  rulesets: z
-    .object({
-      eslint: z
-        .object({
-          rules: z.record(z.string(), eslintRuleValueSchema).optional(),
-        })
-        .optional(),
-      ruff: ruffConfigSchema.optional(),
-      tsc: tscConfigSchema.optional(),
-    })
-    .strict()
-    .optional(),
-});
+// Uses strict() at all levels to reject unknown properties
+export const configSchema = z
+  .object({
+    project: z
+      .object({
+        name: z.string().min(1, "project name cannot be empty"),
+      })
+      .strict(),
+    extends: extendsSchema.optional(),
+    tools: toolsSchema.optional(),
+    files: filesSchema.optional(),
+    prompts: aiContextSchema.optional(),
+    rulesets: z
+      .object({
+        eslint: z
+          .object({
+            rules: z.record(z.string(), eslintRuleValueSchema).optional(),
+          })
+          .optional(),
+        ruff: ruffConfigSchema.optional(),
+        tsc: tscConfigSchema.optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
 
 async function parseTomlFile(configPath: string): Promise<unknown> {
   const content = await readFile(configPath, "utf-8");
