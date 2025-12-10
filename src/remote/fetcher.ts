@@ -10,14 +10,18 @@
 
 import { execSync, spawn } from "child_process";
 import { createHash } from "crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
+import lockfile from "proper-lockfile";
 
 // Cache directory for cloned repositories
 const CACHE_DIR = join(homedir(), ".cmc", "cache");
 
-// In-flight clone operations to prevent race conditions
+// Lock directory for cross-process coordination
+const LOCK_DIR = join(homedir(), ".cmc", "locks");
+
+// In-flight clone operations to prevent race conditions within a single process
 // Maps cache key to a promise that resolves when the clone is complete
 const inFlightClones = new Map<string, Promise<string>>();
 
@@ -189,26 +193,76 @@ async function doCloneOrFetch(ref: RemoteRef): Promise<string> {
 }
 
 /**
+ * Get the lock file path for a given cache key.
+ * Creates the lock directory and lock file if they don't exist.
+ */
+function getLockFilePath(cacheKey: string): string {
+  mkdirSync(LOCK_DIR, { recursive: true });
+  const lockFilePath = join(LOCK_DIR, `${cacheKey}.lock`);
+
+  // Create lock file if it doesn't exist (proper-lockfile requires file to exist)
+  if (!existsSync(lockFilePath)) {
+    writeFileSync(lockFilePath, "", "utf-8");
+  }
+
+  return lockFilePath;
+}
+
+/**
  * Clone or fetch a repository to cache.
  *
- * Uses a lock mechanism to prevent race conditions when multiple callers
- * try to clone the same repository simultaneously.
+ * Uses a two-level lock mechanism to prevent race conditions:
+ * 1. In-process lock via Map for concurrent async operations within same process
+ * 2. Cross-process file lock via proper-lockfile for concurrent process invocations
  */
 async function cloneOrFetch(ref: RemoteRef): Promise<string> {
   const cacheKey = getCacheKey(ref);
 
-  // Check if there's already an in-flight clone for this repo
+  // Level 1: Check if there's already an in-flight clone in this process
   const existingClone = inFlightClones.get(cacheKey);
   if (existingClone) {
     // Wait for the existing clone to complete
     return existingClone;
   }
 
-  // Start the clone operation and track it
-  const clonePromise = doCloneOrFetch(ref).finally(() => {
-    // Clean up the in-flight tracking when done (success or failure)
-    inFlightClones.delete(cacheKey);
-  });
+  // Level 2: Acquire cross-process file lock
+  const lockFilePath = getLockFilePath(cacheKey);
+
+  const clonePromise = (async (): Promise<string> => {
+    let releaseLock: (() => Promise<void>) | null = null;
+
+    try {
+      // Acquire file lock with retry (waits for other processes)
+      releaseLock = await lockfile.lock(lockFilePath, {
+        retries: {
+          retries: 10,
+          factor: 2,
+          minTimeout: 100,
+          maxTimeout: 5000,
+        },
+        stale: 60000, // Consider lock stale after 60 seconds
+      });
+
+      // After acquiring lock, check if another process already cloned
+      const cachePath = getCachePath(ref);
+      if (existsSync(cachePath)) {
+        // Cache already exists, just verify it's valid
+        if (await tryFetchExisting(cachePath, ref.version)) {
+          return cachePath;
+        }
+      }
+
+      // Perform the actual clone/fetch
+      return await doCloneOrFetch(ref);
+    } finally {
+      // Release file lock
+      if (releaseLock) {
+        await releaseLock();
+      }
+      // Clean up in-flight tracking
+      inFlightClones.delete(cacheKey);
+    }
+  })();
 
   inFlightClones.set(cacheKey, clonePromise);
   return clonePromise;

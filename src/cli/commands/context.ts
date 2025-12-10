@@ -187,9 +187,12 @@ async function loadAllTemplates(
   templates: string[],
   source: string,
 ): Promise<string> {
+  // Deduplicate templates to avoid duplicated content in output
+  const uniqueTemplates = [...new Set(templates)];
+
   // Load templates sequentially to avoid race conditions in git cache
   const contents: string[] = [];
-  for (const template of templates) {
+  for (const template of uniqueTemplates) {
     // eslint-disable-next-line no-await-in-loop
     contents.push(await loadTemplate(template, source));
   }
