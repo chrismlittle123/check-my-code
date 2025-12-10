@@ -44,6 +44,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Enable auto-merge for release PR
+        if: steps.changesets.outputs.pullRequestNumber
+        run: gh pr merge ${{ steps.changesets.outputs.pullRequestNumber }} --auto --squash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   publish:
     name: Publish to npm
     runs-on: ubuntu-latest
