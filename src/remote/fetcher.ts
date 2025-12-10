@@ -5,7 +5,8 @@
  *   github:owner/repo/path@version
  *
  * Uses ambient git credentials (SSH keys) for authentication.
- * Supports version pinning: @v1.0.0, @latest, @main, or any git ref.
+ * Always clones the default branch - the @version is used only for
+ * manifest-based version resolution, not as a git ref.
  */
 
 import { execSync, spawn } from "child_process";
@@ -95,14 +96,15 @@ function buildCloneUrls(ref: RemoteRef): string[] {
 }
 
 /**
- * Generate cache key for a remote reference
+ * Generate cache key for a remote reference.
+ * Cache key is based on owner/repo only - all versions share the same clone.
  */
 function getCacheKey(ref: RemoteRef): string {
   const hash = createHash("sha256")
-    .update(`${ref.host}:${ref.owner}/${ref.repo}@${ref.version}`)
+    .update(`${ref.host}:${ref.owner}/${ref.repo}`)
     .digest("hex")
     .slice(0, 12);
-  return `${ref.owner}-${ref.repo}-${ref.version}-${hash}`;
+  return `${ref.owner}-${ref.repo}-${hash}`;
 }
 
 /**
@@ -130,15 +132,12 @@ function cleanupPath(path: string): void {
   }
 }
 
-async function tryFetchExisting(
-  cachePath: string,
-  version: string,
-): Promise<boolean> {
+async function tryFetchExisting(cachePath: string): Promise<boolean> {
   if (!existsSync(cachePath)) return false;
 
   try {
-    await gitFetch(cachePath, version);
-    await gitCheckout(cachePath, version);
+    await gitFetch(cachePath);
+    await gitCheckout(cachePath);
     return true;
   } catch {
     cleanupPath(cachePath);
@@ -149,7 +148,6 @@ async function tryFetchExisting(
 async function tryCloneUrls(
   urls: string[],
   cachePath: string,
-  version: string,
   ref: RemoteRef,
 ): Promise<string> {
   let lastError: Error | null = null;
@@ -158,7 +156,7 @@ async function tryCloneUrls(
     try {
       cleanupPath(cachePath);
       // eslint-disable-next-line no-await-in-loop
-      await gitClone(url, cachePath, version);
+      await gitClone(url, cachePath);
       return cachePath;
     } catch (error) {
       lastError = error as Error;
@@ -184,12 +182,12 @@ async function doCloneOrFetch(ref: RemoteRef): Promise<string> {
 
   const cachePath = getCachePath(ref);
 
-  if (await tryFetchExisting(cachePath, ref.version)) {
+  if (await tryFetchExisting(cachePath)) {
     return cachePath;
   }
 
   cleanupPath(cachePath);
-  return tryCloneUrls(buildCloneUrls(ref), cachePath, ref.version, ref);
+  return tryCloneUrls(buildCloneUrls(ref), cachePath, ref);
 }
 
 /**
@@ -247,7 +245,7 @@ async function cloneOrFetch(ref: RemoteRef): Promise<string> {
       const cachePath = getCachePath(ref);
       if (existsSync(cachePath)) {
         // Cache already exists, just verify it's valid
-        if (await tryFetchExisting(cachePath, ref.version)) {
+        if (await tryFetchExisting(cachePath)) {
           return cachePath;
         }
       }
@@ -269,19 +267,12 @@ async function cloneOrFetch(ref: RemoteRef): Promise<string> {
 }
 
 /**
- * Run git clone
+ * Run git clone (always clones default branch)
  */
-function gitClone(url: string, dest: string, version: string): Promise<void> {
+function gitClone(url: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Clone with depth 1 for efficiency, but we need tags for version resolution
-    const args = ["clone", "--depth", "1"];
-
-    // If version is not 'latest', clone specific branch/tag
-    if (version !== "latest") {
-      args.push("--branch", version);
-    }
-
-    args.push(url, dest);
+    // Clone with depth 1 for efficiency - always use default branch
+    const args = ["clone", "--depth", "1", url, dest];
 
     const proc = spawn("git", args, {
       stdio: ["ignore", "pipe", "pipe"],
@@ -305,14 +296,11 @@ function gitClone(url: string, dest: string, version: string): Promise<void> {
 }
 
 /**
- * Run git fetch
+ * Run git fetch (fetches latest from default branch)
  */
-function gitFetch(repoPath: string, version: string): Promise<void> {
+function gitFetch(repoPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const args = ["fetch", "--depth", "1", "origin"];
-    if (version !== "latest") {
-      args.push(version);
-    }
 
     const proc = spawn("git", args, {
       cwd: repoPath,
@@ -337,13 +325,11 @@ function gitFetch(repoPath: string, version: string): Promise<void> {
 }
 
 /**
- * Run git checkout
+ * Run git checkout (checks out latest from default branch)
  */
-function gitCheckout(repoPath: string, version: string): Promise<void> {
+function gitCheckout(repoPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const ref = version === "latest" ? "origin/HEAD" : version;
-
-    const proc = spawn("git", ["checkout", ref], {
+    const proc = spawn("git", ["checkout", "origin/HEAD"], {
       cwd: repoPath,
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -355,7 +341,9 @@ function gitCheckout(repoPath: string, version: string): Promise<void> {
       if (code === 0) {
         resolve();
       } else {
-        reject(new RemoteFetchError(`Failed to checkout ${ref}: ${stderr}`));
+        reject(
+          new RemoteFetchError(`Failed to checkout origin/HEAD: ${stderr}`),
+        );
       }
     });
 
