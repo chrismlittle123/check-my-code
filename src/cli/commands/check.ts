@@ -16,18 +16,30 @@ import {
   runLinters,
 } from "../../linter/index.js";
 import {
-  type CheckResult,
-  type Config,
-  ExitCode,
-  type FilesConfig,
-} from "../../types.js";
+  checkRequirements,
+  hasRequirements,
+  type RequirementsCheckResult,
+} from "../../requirements/index.js";
+import { type Config, ExitCode, type FilesConfig } from "../../types.js";
 import { colors } from "../output.js";
+import { type ExtendedCheckResult, outputResults } from "../output-check.js";
+import {
+  outputRequirementsFailure,
+  outputRequirementsSuccess,
+} from "../output-requirements.js";
+
+interface CheckOptions {
+  json?: boolean;
+  quiet?: boolean;
+  skipRequirements?: boolean;
+}
 
 export const checkCommand = new Command("check")
   .description("Run ESLint, Ruff, and TypeScript type checks on project files")
   .argument("[paths...]", "Paths to check (default: current directory)")
   .option("--json", "Output results as JSON", false)
   .option("-q, --quiet", "Suppress all output (exit code only)", false)
+  .option("--skip-requirements", "Skip requirements validation", false)
   .addHelpText(
     "after",
     `
@@ -37,44 +49,87 @@ Examples:
   $ cmc check src/main.ts          Check specific file
   $ cmc check file1.ts file2.ts    Check multiple files
   $ cmc check --json               Output as JSON for CI/tooling
-  $ cmc check --quiet              Silent mode (exit code only)`,
+  $ cmc check --quiet              Silent mode (exit code only)
+  $ cmc check --skip-requirements  Skip requirements validation`,
   )
-  .action(
-    async (paths: string[], options: { json?: boolean; quiet?: boolean }) => {
-      try {
-        // Suppress output in JSON mode (to avoid polluting JSON) or quiet mode
-        const json = options.json ?? false;
-        const quiet = json || (options.quiet ?? false);
+  .action(async (paths: string[], options: CheckOptions) => {
+    try {
+      await executeCheck(paths, options);
+    } catch (error: unknown) {
+      handleCheckError(error, options.json ?? false, options.quiet ?? false);
+    }
+  });
 
-        // Load config and perform audit check first (shows warnings before linting)
-        const projectRoot = findProjectRoot();
-        const config = await loadConfig(projectRoot);
-        const auditWarnings = await performPreCheckAudit(
-          projectRoot,
-          config,
-          json,
-          quiet,
-        );
+/** Main check execution logic */
+async function executeCheck(
+  paths: string[],
+  options: CheckOptions,
+): Promise<void> {
+  const json = options.json ?? false;
+  const quiet = json || (options.quiet ?? false);
+  const skipRequirements = options.skipRequirements ?? false;
 
-        const result = await runCheck({
-          projectRoot,
-          config,
-          paths,
-          quiet,
-          auditWarnings,
-        });
-        outputResults(result, json, quiet);
-        process.exit(
-          result.violations.length > 0 ? ExitCode.VIOLATIONS : ExitCode.SUCCESS,
-        );
-      } catch (error: unknown) {
-        handleCheckError(error, options.json ?? false, options.quiet ?? false);
-      }
-    },
+  const projectRoot = findProjectRoot();
+  const config = await loadConfig(projectRoot);
+
+  // Check requirements first (unless skipped)
+  const requirementsResult = validateRequirementsIfNeeded({
+    projectRoot,
+    config,
+    skipRequirements,
+    json,
+    quiet,
+  });
+
+  // Perform audit check (shows warnings before linting)
+  const auditWarnings = await performPreCheckAudit(
+    projectRoot,
+    config,
+    json,
+    quiet,
   );
 
-interface ExtendedCheckResult extends CheckResult {
-  auditWarnings?: AuditCheckResult;
+  const result = await runCheck({
+    projectRoot,
+    config,
+    paths,
+    quiet,
+    auditWarnings,
+    requirementsResult,
+  });
+
+  outputResults(result, json, quiet);
+  process.exit(
+    result.violations.length > 0 ? ExitCode.VIOLATIONS : ExitCode.SUCCESS,
+  );
+}
+
+interface RequirementsValidationOptions {
+  projectRoot: string;
+  config: Config;
+  skipRequirements: boolean;
+  json: boolean;
+  quiet: boolean;
+}
+
+/** Validate requirements and exit if failed, return result if passed */
+function validateRequirementsIfNeeded(
+  opts: RequirementsValidationOptions,
+): RequirementsCheckResult | undefined {
+  if (opts.skipRequirements || !hasRequirements(opts.config)) {
+    return undefined;
+  }
+
+  const result = checkRequirements(opts.projectRoot, opts.config);
+  if (!result.passed) {
+    outputRequirementsFailure(result, opts.json, opts.quiet);
+    process.exit(ExitCode.VIOLATIONS);
+  }
+
+  if (!opts.json && !opts.quiet) {
+    outputRequirementsSuccess(result);
+  }
+  return result;
 }
 
 /**
@@ -112,12 +167,20 @@ interface RunCheckOptions {
   paths: string[];
   quiet?: boolean;
   auditWarnings?: AuditCheckResult;
+  requirementsResult?: RequirementsCheckResult;
 }
 
 async function runCheck(
   options: RunCheckOptions,
 ): Promise<ExtendedCheckResult> {
-  const { projectRoot, config, paths, quiet = false, auditWarnings } = options;
+  const {
+    projectRoot,
+    config,
+    paths,
+    quiet = false,
+    auditWarnings,
+    requirementsResult,
+  } = options;
   // If no paths provided, check entire project
   const targetPaths =
     paths.length > 0
@@ -142,6 +205,7 @@ async function runCheck(
       violations: [],
       filesChecked: 0,
       auditWarnings,
+      requirementsResult,
     };
   }
 
@@ -156,6 +220,7 @@ async function runCheck(
     violations,
     filesChecked,
     auditWarnings,
+    requirementsResult,
   };
 }
 
@@ -335,77 +400,6 @@ function outputAuditWarnings(auditWarnings: AuditCheckResult): void {
       ),
     );
   }
-}
-
-function buildJsonOutput(result: ExtendedCheckResult): Record<string, unknown> {
-  const jsonOutput: Record<string, unknown> = {
-    violations: result.violations,
-    summary: {
-      files_checked: result.filesChecked,
-      violations_count: result.violations.length,
-    },
-  };
-
-  // Include audit warnings in JSON output if present
-  if (result.auditWarnings) {
-    jsonOutput.warnings = {
-      missing_configs: result.auditWarnings.missingConfigs.map((m) => ({
-        linter: m.linter,
-        filename: m.filename,
-        message: `Run 'cmc generate ${m.linter}' to create from cmc.toml`,
-      })),
-      mismatched_configs: result.auditWarnings.mismatchedConfigs.map((m) => ({
-        linter: m.linter,
-        filename: m.filename,
-        mismatches: m.mismatches,
-        message: `Run 'cmc generate ${m.linter} --force' to sync`,
-      })),
-    };
-  }
-
-  return jsonOutput;
-}
-
-function outputTextResults(result: ExtendedCheckResult): void {
-  // Note: Audit warnings are already output before linting (in performPreCheckAudit)
-
-  if (result.violations.length === 0) {
-    console.log(
-      colors.green(
-        `✓ No violations found (${result.filesChecked} files checked)`,
-      ),
-    );
-    return;
-  }
-
-  for (const v of result.violations) {
-    const location = v.line ? `:${v.line}` : "";
-    const filePath = colors.cyan(`${v.file}${location}`);
-    const rule = colors.dim(`[${v.linter}/${v.rule}]`);
-    console.log(`${filePath} ${rule} ${v.message}`);
-  }
-
-  const s = result.violations.length === 1 ? "" : "s";
-  console.log(
-    colors.red(`\n✗ ${result.violations.length} violation${s} found`),
-  );
-}
-
-function outputResults(
-  result: ExtendedCheckResult,
-  json: boolean,
-  quiet: boolean,
-): void {
-  if (json) {
-    console.log(JSON.stringify(buildJsonOutput(result), null, 2));
-    return;
-  }
-
-  if (quiet) {
-    return;
-  }
-
-  outputTextResults(result);
 }
 
 type ErrorCode = "CONFIG_ERROR" | "RUNTIME_ERROR";

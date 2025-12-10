@@ -1,0 +1,6 @@
+[project]
+name = "valid-requirements"
+
+[requirements]
+files = ["CLAUDE.md", "README.md"]
+tools = ["gitleaks", "npm-audit", "knip"]

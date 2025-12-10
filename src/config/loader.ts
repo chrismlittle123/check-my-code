@@ -133,6 +133,24 @@ const filesSchema = z
   })
   .strict();
 
+// Supported tools for requirements.tools
+const requiredToolSchema = z.enum([
+  "ty",
+  "gitleaks",
+  "npm-audit",
+  "pip-audit",
+  "knip",
+  "vulture",
+]);
+
+// Requirements configuration schema - enforce project requirements
+const requirementsSchema = z
+  .object({
+    files: z.array(z.string().min(1)).min(1).optional(),
+    tools: z.array(requiredToolSchema).min(1).optional(),
+  })
+  .strict();
+
 // Strip Symbol keys from an object (recursively)
 // @iarna/toml adds Symbol keys for metadata that interfere with Zod validation
 export function stripSymbolKeys(obj: unknown): unknown {
@@ -164,6 +182,7 @@ export const configSchema = z
     tools: toolsSchema.optional(),
     files: filesSchema.optional(),
     prompts: aiContextSchema.optional(),
+    requirements: requirementsSchema.optional(),
     rulesets: z
       .object({
         eslint: z

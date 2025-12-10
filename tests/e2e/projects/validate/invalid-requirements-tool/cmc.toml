@@ -1,0 +1,5 @@
+[project]
+name = "invalid-requirements-tool"
+
+[requirements]
+tools = ["unknown-tool"]

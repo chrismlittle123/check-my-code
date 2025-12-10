@@ -42,6 +42,22 @@ interface JsonOutputWithWarnings extends JsonOutput {
   };
 }
 
+interface JsonOutputWithRequirements extends JsonOutput {
+  requirements: {
+    passed: boolean;
+    files: {
+      required: string[];
+      missing: string[];
+      passed: boolean;
+    };
+    tools: {
+      required: string[];
+      missing: { tool: string; reason: string }[];
+      passed: boolean;
+    };
+  };
+}
+
 // =============================================================================
 // Check: ESLint (TypeScript/JavaScript)
 // =============================================================================
@@ -750,6 +766,94 @@ describe("cmc check - audit warnings", () => {
       "check",
       "--quiet",
     ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe("");
+  });
+});
+
+// =============================================================================
+// Check: Requirements enforcement
+// =============================================================================
+describe("cmc check - requirements enforcement", () => {
+  it("passes when all required files and tools exist", async () => {
+    const result = await run("check/requirements-pass", ["check"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("All requirements met");
+    expect(result.stdout).toContain("2 files");
+    expect(result.stdout).toContain("1 tool");
+  });
+
+  it("includes requirements in JSON output when passing", async () => {
+    const result = await run("check/requirements-pass", ["check", "--json"]);
+    const output: JsonOutputWithRequirements = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(0);
+    expect(output.requirements).toBeDefined();
+    expect(output.requirements.passed).toBe(true);
+    expect(output.requirements.files.required).toContain("CLAUDE.md");
+    expect(output.requirements.tools.required).toContain("npm-audit");
+  });
+
+  it("fails when required files are missing", async () => {
+    const result = await run("check/requirements-missing-files", ["check"]);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain("Missing required files");
+    expect(result.stdout).toContain("MISSING.md");
+  });
+
+  it("includes missing files in JSON output", async () => {
+    const result = await run("check/requirements-missing-files", [
+      "check",
+      "--json",
+    ]);
+    const output: JsonOutputWithRequirements = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+    expect(output.requirements.passed).toBe(false);
+    expect(output.requirements.files.missing).toContain("MISSING.md");
+  });
+
+  it("fails when required tools are not configured", async () => {
+    const result = await run("check/requirements-missing-tools", ["check"]);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain("Missing tool configurations");
+    expect(result.stdout).toContain("gitleaks");
+    expect(result.stdout).toContain("knip");
+  });
+
+  it("includes missing tools in JSON output", async () => {
+    const result = await run("check/requirements-missing-tools", [
+      "check",
+      "--json",
+    ]);
+    const output: JsonOutputWithRequirements = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+    expect(output.requirements.passed).toBe(false);
+    expect(output.requirements.tools.missing).toHaveLength(2);
+    // Use order-independent assertion
+    const missingTools = output.requirements.tools.missing.map((t) => t.tool);
+    expect(missingTools).toEqual(expect.arrayContaining(["gitleaks", "knip"]));
+  });
+
+  it("skips requirements with --skip-requirements flag", async () => {
+    const result = await run("check/requirements-skip", [
+      "check",
+      "--skip-requirements",
+    ]);
+
+    // Should pass because requirements are skipped, even though MISSING.md doesn't exist
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).not.toContain("Missing required files");
+    expect(result.stdout).toContain("No violations found");
+  });
+
+  it("does not output requirements message in quiet mode", async () => {
+    const result = await run("check/requirements-pass", ["check", "--quiet"]);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe("");

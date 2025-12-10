@@ -1,0 +1,5 @@
+[project]
+name = "requirements-missing-files"
+
+[requirements]
+files = ["CLAUDE.md", "MISSING.md"]

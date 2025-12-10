@@ -1,0 +1,6 @@
+[project]
+name = "requirements-pass"
+
+[requirements]
+files = ["CLAUDE.md", "CHANGELOG.md"]
+tools = ["npm-audit"]
