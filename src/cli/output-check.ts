@@ -22,6 +22,7 @@ export interface ExtendedCheckResult extends CheckResult {
 interface JsonViolation {
   file: string;
   line: number | null;
+  column: number | null;
   rule: string;
   message: string;
   linter: string;
@@ -58,6 +59,7 @@ function formatViolation(v: Violation): JsonViolation {
   return {
     file: v.file,
     line: v.line,
+    column: v.column,
     rule: v.rule,
     message: v.message,
     linter: v.linter,
