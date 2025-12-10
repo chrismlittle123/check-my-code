@@ -1,10 +1,32 @@
-import type { RequirementsCheckResult } from "../requirements/index.js";
+import type {
+  RequirementsCheckResult,
+  ToolMissing,
+} from "../requirements/index.js";
 import { colors } from "./output.js";
+
+/** JSON output structure for failed requirements */
+interface RequirementsFailureJson {
+  requirements: {
+    files: {
+      required: string[];
+      missing: string[];
+      passed: boolean;
+    };
+    tools: {
+      required: string[];
+      missing: ToolMissing[];
+      passed: boolean;
+    };
+    passed: boolean;
+  };
+  violations: [];
+  summary: { files_checked: 0; violations_count: 0 };
+}
 
 /** Build JSON output for failed requirements */
 export function buildRequirementsFailureJson(
   result: RequirementsCheckResult,
-): object {
+): RequirementsFailureJson {
   return {
     requirements: {
       files: result.files,

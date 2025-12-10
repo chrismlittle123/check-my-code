@@ -2,7 +2,7 @@
 "check-my-code": minor
 ---
 
-Add requirements enforcement feature (v1.7.x)
+Add requirements enforcement feature (v1.8.x)
 
 New `[requirements]` configuration section allows enforcing:
 

@@ -42,6 +42,22 @@ interface JsonOutputWithWarnings extends JsonOutput {
   };
 }
 
+interface JsonOutputWithRequirements extends JsonOutput {
+  requirements: {
+    passed: boolean;
+    files: {
+      required: string[];
+      missing: string[];
+      passed: boolean;
+    };
+    tools: {
+      required: string[];
+      missing: { tool: string; reason: string }[];
+      passed: boolean;
+    };
+  };
+}
+
 // =============================================================================
 // Check: ESLint (TypeScript/JavaScript)
 // =============================================================================
@@ -771,7 +787,7 @@ describe("cmc check - requirements enforcement", () => {
 
   it("includes requirements in JSON output when passing", async () => {
     const result = await run("check/requirements-pass", ["check", "--json"]);
-    const output = JSON.parse(result.stdout);
+    const output: JsonOutputWithRequirements = JSON.parse(result.stdout);
 
     expect(result.exitCode).toBe(0);
     expect(output.requirements).toBeDefined();
@@ -793,7 +809,7 @@ describe("cmc check - requirements enforcement", () => {
       "check",
       "--json",
     ]);
-    const output = JSON.parse(result.stdout);
+    const output: JsonOutputWithRequirements = JSON.parse(result.stdout);
 
     expect(result.exitCode).toBe(1);
     expect(output.requirements.passed).toBe(false);
@@ -814,12 +830,14 @@ describe("cmc check - requirements enforcement", () => {
       "check",
       "--json",
     ]);
-    const output = JSON.parse(result.stdout);
+    const output: JsonOutputWithRequirements = JSON.parse(result.stdout);
 
     expect(result.exitCode).toBe(1);
     expect(output.requirements.passed).toBe(false);
     expect(output.requirements.tools.missing).toHaveLength(2);
-    expect(output.requirements.tools.missing[0].tool).toBe("gitleaks");
+    // Use order-independent assertion
+    const missingTools = output.requirements.tools.missing.map((t) => t.tool);
+    expect(missingTools).toEqual(expect.arrayContaining(["gitleaks", "knip"]));
   });
 
   it("skips requirements with --skip-requirements flag", async () => {

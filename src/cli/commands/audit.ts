@@ -111,7 +111,7 @@ async function runAudit(
   const config = await loadConfig(projectRoot);
 
   if (target === "requirements") {
-    await auditRequirementsOnly(projectRoot, config);
+    auditRequirementsOnly(projectRoot, config);
     return;
   }
 
@@ -127,10 +127,7 @@ async function runAudit(
 }
 
 /** Audit only requirements */
-async function auditRequirementsOnly(
-  projectRoot: string,
-  config: Config,
-): Promise<void> {
+function auditRequirementsOnly(projectRoot: string, config: Config): void {
   if (!hasRequirements(config)) {
     console.log("No requirements defined in cmc.toml");
     process.exit(ExitCode.SUCCESS);

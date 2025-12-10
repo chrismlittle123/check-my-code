@@ -25,6 +25,14 @@ describe("hasRequirements", () => {
     expect(hasRequirements(config)).toBe(false);
   });
 
+  it("returns false when requirements has empty arrays", () => {
+    const config: Config = {
+      project: { name: "test" },
+      requirements: { files: [], tools: [] },
+    };
+    expect(hasRequirements(config)).toBe(false);
+  });
+
   it("returns true when files are configured", () => {
     const config: Config = {
       project: { name: "test" },
