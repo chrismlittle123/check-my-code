@@ -67,6 +67,19 @@ export async function discoverFiles(
 }
 
 /**
+ * Check if a resolved path is safe (within cwd or its subdirectories).
+ * Prevents path traversal attacks where malicious paths like "../../etc" could
+ * escape the intended working directory.
+ */
+function isSafePath(resolvedPath: string, basePath: string): boolean {
+  const relativePath = relative(basePath, resolvedPath);
+  // Safe if:
+  // 1. Not escaping upward (doesn't start with "..")
+  // 2. Not an absolute path on a different root
+  return !relativePath.startsWith("..") && !isAbsolute(relativePath);
+}
+
+/**
  * Load and validate project configuration
  * @param searchPath - Optional path to start searching for cmc.toml from
  */
@@ -74,6 +87,18 @@ export async function loadProjectConfig(
   searchPath?: string,
 ): Promise<{ projectRoot: string; config: Config } | ErrorResponse> {
   try {
+    // Security: Validate searchPath doesn't escape cwd before processing
+    if (searchPath) {
+      const resolvedSearchPath = resolve(process.cwd(), searchPath);
+      if (!isSafePath(resolvedSearchPath, process.cwd())) {
+        return makeError(
+          ErrorCode.VALIDATION_ERROR,
+          `Invalid path: "${searchPath}" - path traversal outside working directory is not allowed`,
+          true,
+        );
+      }
+    }
+
     const projectRoot = findProjectRoot(searchPath);
     setProjectRoot(projectRoot);
 

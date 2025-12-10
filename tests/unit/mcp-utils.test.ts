@@ -7,7 +7,7 @@ import { mkdir, rm, writeFile } from "fs/promises";
 import { join, resolve } from "path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { validateFiles } from "../../src/mcp/utils.js";
+import { loadProjectConfig, validateFiles } from "../../src/mcp/utils.js";
 
 describe("validateFiles", () => {
   const testDir = join(process.cwd(), "tests", "unit", ".test-fixtures");
@@ -172,6 +172,43 @@ describe("validateFiles", () => {
       // Node.js resolve normalizes trailing slashes, so file1.ts/ -> file1.ts
       expect(result).toHaveLength(1);
       expect(result[0]).toBe("file1.ts");
+    });
+  });
+});
+
+describe("loadProjectConfig", () => {
+  describe("path traversal protection", () => {
+    it("rejects path traversal attacks via searchPath", async () => {
+      // Attempt path traversal to system directories
+      const result = await loadProjectConfig("../../../../../../etc/passwd");
+
+      // Should return an error response, not attempt to process the path
+      expect(result).toHaveProperty("error");
+      if ("error" in result) {
+        expect(result.error.message).toContain("path traversal");
+        expect(result.error.code).toBe("VALIDATION_ERROR");
+      }
+    });
+
+    it("rejects relative paths that escape cwd", async () => {
+      const result = await loadProjectConfig("../../../some-other-project");
+
+      expect(result).toHaveProperty("error");
+      if ("error" in result) {
+        expect(result.error.message).toContain("path traversal");
+      }
+    });
+
+    it("allows valid subdirectory paths", async () => {
+      // Use a test directory with cmc.toml
+      const testDir = join(process.cwd(), "tests", "e2e", "projects", "check");
+
+      const result = await loadProjectConfig(testDir);
+
+      // Should succeed (or fail with config-related error, but NOT path traversal)
+      if ("error" in result) {
+        expect(result.error.message).not.toContain("path traversal");
+      }
     });
   });
 });
