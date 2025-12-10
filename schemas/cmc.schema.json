@@ -105,7 +105,8 @@
           "pattern": "^github:[^/]+\\/[^/@]+(?:\\/[^@]*)?@.+$"
         }
       },
-      "required": ["templates"]
+      "required": ["templates"],
+      "additionalProperties": false
     },
     "rulesets": {
       "description": "Linter rulesets",
