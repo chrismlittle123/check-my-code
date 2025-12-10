@@ -217,3 +217,31 @@ describe("cmc validate - prompts template validation", () => {
     expect(hasPatternError).toBe(true);
   });
 });
+
+// =============================================================================
+// Validate: Requirements configuration
+// =============================================================================
+describe("cmc validate - requirements configuration", () => {
+  it("accepts valid requirements configuration", async () => {
+    const result = await run("validate/valid-requirements", ["validate"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("is valid");
+  });
+
+  it("rejects invalid tool name in requirements.tools", async () => {
+    const result = await run("validate/invalid-requirements-tool", [
+      "validate",
+      "--json",
+    ]);
+    const output = JSON.parse(result.stdout) as ValidateJsonOutput;
+
+    expect(result.exitCode).toBe(2);
+    expect(output.valid).toBe(false);
+    // Should have enum error for invalid tool name
+    const hasEnumError = output.errors.some(
+      (e) => e.keyword === "enum" || e.message?.includes("enum"),
+    );
+    expect(hasEnumError).toBe(true);
+  });
+});

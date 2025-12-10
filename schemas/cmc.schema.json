@@ -108,6 +108,38 @@
       "required": ["templates"],
       "additionalProperties": false
     },
+    "requirements": {
+      "description": "Enforce required files and tool configurations",
+      "type": "object",
+      "properties": {
+        "files": {
+          "description": "Files that must exist in the project",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "tools": {
+          "description": "Tools that must be configured in the project",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ty",
+              "gitleaks",
+              "npm-audit",
+              "pip-audit",
+              "knip",
+              "vulture"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "rulesets": {
       "description": "Linter rulesets",
       "type": "object",

@@ -11,6 +11,21 @@ export interface FilesConfig {
   exclude?: string[];
 }
 
+// Supported tools for requirements.tools
+export type RequiredTool =
+  | "ty"
+  | "gitleaks"
+  | "npm-audit"
+  | "pip-audit"
+  | "knip"
+  | "vulture";
+
+// Requirements configuration - enforce project requirements
+export interface RequirementsConfig {
+  files?: string[];
+  tools?: RequiredTool[];
+}
+
 export interface Config {
   project: {
     name: string;
@@ -19,6 +34,7 @@ export interface Config {
   tools?: ToolsConfig;
   files?: FilesConfig;
   prompts?: AiContextConfig;
+  requirements?: RequirementsConfig;
   rulesets?: {
     eslint?: {
       rules?: Record<string, ESLintRuleValue>;

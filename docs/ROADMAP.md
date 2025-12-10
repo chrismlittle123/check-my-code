@@ -8,11 +8,12 @@ This document tracks planned features for check-my-code. Check off items as they
 
 | Version | Focus Area                      |
 | ------- | ------------------------------- |
+| v1.2.x  | Validation & Registry           |
 | v1.5.x  | Colored output, `--quiet` flag  |
 | v1.6.x  | Remote config inheritance       |
-| v1.7.x  | Requirements & tool enforcement |
-| v1.8.x  | Native code limits              |
-| v1.9.x  | Claude settings from remote     |
+| v1.8.x  | Requirements & tool enforcement |
+| v1.9.x  | Native code limits              |
+| v1.10.x | Claude settings from remote     |
 
 ---
 
@@ -49,34 +50,34 @@ This document tracks planned features for check-my-code. Check off items as they
 
 ---
 
-## v1.7.x - Requirements & Tool Enforcement
+## v1.8.x - Requirements & Tool Enforcement ✓
 
 ### `[requirements.files]` Configuration
 
-- [ ] Array of files that must exist in the project
-- [ ] Examples: `CLAUDE.md`, `.coderabbit.yaml`, `.nvmrc`, `knip.json`, `CHANGELOG.md`
-- [ ] Report missing files with clear errors
+- [x] Array of files that must exist in the project
+- [x] Examples: `CLAUDE.md`, `.coderabbit.yaml`, `.nvmrc`, `knip.json`, `CHANGELOG.md`
+- [x] Report missing files with clear errors
 
 ### `[requirements.tools]` Configuration
 
 Enforce that specific tools are configured (policy enforcer, not tool runner):
 
-- [ ] `ty` - Python type checking (Astral's type checker)
-- [ ] `gitleaks` - Secrets detection
-- [ ] `npm-audit` - TypeScript/JavaScript dependency vulnerabilities
-- [ ] `pip-audit` - Python dependency vulnerabilities
-- [ ] `knip` - TypeScript dead code detection
-- [ ] `vulture` - Python dead code detection
+- [x] `ty` - Python type checking (Astral's type checker)
+- [x] `gitleaks` - Secrets detection
+- [x] `npm-audit` - TypeScript/JavaScript dependency vulnerabilities
+- [x] `pip-audit` - Python dependency vulnerabilities
+- [x] `knip` - TypeScript dead code detection
+- [x] `vulture` - Python dead code detection
 
 ### CLI Support
 
-- [ ] `cmc check` includes requirements validation
-- [ ] `cmc audit` includes requirements validation
-- [ ] `--skip-requirements` flag to bypass
+- [x] `cmc check` includes requirements validation
+- [x] `cmc audit` includes requirements validation
+- [x] `--skip-requirements` flag to bypass
 
 ---
 
-## v1.8.x - Native Code Limits
+## v1.9.x - Native Code Limits
 
 cmc checks these directly (not via external tools) for both Python and TypeScript:
 
@@ -95,7 +96,7 @@ cmc checks these directly (not via external tools) for both Python and TypeScrip
 
 ---
 
-## v1.9.x - Claude Settings from Remote
+## v1.10.x - Claude Settings from Remote
 
 ### `[ai.claude]` Configuration
 

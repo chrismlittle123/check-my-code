@@ -13,60 +13,171 @@ import {
   findProjectRoot,
   loadConfig,
 } from "../../config/loader.js";
-import { ExitCode } from "../../types.js";
+import {
+  checkRequirements,
+  hasRequirements,
+  type RequirementsCheckResult,
+} from "../../requirements/index.js";
+import { type Config, ExitCode } from "../../types.js";
 import { colors } from "../output.js";
 
+interface AuditOptions {
+  skipRequirements?: boolean;
+}
+
 export const auditCommand = new Command("audit")
-  .description(
-    "Check that linter config files match the ruleset defined in cmc.toml",
-  )
+  .description("Check that linter config files and requirements match cmc.toml")
   .argument(
-    "[linter]",
-    "Linter to audit (eslint, ruff, tsc). If omitted, audits all.",
+    "[target]",
+    "Target to audit (eslint, ruff, tsc, requirements). If omitted, audits all.",
   )
+  .option("--skip-requirements", "Skip requirements validation", false)
   .addHelpText(
     "after",
     `
 Examples:
-  $ cmc audit           Audit all linter configs
-  $ cmc audit eslint    Audit only ESLint config
-  $ cmc audit ruff      Audit only Ruff config
-  $ cmc audit tsc       Audit only TypeScript config
+  $ cmc audit                    Audit all configs and requirements
+  $ cmc audit eslint             Audit only ESLint config
+  $ cmc audit ruff               Audit only Ruff config
+  $ cmc audit tsc                Audit only TypeScript config
+  $ cmc audit requirements       Audit only requirements
+  $ cmc audit --skip-requirements  Audit linter configs only
 
 Use in CI to ensure configs haven't drifted from cmc.toml.`,
   )
-  .action(async (linter?: string) => {
+  .action(async (target: string | undefined, options: AuditOptions) => {
     try {
-      await runAudit(linter);
+      await runAudit(target, options);
     } catch (error) {
       handleAuditError(error);
     }
   });
 
-/** Main audit logic */
-async function runAudit(linter?: string): Promise<void> {
-  const projectRoot = findProjectRoot();
-  const config = await loadConfig(projectRoot);
-
-  const targets = linter ? [validateLinterTarget(linter)] : SUPPORTED_LINTERS;
+/** Run linter audits and return results */
+async function runLinterAudits(
+  projectRoot: string,
+  config: Config,
+  target?: string,
+): Promise<VerifyResult[]> {
+  const linterTargets = target
+    ? [validateLinterTarget(target)]
+    : SUPPORTED_LINTERS;
 
   const allResults = await Promise.all(
-    targets.map((target) => verifyLinterConfig(projectRoot, config, target)),
+    linterTargets.map((t) => verifyLinterConfig(projectRoot, config, t)),
   );
-  const results = allResults.filter((r): r is VerifyResult => r !== null);
+  return allResults.filter((r): r is VerifyResult => r !== null);
+}
 
-  if (results.length === 0) {
-    console.log("No linter configs to audit (no rulesets defined in cmc.toml)");
+/** Check if requirements result has any configured requirements */
+function hasConfiguredRequirements(
+  result: RequirementsCheckResult | undefined,
+): boolean {
+  if (!result) return false;
+  return result.files.required.length > 0 || result.tools.required.length > 0;
+}
+
+/** Output all audit results and return appropriate exit code */
+function outputAndExit(
+  linterResults: VerifyResult[],
+  requirementsResult: RequirementsCheckResult | undefined,
+): void {
+  const hasLinterResults = linterResults.length > 0;
+  const hasReqResults = hasConfiguredRequirements(requirementsResult);
+
+  if (!hasLinterResults && !hasReqResults) {
+    console.log(
+      "No linter configs or requirements to audit (none defined in cmc.toml)",
+    );
     process.exit(ExitCode.SUCCESS);
   }
 
-  outputResults(results);
-  const hasErrors = results.some((r) => !r.matches);
-  process.exit(hasErrors ? ExitCode.VIOLATIONS : ExitCode.SUCCESS);
+  if (requirementsResult) outputRequirementsResult(requirementsResult);
+  if (hasLinterResults) outputLinterResults(linterResults);
+
+  const hasLinterErrors = linterResults.some((r) => !r.matches);
+  const hasReqErrors = requirementsResult && !requirementsResult.passed;
+  process.exit(
+    hasLinterErrors || hasReqErrors ? ExitCode.VIOLATIONS : ExitCode.SUCCESS,
+  );
 }
 
-/** Output audit results */
-function outputResults(results: VerifyResult[]): void {
+/** Main audit logic */
+async function runAudit(
+  target?: string,
+  options: AuditOptions = {},
+): Promise<void> {
+  const projectRoot = findProjectRoot();
+  const config = await loadConfig(projectRoot);
+
+  if (target === "requirements") {
+    await auditRequirementsOnly(projectRoot, config);
+    return;
+  }
+
+  const linterResults = await runLinterAudits(projectRoot, config, target);
+
+  const skipReq = options.skipRequirements ?? false;
+  const shouldCheckReq = !skipReq && !target && hasRequirements(config);
+  const requirementsResult = shouldCheckReq
+    ? checkRequirements(projectRoot, config)
+    : undefined;
+
+  outputAndExit(linterResults, requirementsResult);
+}
+
+/** Audit only requirements */
+async function auditRequirementsOnly(
+  projectRoot: string,
+  config: Config,
+): Promise<void> {
+  if (!hasRequirements(config)) {
+    console.log("No requirements defined in cmc.toml");
+    process.exit(ExitCode.SUCCESS);
+  }
+
+  const result = checkRequirements(projectRoot, config);
+  outputRequirementsResult(result);
+  process.exit(result.passed ? ExitCode.SUCCESS : ExitCode.VIOLATIONS);
+}
+
+/** Output requirements audit result */
+function outputRequirementsResult(result: RequirementsCheckResult): void {
+  // Files
+  if (result.files.required.length > 0) {
+    if (result.files.passed) {
+      console.log(
+        colors.green(
+          `✓ All required files present (${result.files.required.length} files)`,
+        ),
+      );
+    } else {
+      console.log(colors.red("✗ Missing required files:"));
+      for (const file of result.files.missing) {
+        console.log(colors.red(`  - ${file}`));
+      }
+    }
+  }
+
+  // Tools
+  if (result.tools.required.length > 0) {
+    if (result.tools.passed) {
+      console.log(
+        colors.green(
+          `✓ All required tools configured (${result.tools.required.length} tools)`,
+        ),
+      );
+    } else {
+      console.log(colors.red("✗ Missing tool configurations:"));
+      for (const tool of result.tools.missing) {
+        console.log(colors.red(`  - ${tool.tool}: ${tool.reason}`));
+      }
+    }
+  }
+}
+
+/** Output linter audit results */
+function outputLinterResults(results: VerifyResult[]): void {
   for (const result of results) {
     if (result.matches) {
       console.log(
