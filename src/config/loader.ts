@@ -150,27 +150,32 @@ export function stripSymbolKeys(obj: unknown): unknown {
 }
 
 // Full cmc.toml schema
-export const configSchema = z.object({
-  project: z.object({
-    name: z.string().min(1, "project name cannot be empty"),
-  }),
-  extends: extendsSchema.optional(),
-  tools: toolsSchema.optional(),
-  files: filesSchema.optional(),
-  prompts: aiContextSchema.optional(),
-  rulesets: z
-    .object({
-      eslint: z
-        .object({
-          rules: z.record(z.string(), eslintRuleValueSchema).optional(),
-        })
-        .optional(),
-      ruff: ruffConfigSchema.optional(),
-      tsc: tscConfigSchema.optional(),
-    })
-    .strict()
-    .optional(),
-});
+// Uses strict() at all levels to reject unknown properties
+export const configSchema = z
+  .object({
+    project: z
+      .object({
+        name: z.string().min(1, "project name cannot be empty"),
+      })
+      .strict(),
+    extends: extendsSchema.optional(),
+    tools: toolsSchema.optional(),
+    files: filesSchema.optional(),
+    prompts: aiContextSchema.optional(),
+    rulesets: z
+      .object({
+        eslint: z
+          .object({
+            rules: z.record(z.string(), eslintRuleValueSchema).optional(),
+          })
+          .optional(),
+        ruff: ruffConfigSchema.optional(),
+        tsc: tscConfigSchema.optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
 
 async function parseTomlFile(configPath: string): Promise<unknown> {
   const content = await readFile(configPath, "utf-8");

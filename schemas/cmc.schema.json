@@ -16,7 +16,8 @@
           "minLength": 1
         }
       },
-      "required": ["name"]
+      "required": ["name"],
+      "additionalProperties": false
     },
     "extends": {
       "description": "Inherit rulesets from remote repositories",
@@ -255,5 +256,6 @@
       "additionalProperties": false
     }
   },
-  "required": ["project"]
+  "required": ["project"],
+  "additionalProperties": false
 }
