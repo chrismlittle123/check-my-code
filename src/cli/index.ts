@@ -14,7 +14,7 @@ import { mcpServerCommand } from "./commands/mcp-server.js";
 import { registryCommand } from "./commands/registry/index.js";
 import { validateCommand } from "./commands/validate.js";
 
-// Read version from package.json
+// Read version from package.json at runtime for accurate version display
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
   readFileSync(join(__dirname, "../../package.json"), "utf-8"),
