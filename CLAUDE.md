@@ -60,19 +60,13 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 
 2. Merge your PR to main (keep `package.json` version unchanged)
 
-3. The release workflow automatically:
-   - Creates a "chore: release" PR (bumps version, updates CHANGELOG)
-   - Auto-merges the release PR
-   - Publishes to npm and creates git tag
+3. The release workflow **immediately** (in the same workflow run):
+   - Bumps version and updates CHANGELOG
+   - Commits the version bump to main
+   - Publishes to npm with provenance
+   - Creates git tag and GitHub release
 
-**How it works:**
-
-The release workflow uses changesets action with `publish` option. When you merge a PR with a changeset:
-
-1. Workflow detects changesets → Creates "chore: release" PR → Auto-merges it
-2. Auto-merge triggers another workflow run → No changesets found → Publishes to npm
-
-Everything is automatic after merging your feature PR. No manual intervention needed.
+**That's it!** One merge = one release. No separate release PR needed.
 
 **Common mistakes:**
 
