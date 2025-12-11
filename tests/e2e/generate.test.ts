@@ -78,13 +78,13 @@ describe("cmc generate ruff", () => {
 });
 
 describe("cmc generate - error handling", () => {
-  it("fails with exit code 3 for unknown target", async () => {
+  it("fails with exit code 2 for unknown target", async () => {
     const result = await run("check/typescript/default", [
       "generate",
       "unknown",
     ]);
 
-    expect(result.exitCode).toBe(3);
+    expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain("Unknown target");
   });
 

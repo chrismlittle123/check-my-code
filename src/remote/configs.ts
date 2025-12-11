@@ -27,6 +27,18 @@ export class ConfigFetchError extends Error {
   }
 }
 
+// Schema for Claude settings file
+const claudeSettingsSchema = z.object({
+  $schema: z.string().optional(),
+  permissions: z
+    .object({
+      allow: z.array(z.string()).optional(),
+      deny: z.array(z.string()).optional(),
+    })
+    .optional(),
+  env: z.record(z.string(), z.string()).optional(),
+});
+
 // Schema for configs.json manifest
 const configsManifestSchema = z.object({
   schema_version: z.string(),
@@ -203,6 +215,23 @@ async function fetchConfigFile(
 /**
  * Fetch Claude Code settings from a remote reference.
  * If no reference is provided, uses the default community repository.
+ */
+
+/** @internal exported for testing */
+export function validateClaudeSettings(parsed: unknown): ClaudeSettings {
+  const result = claudeSettingsSchema.safeParse(parsed);
+  if (!result.success) {
+    const errors = result.error.issues
+      .map((i) => `${i.path.join(".")}: ${i.message}`)
+      .join(", ");
+    throw new ConfigFetchError(`Invalid Claude settings: ${errors}`);
+  }
+  return result.data;
+}
+
+/**
+ * Fetch Claude Code settings from a remote reference.
+ * If no reference is provided, uses the default community repository.
  *
  * @param remoteRef - Optional remote reference (format: github:owner/repo/path@version)
  * @returns Parsed Claude settings object
@@ -216,5 +245,5 @@ export async function fetchClaudeSettings(
   const filePath = resolveVersion(manifest, "claude-code", parsedRef.version);
   const settings = await fetchConfigFile(ref, filePath);
 
-  return settings as ClaudeSettings;
+  return validateClaudeSettings(settings);
 }

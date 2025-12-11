@@ -7,6 +7,7 @@ import {
   getVersionFilePath,
   parseManifestJson,
   resolveLatestVersion,
+  validateClaudeSettings,
   validateManifest,
 } from "../../src/remote/configs.js";
 
@@ -180,6 +181,77 @@ describe("configs", () => {
       expect(() => getVersionFilePath(entry, "0.9.0", "claude-code")).toThrow(
         "Invalid version entry for 0.9.0",
       );
+    });
+  });
+
+  describe("validateClaudeSettings", () => {
+    it("should validate valid Claude settings", () => {
+      const settings = {
+        permissions: {
+          allow: ["Bash(npm run build:*)"],
+          deny: ["Bash(rm -rf *)"],
+        },
+        env: {
+          NODE_ENV: "development",
+        },
+      };
+      const result = validateClaudeSettings(settings);
+      expect(result.permissions?.allow).toEqual(["Bash(npm run build:*)"]);
+      expect(result.permissions?.deny).toEqual(["Bash(rm -rf *)"]);
+      expect(result.env).toEqual({ NODE_ENV: "development" });
+    });
+
+    it("should validate settings with only permissions", () => {
+      const settings = {
+        permissions: {
+          allow: ["WebSearch"],
+        },
+      };
+      const result = validateClaudeSettings(settings);
+      expect(result.permissions?.allow).toEqual(["WebSearch"]);
+      expect(result.env).toBeUndefined();
+    });
+
+    it("should validate settings with $schema", () => {
+      const settings = {
+        $schema: "https://example.com/schema.json",
+        permissions: {
+          allow: [],
+        },
+      };
+      const result = validateClaudeSettings(settings);
+      expect(result.$schema).toBe("https://example.com/schema.json");
+    });
+
+    it("should validate empty settings object", () => {
+      const result = validateClaudeSettings({});
+      expect(result).toEqual({});
+    });
+
+    it("should throw ConfigFetchError for invalid permissions type", () => {
+      const invalid = {
+        permissions: "not-an-object",
+      };
+      expect(() => validateClaudeSettings(invalid)).toThrow(ConfigFetchError);
+      expect(() => validateClaudeSettings(invalid)).toThrow(
+        "Invalid Claude settings",
+      );
+    });
+
+    it("should throw ConfigFetchError for invalid allow array type", () => {
+      const invalid = {
+        permissions: {
+          allow: [123, 456],
+        },
+      };
+      expect(() => validateClaudeSettings(invalid)).toThrow(ConfigFetchError);
+    });
+
+    it("should throw ConfigFetchError for invalid env type", () => {
+      const invalid = {
+        env: ["not", "an", "object"],
+      };
+      expect(() => validateClaudeSettings(invalid)).toThrow(ConfigFetchError);
     });
   });
 });
