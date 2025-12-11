@@ -1,0 +1,4 @@
+[project]
+name = "audit-claude-no-config"
+
+# No [ai.claude] section

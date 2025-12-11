@@ -1,0 +1,4 @@
+[project]
+name = "generate-claude-no-config"
+
+# No [ai.claude] section

@@ -185,3 +185,67 @@ describe("cmc audit - error handling", () => {
     expect(result.stdout).toContain("tsc");
   });
 });
+
+// =============================================================================
+// Audit: Claude settings - matching configs
+// =============================================================================
+describe("cmc audit claude - matching configs", () => {
+  it("exits 0 when .claude/settings.json matches remote", async () => {
+    const result = await run("audit/claude/match", ["audit", "claude"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain(
+      "✓ .claude/settings.json matches remote settings",
+    );
+  });
+});
+
+// =============================================================================
+// Audit: Claude settings - mismatching configs
+// =============================================================================
+describe("cmc audit claude - mismatching configs", () => {
+  it("exits 1 and reports different permissions", async () => {
+    const result = await run("audit/claude/mismatch", ["audit", "claude"]);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain("✗ .claude/settings.json has mismatches");
+    expect(result.stdout).toContain("different: permissions.allow");
+  });
+});
+
+// =============================================================================
+// Audit: Claude settings - missing config file
+// =============================================================================
+describe("cmc audit claude - missing config file", () => {
+  it("exits 3 when .claude/settings.json not found", async () => {
+    const result = await run("audit/claude/missing", ["audit", "claude"]);
+
+    expect(result.exitCode).toBe(3);
+    expect(result.stderr).toContain("Linter config file not found");
+    expect(result.stderr).toContain(".claude/settings.json");
+  });
+});
+
+// =============================================================================
+// Audit: Claude settings - no config
+// =============================================================================
+describe("cmc audit claude - no config", () => {
+  it("exits 2 when no [ai.claude] configured", async () => {
+    const result = await run("audit/claude/no-config", ["audit", "claude"]);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("No [ai.claude] configuration found");
+  });
+});
+
+// =============================================================================
+// Audit: Claude settings - help
+// =============================================================================
+describe("cmc audit claude - help", () => {
+  it("shows claude in help text", async () => {
+    const result = await run("audit/claude/match", ["audit", "--help"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("claude");
+  });
+});

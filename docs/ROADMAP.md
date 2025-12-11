@@ -6,14 +6,14 @@ This document tracks planned features for check-my-code. Check off items as they
 
 ## Version Guide
 
-| Version | Focus Area                      |
-| ------- | ------------------------------- |
-| v1.2.x  | Validation & Registry           |
-| v1.5.x  | Colored output, `--quiet` flag  |
-| v1.6.x  | Remote config inheritance       |
-| v1.8.x  | Requirements & tool enforcement |
-| v1.9.x  | Native code limits              |
-| v1.10.x | Claude settings from remote     |
+| Version | Focus Area                      | Status |
+| ------- | ------------------------------- | ------ |
+| v1.2.x  | Validation & Registry           | ✓ Done |
+| v1.5.x  | Colored output, `--quiet` flag  | ✓ Done |
+| v1.6.x  | Remote config inheritance       | ✓ Done |
+| v1.8.x  | Requirements & tool enforcement | ✓ Done |
+| v1.9.x  | Native code limits              | ✓ Done |
+| v1.10.x | Claude settings from remote     | ✓ Done |
 
 ---
 
@@ -101,18 +101,18 @@ cmc checks these directly (not via external tools) for both Python and TypeScrip
 
 ---
 
-## v1.10.x - Claude Settings from Remote
+## v1.10.x - Claude Settings from Remote ✓
 
 ### `[ai.claude]` Configuration
 
-- [ ] `extends` option - fetch settings from remote repo
-- [ ] Format: `github:owner/repo/path@version` (same as rulesets)
-- [ ] SSH authentication for private repos
+- [x] `extends` option - fetch settings from remote repo
+- [x] Format: `github:owner/repo/path@version` (same as rulesets)
+- [x] SSH authentication for private repos
 
 ### CLI Support
 
-- [ ] `cmc generate claude` - Generate `.claude/settings.json`
-- [ ] `cmc audit claude` - Verify settings match remote
+- [x] `cmc generate claude` - Generate `.claude/settings.json`
+- [x] `cmc audit claude` - Verify settings match remote
 
 ---
 
