@@ -14,6 +14,10 @@
   "bugs": {
     "url": "https://github.com/chrismlittle123/check-my-code/issues"
   },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsc",
     "start": "node dist/cli/index.js",
@@ -30,7 +34,7 @@
     "generate:schema": "npx ts-node scripts/generate-schema.ts",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "npm run build && changeset publish --access public",
+    "release": "npm run build && changeset publish",
     "prepare": "husky"
   },
   "keywords": [
