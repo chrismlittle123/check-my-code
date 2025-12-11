@@ -15,9 +15,6 @@ jobs:
       contents: write
       pull-requests: write
       id-token: write
-    outputs:
-      published: ${{ steps.changesets.outputs.published }}
-      publishedPackages: ${{ steps.changesets.outputs.publishedPackages }}
 
     steps:
       - name: Checkout
@@ -40,45 +37,54 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Create Release PR or Publish
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          version: npm run version
-          publish: npm run release
-          title: "chore: release"
-          commit: "chore: release"
+      - name: Check for changesets
+        id: check
+        run: |
+          if [ -n "$(ls -A .changeset/*.md 2>/dev/null | grep -v README.md)" ]; then
+            echo "has_changesets=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changesets=false" >> $GITHUB_OUTPUT
+          fi
+
+      # If changesets exist: version bump, publish immediately
+      - name: Version and Publish
+        if: steps.check.outputs.has_changesets == 'true'
+        run: |
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Run changeset version (bumps version, updates CHANGELOG, removes changesets)
+          npm run version
+
+          # Commit the version bump
+          git add -A
+          git commit -m "chore: release" || echo "No changes to commit"
+          git push
+
+          # Build and publish
+          npm run build
+          npx changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # NODE_AUTH_TOKEN is automatically set by setup-node with registry-url
-          # for OIDC-based npm publishing (no NPM_TOKEN secret needed)
           NPM_CONFIG_PROVENANCE: true
 
-      - name: Enable auto-merge for release PR
-        if: steps.changesets.outputs.pullRequestNumber
-        run: gh pr merge ${{ steps.changesets.outputs.pullRequestNumber }} --auto --squash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Post-publish steps: create git tag and GitHub release
-      - name: Get published version
-        if: steps.changesets.outputs.published == 'true'
+      - name: Get version after publish
+        if: steps.check.outputs.has_changesets == 'true'
         id: version
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Create git tag
-        if: steps.changesets.outputs.published == 'true'
+        if: steps.check.outputs.has_changesets == 'true'
         run: |
           VERSION=${{ steps.version.outputs.version }}
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "v$VERSION" -m "Release v$VERSION"
           git push origin "v$VERSION"
 
       - name: Create GitHub Release
-        if: steps.changesets.outputs.published == 'true'
+        if: steps.check.outputs.has_changesets == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -87,3 +93,34 @@ jobs:
             --title "v$VERSION" \
             --notes "See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details." \
             --latest
+
+      # If no changesets but unpublished version: publish (handles manual version bumps)
+      - name: Publish if unpublished
+        if: steps.check.outputs.has_changesets == 'false'
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          NPM_VERSION=$(npm view check-my-code version 2>/dev/null || echo "0.0.0")
+
+          if [ "$VERSION" != "$NPM_VERSION" ]; then
+            echo "Publishing unpublished version $VERSION"
+            npm run build
+            npx changeset publish
+
+            # Create tag if it doesn't exist
+            if ! git rev-parse "v$VERSION" >/dev/null 2>&1; then
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git tag -a "v$VERSION" -m "Release v$VERSION"
+              git push origin "v$VERSION"
+
+              gh release create "v$VERSION" \
+                --title "v$VERSION" \
+                --notes "See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details." \
+                --latest
+            fi
+          else
+            echo "Version $VERSION already published"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
