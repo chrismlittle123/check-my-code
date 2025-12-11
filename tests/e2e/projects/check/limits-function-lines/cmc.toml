@@ -1,0 +1,5 @@
+[project]
+name = "limits-function-lines"
+
+[rulesets.limits]
+max_function_lines = 5

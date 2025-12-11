@@ -151,6 +151,16 @@ const requirementsSchema = z
   })
   .strict();
 
+// Code limits configuration schema - native complexity checks
+const limitsConfigSchema = z
+  .object({
+    max_file_lines: z.number().int().positive().optional(),
+    max_function_lines: z.number().int().positive().optional(),
+    max_parameters: z.number().int().positive().optional(),
+    max_nesting_depth: z.number().int().positive().optional(),
+  })
+  .strict();
+
 // Strip Symbol keys from an object (recursively)
 // @iarna/toml adds Symbol keys for metadata that interfere with Zod validation
 export function stripSymbolKeys(obj: unknown): unknown {
@@ -192,6 +202,7 @@ export const configSchema = z
           .optional(),
         ruff: ruffConfigSchema.optional(),
         tsc: tscConfigSchema.optional(),
+        limits: limitsConfigSchema.optional(),
       })
       .strict()
       .optional(),

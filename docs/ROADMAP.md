@@ -77,22 +77,27 @@ Enforce that specific tools are configured (policy enforcer, not tool runner):
 
 ---
 
-## v1.9.x - Native Code Limits
+## v1.9.x - Native Code Limits ✓
 
 cmc checks these directly (not via external tools) for both Python and TypeScript:
 
 ### `[rulesets.limits]` Configuration
 
-- [ ] `max_file_lines` - Maximum lines per file
-- [ ] `max_function_lines` - Maximum lines per function
-- [ ] `max_parameters` - Maximum function parameters
-- [ ] `max_nesting_depth` - Maximum nesting depth
+- [x] `max_file_lines` - Maximum lines per file
+- [x] `max_function_lines` - Maximum lines per function
+- [x] `max_parameters` - Maximum function parameters
+- [x] `max_nesting_depth` - Maximum nesting depth
 
 ### Implementation
 
-- [ ] Python: Parse AST to count lines/params/nesting
-- [ ] TypeScript: Parse AST to count lines/params/nesting
-- [ ] Report violations in unified format (same as ESLint/Ruff)
+- [x] Python: Parse AST to count lines/params/nesting
+- [x] TypeScript: Parse AST to count lines/params/nesting
+- [x] Report violations in unified format (same as ESLint/Ruff)
+
+### CLI Support
+
+- [x] `cmc check` includes limits validation
+- [x] `--skip-limits` flag to bypass
 
 ---
 
