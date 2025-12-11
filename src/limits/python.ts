@@ -3,7 +3,7 @@
  * Uses a bundled Python script to parse Python files and extract function info.
  */
 
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 
 import { type FileAnalysis, LimitsError } from "./types.js";
 
@@ -169,13 +169,11 @@ export function analyzePythonFiles(files: string[]): FileAnalysis[] {
 
   try {
     // Run Python script with files as arguments
-    const result = execSync(
-      `python3 -c ${JSON.stringify(PYTHON_SCRIPT)} ${files.map((f) => JSON.stringify(f)).join(" ")}`,
-      {
-        encoding: "utf-8",
-        maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large projects
-      },
-    );
+    // Use execFileSync to avoid shell injection vulnerabilities
+    const result = execFileSync("python3", ["-c", PYTHON_SCRIPT, ...files], {
+      encoding: "utf-8",
+      maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large projects
+    });
 
     const analyses = JSON.parse(result) as (FileAnalysis & {
       error?: string;

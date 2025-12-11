@@ -226,14 +226,14 @@ function foo() {
 });
 
 describe("checkLimits", () => {
-  it("detects max_file_lines violation", async () => {
+  it("detects max_file_lines violation", () => {
     const tmpDir = mkdtempSync(join(tmpdir(), "limits-test-"));
     const filePath = join(tmpDir, "large.ts");
 
     const lines = Array(15).fill("// line").join("\n");
     writeFileSync(filePath, lines);
 
-    const violations = await checkLimits(tmpDir, ["large.ts"], {
+    const violations = checkLimits(tmpDir, ["large.ts"], {
       max_file_lines: 10,
     });
 
@@ -245,7 +245,7 @@ describe("checkLimits", () => {
     rmSync(tmpDir, { recursive: true });
   });
 
-  it("detects max_function_lines violation", async () => {
+  it("detects max_function_lines violation", () => {
     const tmpDir = mkdtempSync(join(tmpdir(), "limits-test-"));
     const filePath = join(tmpDir, "long-func.ts");
 
@@ -263,7 +263,7 @@ describe("checkLimits", () => {
 `,
     );
 
-    const violations = await checkLimits(tmpDir, ["long-func.ts"], {
+    const violations = checkLimits(tmpDir, ["long-func.ts"], {
       max_function_lines: 5,
     });
 
@@ -274,7 +274,7 @@ describe("checkLimits", () => {
     rmSync(tmpDir, { recursive: true });
   });
 
-  it("detects max_parameters violation", async () => {
+  it("detects max_parameters violation", () => {
     const tmpDir = mkdtempSync(join(tmpdir(), "limits-test-"));
     const filePath = join(tmpDir, "many-params.ts");
 
@@ -286,7 +286,7 @@ describe("checkLimits", () => {
 `,
     );
 
-    const violations = await checkLimits(tmpDir, ["many-params.ts"], {
+    const violations = checkLimits(tmpDir, ["many-params.ts"], {
       max_parameters: 4,
     });
 
@@ -298,7 +298,7 @@ describe("checkLimits", () => {
     rmSync(tmpDir, { recursive: true });
   });
 
-  it("detects max_nesting_depth violation", async () => {
+  it("detects max_nesting_depth violation", () => {
     const tmpDir = mkdtempSync(join(tmpdir(), "limits-test-"));
     const filePath = join(tmpDir, "deep-nest.ts");
 
@@ -318,7 +318,7 @@ describe("checkLimits", () => {
 `,
     );
 
-    const violations = await checkLimits(tmpDir, ["deep-nest.ts"], {
+    const violations = checkLimits(tmpDir, ["deep-nest.ts"], {
       max_nesting_depth: 3,
     });
 
@@ -330,7 +330,7 @@ describe("checkLimits", () => {
     rmSync(tmpDir, { recursive: true });
   });
 
-  it("returns no violations when within limits", async () => {
+  it("returns no violations when within limits", () => {
     const tmpDir = mkdtempSync(join(tmpdir(), "limits-test-"));
     const filePath = join(tmpDir, "clean.ts");
 
@@ -342,7 +342,7 @@ describe("checkLimits", () => {
 `,
     );
 
-    const violations = await checkLimits(tmpDir, ["clean.ts"], {
+    const violations = checkLimits(tmpDir, ["clean.ts"], {
       max_file_lines: 100,
       max_function_lines: 50,
       max_parameters: 5,
@@ -354,7 +354,7 @@ describe("checkLimits", () => {
     rmSync(tmpDir, { recursive: true });
   });
 
-  it("detects multiple violations in single file", async () => {
+  it("detects multiple violations in single file", () => {
     const tmpDir = mkdtempSync(join(tmpdir(), "limits-test-"));
     const filePath = join(tmpDir, "multi.ts");
 
@@ -370,7 +370,7 @@ describe("checkLimits", () => {
 `,
     );
 
-    const violations = await checkLimits(tmpDir, ["multi.ts"], {
+    const violations = checkLimits(tmpDir, ["multi.ts"], {
       max_function_lines: 5,
       max_parameters: 4,
     });
@@ -383,14 +383,14 @@ describe("checkLimits", () => {
     rmSync(tmpDir, { recursive: true });
   });
 
-  it("ignores non-TS/Python files", async () => {
+  it("ignores non-TS/Python files", () => {
     const tmpDir = mkdtempSync(join(tmpdir(), "limits-test-"));
     const filePath = join(tmpDir, "readme.md");
 
     const lines = Array(1000).fill("# line").join("\n");
     writeFileSync(filePath, lines);
 
-    const violations = await checkLimits(tmpDir, ["readme.md"], {
+    const violations = checkLimits(tmpDir, ["readme.md"], {
       max_file_lines: 10,
     });
 

@@ -3,6 +3,8 @@
  * Checks file and function limits for Python and TypeScript files.
  */
 
+import path from "path";
+
 import type { Config, Violation } from "../types.js";
 import { analyzePythonFiles, isPythonAvailable } from "./python.js";
 import {
@@ -169,19 +171,21 @@ function checkFileAgainstLimits(
 }
 
 /**
- * Convert absolute path to relative path
+ * Convert absolute path to relative path (cross-platform)
  */
 function toRelativePath(filePath: string, projectRoot: string): string {
-  return filePath.startsWith(projectRoot)
-    ? filePath.slice(projectRoot.length + 1)
+  return path.isAbsolute(filePath)
+    ? path.relative(projectRoot, filePath)
     : filePath;
 }
 
 /**
- * Convert relative path to absolute path
+ * Convert relative path to absolute path (cross-platform)
  */
 function toAbsolutePath(filePath: string, projectRoot: string): string {
-  return filePath.startsWith("/") ? filePath : `${projectRoot}/${filePath}`;
+  return path.isAbsolute(filePath)
+    ? filePath
+    : path.join(projectRoot, filePath);
 }
 
 /**
@@ -240,11 +244,11 @@ function checkTypeScriptFiles(
  * @param limits Limits configuration
  * @returns Array of limit violations
  */
-export async function checkLimits(
+export function checkLimits(
   projectRoot: string,
   files: string[],
   limits: LimitsConfig,
-): Promise<LimitViolation[]> {
+): LimitViolation[] {
   const { pythonFiles, tsFiles } = categorizeFiles(files);
 
   const pythonViolations = checkPythonFiles(pythonFiles, projectRoot, limits);

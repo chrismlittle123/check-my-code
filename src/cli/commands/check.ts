@@ -225,7 +225,7 @@ async function runCheck(
   const limitsViolations =
     !skipLimits && hasLimitsConfig(config) && config.rulesets?.limits
       ? limitsViolationsToViolations(
-          await checkLimits(projectRoot, files, config.rulesets.limits),
+          checkLimits(projectRoot, files, config.rulesets.limits),
         )
       : [];
 
