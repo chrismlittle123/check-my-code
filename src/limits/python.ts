@@ -4,7 +4,6 @@
  */
 
 import { execSync } from "child_process";
-import { readFileSync } from "fs";
 
 import { type FileAnalysis, LimitsError } from "./types.js";
 
@@ -199,23 +198,4 @@ export function analyzePythonFiles(files: string[]): FileAnalysis[] {
     const message = error instanceof Error ? error.message : String(error);
     throw new LimitsError(`Failed to analyze Python files: ${message}`);
   }
-}
-
-/**
- * Analyze a single Python file.
- * Convenience wrapper for single file analysis.
- */
-export function analyzePythonFile(filePath: string): FileAnalysis {
-  const results = analyzePythonFiles([filePath]);
-  const firstResult = results[0];
-  if (!firstResult) {
-    // Return empty result for file that couldn't be analyzed
-    const content = readFileSync(filePath, "utf-8");
-    return {
-      filePath,
-      totalLines: content.split("\n").length,
-      functions: [],
-    };
-  }
-  return firstResult;
 }
