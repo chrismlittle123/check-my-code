@@ -1,0 +1,5 @@
+[project]
+name = "audit-claude-match"
+
+[ai.claude]
+extends = "github:chrismlittle123/check-my-code-community/configs@latest"

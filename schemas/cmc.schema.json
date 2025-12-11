@@ -108,6 +108,25 @@
       "required": ["templates"],
       "additionalProperties": false
     },
+    "ai": {
+      "description": "AI tool configuration",
+      "type": "object",
+      "properties": {
+        "claude": {
+          "description": "Claude Code settings configuration",
+          "type": "object",
+          "properties": {
+            "extends": {
+              "description": "Remote Claude settings to extend (format: github:owner/repo/path@version)",
+              "type": "string",
+              "pattern": "^github:[^/]+\\/[^/@]+(?:\\/[^@]*)?@.+$"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "requirements": {
       "description": "Enforce required files and tool configurations",
       "type": "object",

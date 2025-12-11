@@ -1,0 +1,8 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/.claude/settings-schema.json",
+  "_comment": "OLD SETTINGS - should be overwritten by --force",
+  "permissions": {
+    "allow": ["Read"],
+    "deny": []
+  }
+}

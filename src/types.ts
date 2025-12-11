@@ -43,6 +43,7 @@ export interface Config {
   tools?: ToolsConfig;
   files?: FilesConfig;
   prompts?: AiContextConfig;
+  ai?: AiConfig;
   requirements?: RequirementsConfig;
   rulesets?: {
     eslint?: {
@@ -74,6 +75,32 @@ export interface AiContextConfig {
 // Default community repository for AI context templates
 export const DEFAULT_AI_CONTEXT_SOURCE =
   "github:chrismlittle123/check-my-code-community/prompts@latest";
+
+// Default community repository for Claude Code settings
+export const DEFAULT_CLAUDE_SETTINGS_SOURCE =
+  "github:chrismlittle123/check-my-code-community/configs@latest";
+
+// Claude Code settings configuration
+// Format matches .claude/settings.json structure
+export interface ClaudeSettingsConfig {
+  // Remote reference to fetch settings from (format: github:owner/repo/path@version)
+  extends?: string;
+}
+
+// AI configuration section for [ai] in cmc.toml
+export interface AiConfig {
+  claude?: ClaudeSettingsConfig;
+}
+
+// Claude Code settings.json structure (output format)
+export interface ClaudeSettings {
+  $schema?: string;
+  permissions?: {
+    allow?: string[];
+    deny?: string[];
+  };
+  env?: Record<string, string>;
+}
 
 // Supported AI tool targets for context output
 export type AiTarget = "claude" | "cursor" | "copilot";

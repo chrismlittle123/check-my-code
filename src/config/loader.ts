@@ -97,6 +97,23 @@ const aiContextSchema = z
   })
   .strict();
 
+// Claude Code settings configuration schema
+const claudeSettingsSchema = z
+  .object({
+    extends: z
+      .string()
+      .regex(remoteRefPattern, "must be format: github:owner/repo/path@version")
+      .optional(),
+  })
+  .strict();
+
+// AI configuration schema (for [ai] section)
+const aiConfigSchema = z
+  .object({
+    claude: claudeSettingsSchema.optional(),
+  })
+  .strict();
+
 // Extends configuration schema (v2)
 // Uses strict() to reject unknown keys like "invalid", "nonexistent", etc.
 const extendsSchema = z
@@ -192,6 +209,7 @@ export const configSchema = z
     tools: toolsSchema.optional(),
     files: filesSchema.optional(),
     prompts: aiContextSchema.optional(),
+    ai: aiConfigSchema.optional(),
     requirements: requirementsSchema.optional(),
     rulesets: z
       .object({

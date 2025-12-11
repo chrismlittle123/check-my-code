@@ -1,18 +1,26 @@
 import { Command } from "commander";
-import { existsSync } from "fs";
+import { existsSync, mkdirSync } from "fs";
 import { writeFile } from "fs/promises";
-import { join } from "path";
+import { dirname, join } from "path";
 
 import {
   ConfigError,
   findProjectRoot,
   loadConfig,
 } from "../../config/loader.js";
+import { ConfigFetchError, fetchClaudeSettings } from "../../remote/configs.js";
 import { type InheritedRules } from "../../remote/rulesets.js";
-import { type Config, ExitCode, type TscConfig } from "../../types.js";
+import {
+  type ClaudeSettings,
+  type Config,
+  DEFAULT_CLAUDE_SETTINGS_SOURCE,
+  ExitCode,
+  type TscConfig,
+} from "../../types.js";
 import { colors } from "../output.js";
 
 type LinterTarget = "eslint" | "ruff" | "tsc";
+type GenerateTarget = LinterTarget | "claude";
 
 // Extended config type that includes inheritance info
 type ConfigWithInherited = Config & { _inherited?: InheritedRules };
@@ -35,9 +43,16 @@ const LINTER_CONFIGS: Record<
   },
 };
 
+const CLAUDE_CONFIG = {
+  filename: ".claude/settings.json",
+};
+
 export const generateCommand = new Command("generate")
-  .description("Generate linter config files from cmc.toml ruleset")
-  .argument("<linter>", "Linter to generate config for (eslint, ruff, tsc)")
+  .description("Generate config files from cmc.toml")
+  .argument(
+    "<target>",
+    "Target to generate config for (eslint, ruff, tsc, claude)",
+  )
   .option("--force", "Overwrite existing config file", false)
   .option("--stdout", "Output to stdout instead of file", false)
   .addHelpText(
@@ -47,13 +62,14 @@ Examples:
   $ cmc generate eslint          Generate eslint.config.js
   $ cmc generate ruff            Generate ruff.toml
   $ cmc generate tsc             Generate tsconfig.json
+  $ cmc generate claude          Generate .claude/settings.json
   $ cmc generate eslint --force  Overwrite existing config
   $ cmc generate eslint --stdout Preview config without writing`,
   )
   .action(
-    async (linter: string, options: { force?: boolean; stdout?: boolean }) => {
+    async (target: string, options: { force?: boolean; stdout?: boolean }) => {
       try {
-        await runGenerate(linter, options);
+        await runGenerate(target, options);
       } catch (error) {
         handleGenerateError(error);
       }
@@ -66,12 +82,18 @@ interface GenerateOptions {
 }
 
 async function runGenerate(
-  linter: string,
+  targetArg: string,
   options: GenerateOptions,
 ): Promise<void> {
-  const target = validateLinterTarget(linter);
+  const target = validateTarget(targetArg);
   const projectRoot = findProjectRoot();
   const config = await loadConfig(projectRoot);
+
+  // Handle Claude settings separately (async remote fetch)
+  if (target === "claude") {
+    await runGenerateClaude(projectRoot, config, options);
+    return;
+  }
 
   const { filename, generator } = LINTER_CONFIGS[target];
   const content = generator(config);
@@ -82,6 +104,59 @@ async function runGenerate(
   }
 
   await writeConfigFile(projectRoot, filename, content, options.force ?? false);
+}
+
+function validateClaudeConfig(config: Config): string {
+  const extendsRef = config.ai?.claude?.extends;
+  if (!extendsRef) {
+    throw new ConfigError(
+      `No [ai.claude] configuration found in cmc.toml.\n\n` +
+        `Add the following to enable Claude settings generation:\n` +
+        `  [ai.claude]\n` +
+        `  extends = "${DEFAULT_CLAUDE_SETTINGS_SOURCE}"`,
+    );
+  }
+  return extendsRef;
+}
+
+function ensureClaudeDir(projectRoot: string): void {
+  const outputDir = dirname(join(projectRoot, CLAUDE_CONFIG.filename));
+  if (!existsSync(outputDir)) {
+    mkdirSync(outputDir, { recursive: true });
+  }
+}
+
+async function runGenerateClaude(
+  projectRoot: string,
+  config: Config,
+  options: GenerateOptions,
+): Promise<void> {
+  const extendsRef = validateClaudeConfig(config);
+  const settings = await fetchClaudeSettings(extendsRef);
+  const content = generateClaudeSettings(settings, extendsRef);
+
+  if (options.stdout) {
+    console.log(content);
+    process.exit(ExitCode.SUCCESS);
+  }
+
+  const filename = CLAUDE_CONFIG.filename;
+  const outputPath = join(projectRoot, filename);
+
+  ensureClaudeDir(projectRoot);
+
+  if (existsSync(outputPath) && !options.force) {
+    console.error(
+      colors.yellow(
+        `Error: ${filename} already exists. Use --force to overwrite.`,
+      ),
+    );
+    process.exit(ExitCode.CONFIG_ERROR);
+  }
+
+  await writeFile(outputPath, content, "utf-8");
+  console.log(colors.green(`✓ Generated ${filename}`));
+  process.exit(ExitCode.SUCCESS);
 }
 
 async function writeConfigFile(
@@ -112,21 +187,22 @@ function handleGenerateError(error: unknown): never {
       `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
     ),
   );
-  if (error instanceof ConfigError) {
+  if (error instanceof ConfigError || error instanceof ConfigFetchError) {
     process.exit(ExitCode.CONFIG_ERROR);
   }
   process.exit(ExitCode.RUNTIME_ERROR);
 }
 
-function validateLinterTarget(linter: string): LinterTarget {
-  const normalized = linter.toLowerCase();
+function validateTarget(target: string): GenerateTarget {
+  const normalized = target.toLowerCase();
   if (
     normalized !== "eslint" &&
     normalized !== "ruff" &&
-    normalized !== "tsc"
+    normalized !== "tsc" &&
+    normalized !== "claude"
   ) {
-    throw new Error(
-      `Unknown linter: ${linter}. Supported linters: eslint, ruff, tsc`,
+    throw new ConfigError(
+      `Unknown target: ${target}. Supported targets: eslint, ruff, tsc, claude`,
     );
   }
   return normalized;
@@ -262,4 +338,21 @@ function generateTscConfig(config: ConfigWithInherited): string {
     exclude: ["node_modules", "dist"],
   };
   return `${JSON.stringify(output, null, 2)}\n`;
+}
+
+function generateClaudeSettings(
+  settings: ClaudeSettings,
+  extendsSource: string,
+): string {
+  return `${JSON.stringify(
+    {
+      $schema:
+        "https://raw.githubusercontent.com/anthropics/claude-code/main/.claude/settings-schema.json",
+      _comment: `Generated by cmc (check-my-code) - Extends: ${extendsSource} - regenerate with: cmc generate claude`,
+      permissions: settings.permissions,
+      env: settings.env,
+    },
+    null,
+    2,
+  )}\n`;
 }
