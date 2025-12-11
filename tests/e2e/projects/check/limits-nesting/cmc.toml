@@ -1,0 +1,5 @@
+[project]
+name = "limits-nesting"
+
+[rulesets.limits]
+max_nesting_depth = 2

@@ -1,0 +1,5 @@
+[project]
+name = "limits-skip"
+
+[rulesets.limits]
+max_file_lines = 5

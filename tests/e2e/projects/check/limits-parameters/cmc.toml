@@ -1,0 +1,5 @@
+[project]
+name = "limits-parameters"
+
+[rulesets.limits]
+max_parameters = 3

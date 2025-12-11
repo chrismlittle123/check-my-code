@@ -26,6 +26,15 @@ export interface RequirementsConfig {
   tools?: RequiredTool[];
 }
 
+// Code limits configuration for native checks
+// Applies to both Python and TypeScript files
+export interface LimitsConfig {
+  max_file_lines?: number;
+  max_function_lines?: number;
+  max_parameters?: number;
+  max_nesting_depth?: number;
+}
+
 export interface Config {
   project: {
     name: string;
@@ -41,6 +50,7 @@ export interface Config {
     };
     ruff?: RuffConfig;
     tsc?: TscConfig;
+    limits?: LimitsConfig;
   };
 }
 
@@ -120,7 +130,7 @@ export interface Violation {
   column: number | null;
   rule: string;
   message: string;
-  linter: "eslint" | "ruff" | "tsc";
+  linter: "eslint" | "ruff" | "tsc" | "limits";
 }
 
 export interface CheckResult {

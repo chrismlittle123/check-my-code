@@ -11,6 +11,11 @@ import {
   loadConfig,
 } from "../../config/loader.js";
 import {
+  checkLimits,
+  hasLimitsConfig,
+  limitsViolationsToViolations,
+} from "../../limits/index.js";
+import {
   countLintableFiles,
   type LinterOptions,
   runLinters,
@@ -32,6 +37,7 @@ interface CheckOptions {
   json?: boolean;
   quiet?: boolean;
   skipRequirements?: boolean;
+  skipLimits?: boolean;
 }
 
 export const checkCommand = new Command("check")
@@ -40,6 +46,7 @@ export const checkCommand = new Command("check")
   .option("--json", "Output results as JSON", false)
   .option("-q, --quiet", "Suppress all output (exit code only)", false)
   .option("--skip-requirements", "Skip requirements validation", false)
+  .option("--skip-limits", "Skip code limits checking", false)
   .addHelpText(
     "after",
     `
@@ -50,7 +57,8 @@ Examples:
   $ cmc check file1.ts file2.ts    Check multiple files
   $ cmc check --json               Output as JSON for CI/tooling
   $ cmc check --quiet              Silent mode (exit code only)
-  $ cmc check --skip-requirements  Skip requirements validation`,
+  $ cmc check --skip-requirements  Skip requirements validation
+  $ cmc check --skip-limits        Skip code limits checking`,
   )
   .action(async (paths: string[], options: CheckOptions) => {
     try {
@@ -68,6 +76,7 @@ async function executeCheck(
   const json = options.json ?? false;
   const quiet = json || (options.quiet ?? false);
   const skipRequirements = options.skipRequirements ?? false;
+  const skipLimits = options.skipLimits ?? false;
 
   const projectRoot = findProjectRoot();
   const config = await loadConfig(projectRoot);
@@ -94,6 +103,7 @@ async function executeCheck(
     config,
     paths,
     quiet,
+    skipLimits,
     auditWarnings,
     requirementsResult,
   });
@@ -166,6 +176,7 @@ interface RunCheckOptions {
   config: Config;
   paths: string[];
   quiet?: boolean;
+  skipLimits?: boolean;
   auditWarnings?: AuditCheckResult;
   requirementsResult?: RequirementsCheckResult;
 }
@@ -178,6 +189,7 @@ async function runCheck(
     config,
     paths,
     quiet = false,
+    skipLimits = false,
     auditWarnings,
     requirementsResult,
   } = options;
@@ -209,16 +221,21 @@ async function runCheck(
     };
   }
 
+  // Check code limits (if configured and not skipped)
+  const limitsViolations =
+    !skipLimits && hasLimitsConfig(config) && config.rulesets?.limits
+      ? limitsViolationsToViolations(
+          checkLimits(projectRoot, files, config.rulesets.limits),
+        )
+      : [];
+
   // Build linter options from config
   const linterOptions = buildLinterOptions(config, quiet);
-  const violations = await runLinters(projectRoot, files, linterOptions);
-
-  // Only count files that were actually linted (have recognized extensions)
-  const filesChecked = countLintableFiles(files, linterOptions);
+  const linterViolations = await runLinters(projectRoot, files, linterOptions);
 
   return {
-    violations,
-    filesChecked,
+    violations: [...limitsViolations, ...linterViolations],
+    filesChecked: countLintableFiles(files, linterOptions),
     auditWarnings,
     requirementsResult,
   };

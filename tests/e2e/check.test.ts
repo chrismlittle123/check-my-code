@@ -17,7 +17,7 @@ interface JsonOutput {
     column: number | null;
     rule: string;
     message: string;
-    linter: "eslint" | "ruff" | "tsc";
+    linter: "eslint" | "ruff" | "tsc" | "limits";
   }[];
   summary: {
     files_checked: number;
@@ -857,5 +857,100 @@ describe("cmc check - requirements enforcement", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe("");
+  });
+});
+
+// =============================================================================
+// Check: Code limits
+// =============================================================================
+describe("cmc check - code limits", () => {
+  it("passes when all limits are satisfied", async () => {
+    const result = await run("check/limits-pass", ["check", "--json"]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(0);
+    expect(output.violations.length).toBe(0);
+  });
+
+  it("detects max_file_lines violation", async () => {
+    const result = await run("check/limits-file-lines", ["check", "--json"]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+    expect(output.violations.length).toBeGreaterThan(0);
+
+    const limitsViolation = output.violations.find(
+      (v) => v.rule === "limits/max-file-lines",
+    );
+    expect(limitsViolation).toBeDefined();
+    expect(limitsViolation?.linter).toBe("limits");
+    expect(limitsViolation?.message).toContain("lines");
+    expect(limitsViolation?.message).toContain("max: 10");
+  });
+
+  it("detects max_function_lines violation", async () => {
+    const result = await run("check/limits-function-lines", [
+      "check",
+      "--json",
+    ]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+
+    const limitsViolation = output.violations.find(
+      (v) => v.rule === "limits/max-function-lines",
+    );
+    expect(limitsViolation).toBeDefined();
+    expect(limitsViolation?.linter).toBe("limits");
+    expect(limitsViolation?.message).toContain("longFunction");
+    expect(limitsViolation?.message).toContain("max: 5");
+  });
+
+  it("detects max_parameters violation", async () => {
+    const result = await run("check/limits-parameters", ["check", "--json"]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+
+    const limitsViolation = output.violations.find(
+      (v) => v.rule === "limits/max-parameters",
+    );
+    expect(limitsViolation).toBeDefined();
+    expect(limitsViolation?.linter).toBe("limits");
+    expect(limitsViolation?.message).toContain("5 parameters");
+    expect(limitsViolation?.message).toContain("max: 3");
+  });
+
+  it("detects max_nesting_depth violation", async () => {
+    const result = await run("check/limits-nesting", ["check", "--json"]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+
+    const limitsViolation = output.violations.find(
+      (v) => v.rule === "limits/max-nesting-depth",
+    );
+    expect(limitsViolation).toBeDefined();
+    expect(limitsViolation?.linter).toBe("limits");
+    expect(limitsViolation?.message).toContain("depth 3");
+    expect(limitsViolation?.message).toContain("max: 2");
+  });
+
+  it("skips limits with --skip-limits flag", async () => {
+    const result = await run("check/limits-skip", ["check", "--skip-limits"]);
+
+    // Should pass because limits are skipped, even though file exceeds max_file_lines
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("No violations found");
+  });
+
+  it("includes limits violations in JSON output", async () => {
+    const result = await run("check/limits-file-lines", ["check", "--json"]);
+    const output: JsonOutput = JSON.parse(result.stdout);
+
+    expect(output.violations.some((v) => v.linter === "limits")).toBe(true);
+    expect(output.violations.some((v) => v.rule.startsWith("limits/"))).toBe(
+      true,
+    );
   });
 });

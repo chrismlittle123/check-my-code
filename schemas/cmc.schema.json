@@ -284,6 +284,33 @@
               "type": "boolean"
             }
           }
+        },
+        "limits": {
+          "description": "Native code limits for file and function complexity",
+          "type": "object",
+          "properties": {
+            "max_file_lines": {
+              "description": "Maximum lines per file (including blank lines)",
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "max_function_lines": {
+              "description": "Maximum lines per function/method body",
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "max_parameters": {
+              "description": "Maximum parameters per function/method",
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "max_nesting_depth": {
+              "description": "Maximum nesting depth (if/for/while/try/with blocks)",
+              "type": "integer",
+              "exclusiveMinimum": 0
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

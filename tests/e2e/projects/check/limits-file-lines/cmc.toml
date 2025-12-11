@@ -1,0 +1,5 @@
+[project]
+name = "limits-file-lines"
+
+[rulesets.limits]
+max_file_lines = 10
